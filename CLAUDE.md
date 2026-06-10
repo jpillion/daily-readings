@@ -1,13 +1,28 @@
 # CLAUDE.md — Daily Readings
 
-Context for any Claude Code session working in this repo. Read [docs/SPEC.md](docs/SPEC.md)
-for the full product spec; this file is the quick orientation + handoff.
+Context for any Claude Code session working in this repo. This file is the quick orientation +
+handoff. The planning docs (written by the product/engineering team) live in `docs/`:
+
+- [docs/SPEC.md](docs/SPEC.md) — product/build spec (concept, scope, roadmap).
+- [docs/PRD.md](docs/PRD.md) — Product Requirements Document (Maya, PM): users, goals,
+  scope by release, user stories, functional requirements, success metrics.
+- [docs/ENGINEERING_SPEC.md](docs/ENGINEERING_SPEC.md) — Engineering Requirements &
+  Architecture (Diego, staff architect): stack, module layout, data design, NFRs, decisions.
+- [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) — V1 execution plan (Morgan, EM): up-front
+  decisions, sprint sequence, ticketed first two sprints. **Start here to build.**
+
+The agentic team lives at `.claude/agents/` (symlinked to the shared `../agents/android-team`).
 
 ## What this is
 
-An **offline-first Android app** for the Christadelphian **"Bible Companion"** daily reading
-plan (Robert Roberts). Three scripture portions per day, **date-anchored** (Jan 1 is always
-Genesis 1–2 / Psalm 1–2 / Matthew 1–2), so all readers worldwide stay in sync.
+An Android app for the Christadelphian **"Bible Companion"** daily reading plan (Robert
+Roberts). Three scripture readings per day, **date-anchored** (Jan 1 is always Genesis 1–2 /
+Psalm 1–2 / Matthew 1–2), so all readers worldwide stay in sync.
+
+**V1 is a digital reading planner**, not a Bible reader: show today's three readings, mark them
+done, and tap any reading to open its chapter on Blue Letter Bible (KJV) in the browser. No
+scripture text is bundled or rendered in-app in V1 — that's V3. The planner/tracker core works
+offline; the text link needs network.
 
 This is a **standalone repo**, deliberately separate from the unrelated `strikelog` project.
 Do not reference or depend on strikelog.
@@ -16,7 +31,8 @@ Do not reference or depend on strikelog.
 
 - Repo initialized on `main`. Committed: this file, `README.md`, `.gitignore`, `docs/SPEC.md`.
 - **No app code yet.** Not pushed to a GitHub remote yet.
-- Next up: **Phase 0 — the data foundation** (see below). Not started.
+- V1 scope decided (digital reading planner — see [docs/SPEC.md](docs/SPEC.md) §4).
+- Next up: **Phase 0 — the data foundation** (just the plan JSON now; see below). Not started.
 
 ## The reading plan
 
@@ -29,7 +45,8 @@ Over a year: **Old Testament once, New Testament twice.** ~3–4 chapters/day.
 
 ## Immediate next step: Phase 0 (do before any app code)
 
-The plan schedule and Bible text are the project's real IP and risk. Build them first:
+The reading plan schedule is the project's real IP and the **only** V1 data asset (no Bible
+text is bundled in V1). Build it first:
 
 1. **Reading plan → JSON.** Extract the full **366-day** table (includes Feb 29), each day
    with 3 portions of chapter spans. **Verify against a second source.** Suggested JSON shape:
@@ -41,8 +58,11 @@ The plan schedule and Bible text are the project's real IP and risk. Build them 
        {"stream": 3, "refs": ["Matthew 1", "Matthew 2"]}
      ]}
    ```
-2. **Bible text dataset.** Acquire/validate a public-domain **KJV** (JSON or SQLite),
-   books → chapters → verses.
+
+> The KJV **text** dataset is **not** a Phase 0 item — it's deferred to V3 (in-app text).
+> V1 reaches scripture via Blue Letter Bible links:
+> `https://www.blueletterbible.org/kjv/<book>/<chapter>/` (3-letter book abbrev, e.g.
+> `gen`, → `/kjv/gen/1/`). Phase 0's only resolution need is a book-name → BLB abbrev table.
 
 Sources for the plan table:
 - christadelphia.org (Excel/PDF): https://christadelphia.org/readplan.php
@@ -54,20 +74,34 @@ Sources for the plan table:
 
 ## Planned stack
 
-Kotlin · Jetpack Compose · Material 3 · single-activity · Room (Bible text as read-only
-bundled SQLite asset + user `reading_progress` table) · DataStore (prefs) · Hilt · AlarmManager
-notifications · Glance widget · GitHub Actions CI (build + tests + Kover).
+**V1:** Kotlin · Jetpack Compose · Material 3 · single-activity · plan JSON in memory ·
+small progress store (DataStore or tiny Room table) · DataStore (theme) · Glance widget ·
+outbound Blue Letter Bible links · Hilt · GitHub Actions CI (build + tests + Kover).
 
-## Open decisions (resolve as they come up)
+**Later:** AlarmManager reminders (V2); Room + bundled read-only **SQLite KJV asset** for
+in-app text and richer progress/streak schema (V2/V3).
 
-1. **Final app name** + package id. (Working name: *Daily Readings*; dir can be renamed.)
-2. **Translations:** KJV-only for v1, or multi-translation schema from day one
-   (recommended — cheap now, costly to retrofit). **Not yet decided.**
-3. **Min SDK / target devices.**
-4. **Distribution:** Play Store vs. sideload/community.
+## Open decisions
+
+1. **BLB book-abbreviation table** — confirm the 3-letter BLB abbrev for each of the 66 books.
+   *Engineering data task, no product sign-off needed* (handled in Sprint 1, QA link-checked).
+
+All other product/owner decisions are resolved — see below and `docs/EXECUTION_PLAN.md` §2.
 
 ## Decisions already made
 
 - New, separate repo (not inside strikelog). ✅
 - Spec drafted first before code. ✅
-- KJV is the default/v1 translation (public domain, traditional for this audience).
+- **V1 = digital reading planner**; no in-app scripture text (deferred to V3). ✅
+- Mark-as-read is **per reading** (3/day) + one-tap "whole day done"; **not** per-chapter. ✅
+- Scripture reached via **Blue Letter Bible** KJV links, not bundled text, in V1. ✅
+- Schedule keyed by (month, day); **progress keyed by full date** so marks don't repeat
+  across years. ✅
+- KJV is the default/v1 translation; multi-translation schema is moot for V1 (no text stored). ✅
+- **App name = "Daily Reading Planner"**; package id = **`com.jpillion.dailyreadingplanner`**. ✅
+- **Feb 29 = no scheduled readings.** Plan covers 365 days (Feb = 28 entries, no Feb 29 entry);
+  in leap years the date shows **"No scheduled readings for Feb 29th"** (no readings/marks/
+  tracking); non-leap years skip it. No fold/double-day logic. ✅
+- **minSdk = 26**; targetSdk/compileSdk = latest stable. ✅
+- **No analytics/telemetry in V1** (no networking dep). ✅
+- **Distribution = Play Store.** ✅
