@@ -47,7 +47,7 @@ jobs:
         run: ./gradlew testDebugUnitTest
 
       - name: Decode upload keystore
-        run: echo "${{ secrets.DRP_UPLOAD_KEYSTORE_B64 }}" | base64 -d > upload-keystore.jks
+        run: printf '%s' "${{ secrets.DRP_UPLOAD_KEYSTORE_B64 }}" | tr -d ' \r\n' | base64 -d > upload-keystore.jks
 
       - name: Build signed release bundle
         env:
