@@ -16,3 +16,12 @@
 
 # 2) Debug-only surface: nothing to keep — StrictMode setup in DailyReadingsApp is guarded
 #    by BuildConfig.DEBUG (a compile-time constant in release), so R8 strips it entirely.
+
+# 3) WorkManager reflection (Glance renders widgets via a WorkManager session):
+#    WorkerWrapper instantiates InputMerger subclasses reflectively by class name; R8
+#    strips OverwritingInputMerger's zero-arg constructor without this, killing the
+#    Glance session worker before any RemoteViews are delivered — the widget then hangs
+#    forever on the launcher's loading spinner (observed on device, 1.0.0/1.1.0).
+-keep class * extends androidx.work.InputMerger {
+    <init>();
+}
