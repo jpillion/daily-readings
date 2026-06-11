@@ -46,12 +46,23 @@ Do not reference or depend on strikelog.
   Toolchain: AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.3.21 / compileSdk 37 / Compose BOM 2026.05.01 /
   Hilt 2.59.2 / Kover 0.9.8 (70% floor on domain/data classes only).
   Handoff: [docs/sprints/sprint-0002-scaffold-ci-di-theme.md](docs/sprints/sprint-0002-scaffold-ci-di-theme.md).
-- Next up: **Sprint 3 — data + domain layer** (plan loader, `ScheduleDateResolver` incl. the
-  Feb-29 no-readings rule, Room progress store with year isolation, `BlbUrlBuilder`, theme
-  repo, use cases — see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3 and §5.2 gates).
-  Notes for Sprint 3: a portion can span two books (Jun 19 / Dec 19 = 2 John + 3 John);
-  supersede `book_catalog.csv` with a production `BookCatalog` reconciled against the CSV by
-  test; the Kover floor starts biting as real domain code lands.
+- ✅ **Sprint 3 (data + domain layer) is DONE.** The engine works behind Hilt-bound
+  interfaces (no UI yet): `ScheduleDateResolver` (sealed `ResolvedDate`; Feb 29 =
+  `NoScheduledReadings`, unrepresentable in `ReadingDate`), `ReadingPlanRepository`
+  (asset parsed/validated once, single-flight), production `BookCatalog` (test-pinned
+  field-by-field to the Sprint 1 CSV) + `BlbUrlBuilder`, Room `ProgressRepository`
+  (PK `(dateEpochDay, stream)`, year isolation proven), DataStore `ThemeRepository`,
+  and use cases (`GetDayReadingsUseCase: Flow<DayReadings>`, `ToggleReadingUseCase`,
+  `MarkWholeDayUseCase`, `OpenReferenceUseCase` → URL only). Multi-book portions handled
+  (Jun 19 / Dec 19 = 2 John + 3 John in ONE portion). 45/45 tests (38 new + the untouched
+  7-test Sprint 1 gate), mutation-verified; Kover 93.9% on domain/data vs the 70% floor
+  (generated DI/Room code excluded by annotation). Known debt: `exportSchema = false` on
+  `ProgressDatabase` (revisit at V2 streak schema); Robolectric pinned `@Config(sdk = [34])`.
+  Handoff: [docs/sprints/sprint-0003-data-domain-layer.md](docs/sprints/sprint-0003-data-domain-layer.md).
+- Next up: **Sprint 4 — Today screen** (ViewModels over the Sprint 3 use cases, today's
+  three readings with per-reading + whole-day marks, Feb-29 empty state, Custom-Tab launch
+  for the `OpenReferenceUseCase` URL, optional loader error state — see
+  [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3).
 
 ## The reading plan
 

@@ -82,6 +82,11 @@ kover {
                     "com.jpillion.dailyreadingplanner.data.*",
                 )
             }
+            excludes {
+                // Generated DI plumbing (Hilt/Dagger factories, Room @Generated) is not our
+                // logic; counting it would dilute the floor on code we actually wrote.
+                annotatedBy("dagger.internal.DaggerGenerated", "javax.annotation.processing.Generated")
+            }
         }
         verify {
             rule("domain/data line coverage floor") {
