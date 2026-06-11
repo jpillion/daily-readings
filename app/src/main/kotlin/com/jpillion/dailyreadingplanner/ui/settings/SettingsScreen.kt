@@ -1,8 +1,10 @@
 package com.jpillion.dailyreadingplanner.ui.settings
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
 import android.text.format.DateFormat
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -50,10 +52,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import java.time.Instant
 import java.time.LocalDate
@@ -70,6 +74,7 @@ fun SettingsRoute(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val bibleProvider by viewModel.bibleProvider.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val trackingStartDate by viewModel.trackingStartDate.collectAsStateWithLifecycle()
     val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
@@ -89,8 +94,11 @@ fun SettingsRoute(
     }
 
     val context = LocalContext.current
+    val requestAppSubject = stringResource(R.string.request_app_subject)
+    val requestAppBody = stringResource(R.string.request_app_body)
     SettingsScreen(
         selectedMode = themeMode,
+        selectedProvider = bibleProvider,
         fontScale = fontScale,
         currentYear = viewModel.currentYear,
         trackingStartDate = trackingStartDate,
@@ -98,6 +106,21 @@ fun SettingsRoute(
         reminderTime = reminderTime,
         showReminderPermissionRationale = showPermissionRationale,
         onThemeModeSelected = viewModel::onThemeModeSelected,
+        onBibleProviderSelected = viewModel::onBibleProviderSelected,
+        onRequestApp = {
+            // Spec §7: an outbound mailto intent — the same intent class as a reading link;
+            // no networking, nothing collected. No email app -> a quiet no-op (G-OFFLINE spirit).
+            try {
+                context.startActivity(
+                    Intent(Intent.ACTION_SENDTO, "mailto:".toUri())
+                        .putExtra(Intent.EXTRA_EMAIL, arrayOf("jjpillion@gmail.com"))
+                        .putExtra(Intent.EXTRA_SUBJECT, requestAppSubject)
+                        .putExtra(Intent.EXTRA_TEXT, requestAppBody),
+                )
+            } catch (_: ActivityNotFoundException) {
+                Log.w("SettingsRoute", "No email app available for the request-an-app intent")
+            }
+        },
         onFontScaleChanged = viewModel::onFontScaleChanged,
         onTrackingStartChanged = viewModel::onTrackingStartChanged,
         onReminderToggled = viewModel::onReminderToggled,
@@ -125,6 +148,7 @@ fun SettingsRoute(
 @Composable
 fun SettingsScreen(
     selectedMode: ThemeMode,
+    selectedProvider: BibleProvider,
     fontScale: Float,
     currentYear: Int,
     trackingStartDate: LocalDate?,
@@ -132,6 +156,8 @@ fun SettingsScreen(
     reminderTime: LocalTime,
     showReminderPermissionRationale: Boolean,
     onThemeModeSelected: (ThemeMode) -> Unit,
+    onBibleProviderSelected: (BibleProvider) -> Unit,
+    onRequestApp: () -> Unit,
     onFontScaleChanged: (Float) -> Unit,
     onTrackingStartChanged: (LocalDate?) -> Unit,
     onReminderToggled: (Boolean) -> Unit,
@@ -199,6 +225,50 @@ fun SettingsScreen(
 
             SectionTitle(stringResource(R.string.text_size_section_title))
             TextSizeSlider(fontScale = fontScale, onFontScaleChanged = onFontScaleChanged)
+
+            SectionTitle(stringResource(R.string.provider_section_title))
+            Column(modifier = Modifier.selectableGroup()) {
+                BibleProviderRow(
+                    provider = BibleProvider.BLB,
+                    label = stringResource(R.string.provider_blb),
+                    testTag = "provider-option-blb",
+                    selectedProvider = selectedProvider,
+                    onBibleProviderSelected = onBibleProviderSelected,
+                )
+                BibleProviderRow(
+                    provider = BibleProvider.BIBLE_GATEWAY,
+                    label = stringResource(R.string.provider_biblegateway),
+                    testTag = "provider-option-biblegateway",
+                    selectedProvider = selectedProvider,
+                    onBibleProviderSelected = onBibleProviderSelected,
+                )
+                BibleProviderRow(
+                    provider = BibleProvider.YOUVERSION,
+                    label = stringResource(R.string.provider_youversion),
+                    testTag = "provider-option-youversion",
+                    selectedProvider = selectedProvider,
+                    onBibleProviderSelected = onBibleProviderSelected,
+                )
+            }
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .selectable(
+                            selected = false,
+                            role = Role.Button,
+                            onClick = onRequestApp,
+                        ).testTag("request-app-row")
+                        .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.request_app_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
 
             SectionTitle(stringResource(R.string.reminders_section_title))
             ReminderToggleRow(
@@ -560,6 +630,40 @@ private fun SectionTitle(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
     )
+}
+
+/** S13: one provider choice, the theme-selector pattern (spec §5) — radio row, persisted. */
+@Composable
+private fun BibleProviderRow(
+    provider: BibleProvider,
+    label: String,
+    testTag: String,
+    selectedProvider: BibleProvider,
+    onBibleProviderSelected: (BibleProvider) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .selectable(
+                    selected = provider == selectedProvider,
+                    role = Role.RadioButton,
+                    onClick = { onBibleProviderSelected(provider) },
+                ).testTag(testTag)
+                .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(
+            selected = provider == selectedProvider,
+            onClick = null,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 16.dp),
+        )
+    }
 }
 
 @Composable

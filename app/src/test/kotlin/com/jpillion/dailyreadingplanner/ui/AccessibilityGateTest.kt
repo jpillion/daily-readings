@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.Stream
@@ -91,6 +92,7 @@ class AccessibilityGateTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 SettingsScreen(
                     selectedMode = ThemeMode.SYSTEM,
+                    selectedProvider = BibleProvider.BLB,
                     fontScale = 1f,
                     currentYear = 2026,
                     trackingStartDate = today,
@@ -98,6 +100,8 @@ class AccessibilityGateTest {
                     reminderTime = LocalTime.of(8, 0),
                     showReminderPermissionRationale = false,
                     onThemeModeSelected = {},
+                    onBibleProviderSelected = {},
+                    onRequestApp = {},
                     onFontScaleChanged = {},
                     onTrackingStartChanged = {},
                     onReminderToggled = {},
@@ -136,6 +140,15 @@ class AccessibilityGateTest {
             .assert(hasAnyContentDescription())
         // S12: the reminder rows are authored controls -> 48dp; the toggle row exposes
         // switch semantics and the time row speaks label+value.
+        // S13: the provider radio rows and the request-an-app row are authored controls -> 48dp.
+        for (tag in listOf(
+            "provider-option-blb",
+            "provider-option-biblegateway",
+            "provider-option-youversion",
+        )) {
+            composeRule.onNodeWithTag(tag).performScrollTo().assertTouchTargetAtLeast(48.dp)
+        }
+        composeRule.onNodeWithTag("request-app-row").performScrollTo().assertTouchTargetAtLeast(48.dp)
         composeRule
             .onNodeWithTag("reminder-toggle")
             .performScrollTo()

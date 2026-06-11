@@ -9,7 +9,16 @@ import org.junit.Test
  * test pins them together field-by-field so they can never drift (execution plan §5.2).
  */
 class BookCatalogTest {
-    private val csvBooks: List<Book> =
+    // The CSV stays exactly Sprint 1's four columns (the 7-test plan gate parses it too);
+    // catalog columns added later (S13 usfmCode) are pinned by their own gate tests.
+    private data class CsvBook(
+        val order: Int,
+        val canonicalName: String,
+        val chapterCount: Int,
+        val blbAbbrev: String,
+    )
+
+    private val csvBooks: List<CsvBook> =
         checkNotNull(javaClass.classLoader?.getResource("book_catalog.csv")) { "book_catalog.csv not found" }
             .readText()
             .lines()
@@ -17,15 +26,16 @@ class BookCatalogTest {
             .filter { it.isNotBlank() }
             .map { line ->
                 val (order, name, count, abbrev) = line.split(",")
-                Book(order.toInt(), name, count.toInt(), abbrev)
+                CsvBook(order.toInt(), name, count.toInt(), abbrev)
             }
 
     @Test
     fun `catalog matches the link-verified sprint 1 csv exactly`() {
         assertThat(csvBooks).hasSize(66)
         assertWithMessage("BookCatalog must reconcile field-by-field with book_catalog.csv")
-            .that(BookCatalog.books)
-            .isEqualTo(csvBooks)
+            .that(
+                BookCatalog.books.map { CsvBook(it.order, it.canonicalName, it.chapterCount, it.blbAbbrev) },
+            ).isEqualTo(csvBooks)
     }
 
     @Test

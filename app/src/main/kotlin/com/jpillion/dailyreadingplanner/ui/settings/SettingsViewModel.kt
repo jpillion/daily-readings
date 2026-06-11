@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
@@ -69,6 +70,18 @@ class SettingsViewModel
 
         fun onThemeModeSelected(mode: ThemeMode) {
             viewModelScope.launch { settingsRepository.setThemeMode(mode) }
+        }
+
+        /** S13: the KJV destination reading taps open; applies to the very next tap. */
+        val bibleProvider: StateFlow<BibleProvider> =
+            settingsRepository.bibleProvider.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = BibleProvider.DEFAULT,
+            )
+
+        fun onBibleProviderSelected(provider: BibleProvider) {
+            viewModelScope.launch { settingsRepository.setBibleProvider(provider) }
         }
 
         /** Persists each slider position; the app-wide theme collects the same flow (live preview). */

@@ -79,4 +79,13 @@
     <string name="widget_load_failed">Couldn\'t load readings — tap to open the app</string>
     <string name="widget_reading_read">Read</string>
     <string name="widget_reading_unread">Not read yet</string>
+
+    <!-- S13: Bible app links (docs/features/bible-app-links.md). -->
+    <string name="provider_section_title">Open readings in</string>
+    <string name="provider_blb">Blue Letter Bible (default)</string>
+    <string name="provider_biblegateway">Bible Gateway (website)</string>
+    <string name="provider_youversion">YouVersion / Bible.com</string>
+    <string name="request_app_title">Request another app or site</string>
+    <string name="request_app_subject">Daily Reading Planner — Bible app request</string>
+    <string name="request_app_body">I would like my readings to open in: </string>
 </resources>

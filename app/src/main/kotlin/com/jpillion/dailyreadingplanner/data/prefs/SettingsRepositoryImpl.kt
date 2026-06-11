@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -93,8 +94,19 @@ class SettingsRepositoryImpl
             }
         }
 
+        /** Stored as the enum name; [BibleProvider.fromStored] absorbs unknown/corrupt ids. */
+        override val bibleProvider: Flow<BibleProvider> =
+            dataStore.data.map { preferences ->
+                BibleProvider.fromStored(preferences[BIBLE_PROVIDER_KEY])
+            }
+
+        override suspend fun setBibleProvider(provider: BibleProvider) {
+            dataStore.edit { preferences -> preferences[BIBLE_PROVIDER_KEY] = provider.name }
+        }
+
         private companion object {
             val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
+            val BIBLE_PROVIDER_KEY = stringPreferencesKey("bible_provider")
             val FONT_SCALE_KEY = floatPreferencesKey("font_scale")
             val TRACKING_START_EPOCH_DAY_KEY = longPreferencesKey("tracking_start_epoch_day")
             val TRACKING_START_INITIALIZED_KEY = booleanPreferencesKey("tracking_start_initialized")

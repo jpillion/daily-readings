@@ -167,3 +167,53 @@ URLs carry one chapter, and today's behavior opens the **first** reference of th
 5. **Morgan:** sizing + where this lands relative to V2/V3 (product suggestion: after
    Sprint 11, before V3 in-app text — V3 reduces but does not eliminate its value, since
    link-out remains the no-storage path and some users will always prefer their own app).
+
+---
+
+## 11. §research — Tier-2 verification findings (Sprint 13, 2026-06-11)
+
+Owner-requested verification of Logos, Olive Tree, and MySword. **Result: none ship in the
+first cut — all three fail the §4 product rule (no graceful not-installed fallback).**
+Recorded so we don't re-research; each has a documented go-path if demand justifies the
+install-detection work.
+
+### Logos (`ref.ly`) — NO-GO (https, but the fallback is a login wall and the default is ESV)
+
+- Link form verified live (curl, 2026-06-11): `https://ref.ly/{Token}{chapter};kjv` 301s to
+  `app.logos.com` with KJV correctly pinned (`LLS:KJV1900`, `bible+kjv`) across the awkward
+  books sampled (Genesis, Psalms, Song, Philemon, 2 John).
+- **Disqualifier 1:** a *bare* ref.ly link (no `;kjv`) resolves to **ESV** (`bible+esv`) —
+  one malformed link silently switches translations, the exact §2 failure mode.
+- **Disqualifier 2 (blocking):** the `app.logos.com` landing page shows an **account-creation
+  wall, no scripture text**, to an anonymous visitor (verified 2026-06-11). A user without
+  the Logos app installed gets a sign-up page instead of the chapter — fails §3 gate item 3
+  and the U-BAL-2 zero-setup spirit.
+- *Go-path:* show Logos only when the app is detectably installed (`<queries>` +
+  PackageManager) so the web fallback never fires; needs an on-device pass.
+
+### Olive Tree — NO-GO (custom scheme only)
+
+- Deep links exist and are vendor-documented (github.com/OliveTreeBible/OliveTreeUrlExample):
+  `olivetree://bible/{Book}.{chapter}.{verse}` (book numbers supported since 5.9.12), but the
+  docs are iOS-centric and there is **no https form** — a tap with no app installed is a dead
+  intent. Requires install detection + BLB fallback; link resolution is not JVM-verifiable
+  (nothing to curl). *Go-path:* same install-detection sprint as Logos; verify on a device
+  with the app.
+
+### MySword — NO-GO (explicit-component intent; web URL is a stub)
+
+- Vendor-documented integration (mysword-bible.info "Link or open MySword from other apps"):
+  an intent with explicit component `com.riversoft.android.mysword/.MySwordLink` and data
+  `https://mysword.info/b?r=Gen_1`. Although the data URL is https, the web page it serves
+  is a **"MySword Bible Link" stub with no scripture text** (verified 2026-06-11) — the URL
+  only means something to the installed app, and the explicit component implies the app does
+  not claim it via App Links. Same fallback failure as Olive Tree. *Go-path:* same
+  install-detection sprint.
+
+### Shipped first cut (Sprint 13)
+
+BLB (default, unchanged) + **Bible Gateway** + **YouVersion** — §3 gates run 2026-06-11,
+results in [docs/data/provider-link-checks.md](../data/provider-link-checks.md). Bible
+Gateway shipped `multiRefCapable` (ranges + the Jun 19 / Dec 19 two-book portion in one
+URL, both live-verified). "Request another app or site" shipped as the §7 mailto intent.
+Owner question §10.2 (public issues channel) remains open — mailto-only for now.

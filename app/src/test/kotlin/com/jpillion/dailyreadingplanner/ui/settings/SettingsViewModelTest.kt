@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.testing.FakeNotificationPermissionChecker
@@ -215,5 +216,15 @@ class SettingsViewModelTest {
             viewModel.onReminderTimeChanged(LocalTime.of(21, 0))
             assertThat(repository.reminderTimeCalls).containsExactly(LocalTime.of(21, 0))
             assertThat(reminderScheduler.scheduledTimes).isEmpty()
+        }
+
+    // --- S13: bible provider. ---
+
+    @Test
+    fun `selecting a provider persists it`() =
+        runTest {
+            viewModel.onBibleProviderSelected(BibleProvider.YOUVERSION)
+            assertThat(repository.bibleProviderCalls).containsExactly(BibleProvider.YOUVERSION)
+            assertThat(repository.storedBibleProvider.value).isEqualTo(BibleProvider.YOUVERSION)
         }
 }

@@ -1,6 +1,7 @@
 package com.jpillion.dailyreadingplanner.testing
 
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,5 +67,17 @@ class FakeSettingsRepository(
     override suspend fun setReminderTime(time: LocalTime) {
         reminderTimeCalls += time
         storedReminderTime.value = time
+    }
+
+    // --- S13: bible provider. ---
+
+    val storedBibleProvider = MutableStateFlow(BibleProvider.DEFAULT)
+    val bibleProviderCalls = mutableListOf<BibleProvider>()
+
+    override val bibleProvider: Flow<BibleProvider> = storedBibleProvider
+
+    override suspend fun setBibleProvider(provider: BibleProvider) {
+        bibleProviderCalls += provider
+        storedBibleProvider.value = provider
     }
 }

@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -160,5 +161,29 @@ class SettingsRepositoryImplTest {
             assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
             dataStore.edit { it[intPreferencesKey("reminder_minute_of_day")] = -1 }
             assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
+        }
+
+    // --- S13: bible provider. ---
+
+    @Test
+    fun `bible provider defaults to blue letter bible when nothing is stored`() =
+        themeTest { repository, _ ->
+            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BLB)
+        }
+
+    @Test
+    fun `set bible provider persists and is observable`() =
+        themeTest { repository, _ ->
+            repository.setBibleProvider(BibleProvider.YOUVERSION)
+            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.YOUVERSION)
+            repository.setBibleProvider(BibleProvider.BIBLE_GATEWAY)
+            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BIBLE_GATEWAY)
+        }
+
+    @Test
+    fun `an unrecognized stored provider id degrades to the default instead of crashing`() =
+        themeTest { repository, dataStore ->
+            dataStore.edit { it[stringPreferencesKey("bible_provider")] = "ESV_DOT_ORG" }
+            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BLB)
         }
 }

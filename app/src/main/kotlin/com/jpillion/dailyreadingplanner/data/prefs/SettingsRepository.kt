@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.data.prefs
 
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -62,6 +63,15 @@ interface SettingsRepository {
     suspend fun setReminderEnabled(enabled: Boolean)
 
     suspend fun setReminderTime(time: LocalTime)
+
+    /**
+     * The KJV destination reading taps open (S13, docs/features/bible-app-links.md).
+     * Defaults to [BibleProvider.DEFAULT] (Blue Letter Bible) — existing users see zero
+     * behavior change; unknown stored ids degrade to the default, never crash.
+     */
+    val bibleProvider: Flow<BibleProvider>
+
+    suspend fun setBibleProvider(provider: BibleProvider)
 
     companion object {
         const val MIN_FONT_SCALE = 0.85f

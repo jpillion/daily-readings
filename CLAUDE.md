@@ -229,14 +229,30 @@ Do not reference or depend on strikelog.
   note "Psalms" vs the PRD's "Psalm"). Device-pass items (real fire time, reboot, permission
   prompt, midnight rollover) listed in the handoff. Version stays 1.0.0/10000 (V2 WIP).
   Handoff: [docs/sprints/sprint-0012-reminders.md](docs/sprints/sprint-0012-reminders.md).
-- Next up: **Sprint 13 — Bible-app links** (`sprint-0013-bible-app-links`): the specced
-  provider-choice feature ([docs/features/bible-app-links.md](docs/features/bible-app-links.md))
-  — reading taps open the user's chosen KJV destination (BLB stays the zero-setup default),
-  outbound intents only, no networking. Generalize `OpenReferenceUseCase` (today returns a
-  BLB URL only) and the `CustomTabLauncher` seam; each provider needs its own live-verified
-  book-token table (Sprint 1 verification pattern — don't drift from `BookCatalog`). Owner
-  decisions in spec §10 may gate scope. V1 ship still runs in parallel on the owner's side
-  (device-pass + keystore/Play checklists in the Sprint 9–12 handoffs).
+- ✅ **Sprint 13 (Bible app links) is DONE.** The user chooses which KJV destination
+  reading taps open — Settings → "Open readings in": **Blue Letter Bible (default,
+  unchanged), Bible Gateway (website), YouVersion / Bible.com** — persisted in DataStore
+  (`bible_provider`, unknown ids degrade to BLB), read at tap time (D-S13-4), still plain
+  https through `CustomTabLauncher` (YouVersion app-links into its app when installed).
+  Both new providers passed the spec §3 gate before shipping: **Bible Gateway 134/134,
+  YouVersion 132/132** live HTTP checks (ch 1 + last ch of all 66 books + portion forms),
+  recorded in docs/data/provider-link-checks.md; the committed suite stays offline. Model
+  (D-S13-1/2, extends D-S9-1): `Book.usfmCode` column (hand-pinned — PHP/EZK/JOL/NAM/MRK/
+  JUD defeat derivation; `UsfmCodeCatalogTest` is the gate), `data/reference/
+  ProviderUrlBuilder` replaces `BlbUrlBuilder` as the ONLY URL home, `domain/model/
+  BibleProvider` enum. Portion semantics (D-S13-3, pinned): BLB/YouVersion open the first
+  ref; **Bible Gateway carries the whole portion in one URL** ("Genesis 1-2"; Jun 19/
+  Dec 19 = "2 John 1,3 John 1"). "Request another app or site" row = mailto intent to
+  jjpillion@gmail.com (no networking). **Owner's tier-2 apps all NO-GO** (spec §11 +
+  handoff): Logos = anonymous login wall + bare links default to ESV; Olive Tree = custom
+  scheme only; MySword = stub web page — all need install detection (queued candidate).
+  279/279 tests (19 net-new; 7-test Sprint 1 gate untouched), 4 mutations killed; Kover
+  96.5% on domain/data. S13 strings need owner tone sign-off (table in the handoff).
+  Handoff: [docs/sprints/sprint-0013-bible-app-links.md](docs/sprints/sprint-0013-bible-app-links.md).
+- Next up: **Sprint 14 — V2 release prep** (`sprint-0014-v2-release-prep`): version bump
+  past 1.0.0/10000, the owner's consolidated device pass (S9 checklists + tracking-start +
+  stats + S12 reminders + S13 provider items), S12/S13 string tone sign-offs, upload key +
+  Play listing if still pending, closed-track rollout.
 
 ## The reading plan
 

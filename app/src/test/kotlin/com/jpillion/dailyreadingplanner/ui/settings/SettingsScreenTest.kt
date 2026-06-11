@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
@@ -37,6 +38,8 @@ class SettingsScreenTest {
     val composeRule = createComposeRule()
 
     private val selections = mutableListOf<ThemeMode>()
+    private val providerSelections = mutableListOf<BibleProvider>()
+    private var requestAppCalls = 0
     private val fontScaleChanges = mutableListOf<Float>()
     private val trackingStartChanges = mutableListOf<LocalDate?>()
     private val reminderToggles = mutableListOf<Boolean>()
@@ -48,6 +51,7 @@ class SettingsScreenTest {
 
     private fun setScreen(
         selectedMode: ThemeMode,
+        selectedProvider: BibleProvider = BibleProvider.BLB,
         fontScale: Float = 1f,
         trackingStartDate: LocalDate? = null,
         reminderEnabled: Boolean = false,
@@ -58,6 +62,7 @@ class SettingsScreenTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 SettingsScreen(
                     selectedMode = selectedMode,
+                    selectedProvider = selectedProvider,
                     fontScale = fontScale,
                     currentYear = 2026,
                     trackingStartDate = trackingStartDate,
@@ -65,6 +70,8 @@ class SettingsScreenTest {
                     reminderTime = reminderTime,
                     showReminderPermissionRationale = showReminderPermissionRationale,
                     onThemeModeSelected = { selections += it },
+                    onBibleProviderSelected = { providerSelections += it },
+                    onRequestApp = { requestAppCalls++ },
                     onFontScaleChanged = { fontScaleChanges += it },
                     onTrackingStartChanged = { trackingStartChanges += it },
                     onReminderToggled = { reminderToggles += it },
@@ -257,5 +264,42 @@ class SettingsScreenTest {
         setScreen(ThemeMode.SYSTEM, showReminderPermissionRationale = true)
         composeRule.onNodeWithTag("reminder-permission-dismiss").performClick()
         assertThat(rationaleDismissals).isEqualTo(1)
+    }
+
+    // --- S13: "Open readings in" provider selector + request-an-app row. ---
+
+    @Test
+    fun providerSection_showsAllRows_withTheStoredChoiceSelected() {
+        setScreen(ThemeMode.SYSTEM, selectedProvider = BibleProvider.YOUVERSION)
+        composeRule.onNodeWithText("Open readings in").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("provider-option-blb").performScrollTo().assertIsNotSelected()
+        composeRule
+            .onNodeWithTag("provider-option-biblegateway")
+            .performScrollTo()
+            .assertIsNotSelected()
+        composeRule.onNodeWithTag("provider-option-youversion").performScrollTo().assertIsSelected()
+    }
+
+    @Test
+    fun providerSection_defaultsToBlueLetterBible() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("provider-option-blb").performScrollTo().assertIsSelected()
+    }
+
+    @Test
+    fun clickingAProviderRow_reportsThatProvider() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("provider-option-biblegateway").performScrollTo().performClick()
+        composeRule.onNodeWithTag("provider-option-youversion").performScrollTo().performClick()
+        assertThat(providerSelections)
+            .containsExactly(BibleProvider.BIBLE_GATEWAY, BibleProvider.YOUVERSION)
+            .inOrder()
+    }
+
+    @Test
+    fun requestAppRow_firesTheRequestCallback() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("request-app-row").performScrollTo().performClick()
+        assertThat(requestAppCalls).isEqualTo(1)
     }
 }
