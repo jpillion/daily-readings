@@ -29,10 +29,16 @@ Do not reference or depend on strikelog.
 
 ## Current status (as of 2026-06-10)
 
-- Repo initialized on `main`. Committed: this file, `README.md`, `.gitignore`, `docs/SPEC.md`.
-- **No app code yet.** Not pushed to a GitHub remote yet.
-- V1 scope decided (digital reading planner — see [docs/SPEC.md](docs/SPEC.md) §4).
-- Next up: **Phase 0 — the data foundation** (just the plan JSON now; see below). Not started.
+- Repo on `main`; planning docs in `docs/`. Not pushed to a GitHub remote yet. **No app code yet.**
+- ✅ **Sprint 1 (Phase 0) is DONE** (commits `803ad3a`, `e22a123`): `data/reading_plan.json`
+  (365 days, Feb = 28, no Feb 29), `data/book_catalog.csv` (66 books, live-verified BLB
+  abbrevs), independent second-source fixture, and a green verification gate
+  (`cd verification && ./gradlew test` — 7 tests incl. day-by-day equality vs. second source).
+  Handoff: [docs/sprints/sprint-0001-trusted-plan-data.md](docs/sprints/sprint-0001-trusted-plan-data.md);
+  reconciliation log: [docs/data/README.md](docs/data/README.md).
+- Next up: **Sprint 2 — scaffold + CI + DI + theme** (see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §4).
+  Note for Sprint 2: a portion can span two books (Jun 19 / Dec 19 = 2 John + 3 John); the gate
+  test takes `dataDir` as a system property for easy re-homing into `:app` (S2-T6).
 
 ## The reading plan
 
@@ -43,31 +49,31 @@ Three parallel streams through scripture, one portion each per day:
 
 Over a year: **Old Testament once, New Testament twice.** ~3–4 chapters/day.
 
-## Immediate next step: Phase 0 (do before any app code)
+## Phase 0 (data foundation) — ✅ DONE (Sprint 1, 2026-06-10)
 
 The reading plan schedule is the project's real IP and the **only** V1 data asset (no Bible
-text is bundled in V1). Build it first:
+text is bundled in V1). It now exists and is gate-verified:
 
-1. **Reading plan → JSON.** Extract the full **366-day** table (includes Feb 29), each day
-   with 3 portions of chapter spans. **Verify against a second source.** Suggested JSON shape:
-   ```json
-   { "month": 1, "day": 1,
-     "portions": [
-       {"stream": 1, "refs": ["Genesis 1", "Genesis 2"]},
-       {"stream": 2, "refs": ["Psalm 1", "Psalm 2"]},
-       {"stream": 3, "refs": ["Matthew 1", "Matthew 2"]}
-     ]}
-   ```
+- `data/reading_plan.json` — 365 days (Feb = 28, **no Feb 29 entry** per D1), structured
+  `{book, chapter}` refs (per D3 — not the string form once sketched here), `schemaVersion: 1`.
+- `data/book_catalog.csv` — 66 books `(order, canonicalName, chapterCount, blbAbbrev)`,
+  all abbrevs verified live against BLB (D2 resolved).
+- `data/reading_plan_verify.json` — independent second-source fixture (antipas booklet;
+  the pricejh PDF turned out byte-identical to the primary, so it was substituted).
+- `verification/` — standalone Gradle JVM module; `cd verification && ./gradlew test` runs
+  the 7-test gate incl. day-by-day equality vs. the second source. Re-home into `:app` in
+  Sprint 2 (S2-T6; test takes `dataDir` as a system property).
+- Sources, normalization rules, and the 7-conflict reconciliation log:
+  [docs/data/README.md](docs/data/README.md).
 
 > The KJV **text** dataset is **not** a Phase 0 item — it's deferred to V3 (in-app text).
 > V1 reaches scripture via Blue Letter Bible links:
 > `https://www.blueletterbible.org/kjv/<book>/<chapter>/` (3-letter book abbrev, e.g.
-> `gen`, → `/kjv/gen/1/`). Phase 0's only resolution need is a book-name → BLB abbrev table.
+> `gen`, → `/kjv/gen/1/`).
 
-Sources for the plan table:
+Reference sources (extraction is done; kept for reconciliation/notes-feature reference):
 - christadelphia.org (Excel/PDF): https://christadelphia.org/readplan.php
 - Bible Companion booklet (PDF): https://antipas.org/library/Robert%20Roberts/Booklets/The%20Bible%20Companion.pdf
-- Full 12-month table (PDF): https://pricejh.com/readingplan/plans/roberts.pdf
 - Daily readings + study notes (model for a future notes feature): https://dailyreadings.org.uk/
 - Background — Wikipedia: https://en.wikipedia.org/wiki/Bible_Companion
 - Prior art (existing app): https://apps.apple.com/us/app/daily-bible-readings/id536687049
@@ -83,10 +89,8 @@ in-app text and richer progress/streak schema (V2/V3).
 
 ## Open decisions
 
-1. **BLB book-abbreviation table** — confirm the 3-letter BLB abbrev for each of the 66 books.
-   *Engineering data task, no product sign-off needed* (handled in Sprint 1, QA link-checked).
-
-All other product/owner decisions are resolved — see below and `docs/EXECUTION_PLAN.md` §2.
+None. All product/owner decisions are resolved — see below and `docs/EXECUTION_PLAN.md` §2.
+(The BLB abbreviation table landed in Sprint 1: `data/book_catalog.csv`, all 66 link-checked.)
 
 ## Decisions already made
 
