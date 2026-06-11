@@ -40,6 +40,9 @@ android {
     }
 
     testOptions {
+        // Compose UI tests run under Robolectric in testDebugUnitTest (D-S4-1); they need
+        // the merged Android resources (theme, strings) on the unit-test classpath.
+        unitTests.isIncludeAndroidResources = true
         unitTests.all {
             // The plan-data verification gate reads the bundled asset straight from the
             // source tree so the test guards the exact file shipped in the APK.
@@ -105,6 +108,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
@@ -120,6 +124,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)

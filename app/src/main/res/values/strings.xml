@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Daily Reading Planner</string>
+    <string name="today_title">Today</string>
+    <string name="reading_open_hint">Opens %1$s on Blue Letter Bible</string>
+    <string name="reading_toggle_description">Mark %1$s as read</string>
+    <string name="mark_whole_day_done">Mark whole day done</string>
+    <string name="unmark_whole_day">Unmark whole day</string>
+    <string name="day_progress">%1$d of %2$d readings done</string>
+    <string name="day_complete">All readings done for today</string>
+    <string name="no_scheduled_readings_feb29">No scheduled readings for Feb 29th</string>
+    <string name="enjoy_the_rest_day">The plan has 365 days — enjoy the extra day.</string>
+    <string name="load_failed_title">Couldn\'t load the reading plan</string>
+    <string name="load_failed_body">Something went wrong reading the bundled plan. Try again.</string>
+    <string name="retry">Retry</string>
 </resources>

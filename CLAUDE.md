@@ -59,9 +59,20 @@ Do not reference or depend on strikelog.
   (generated DI/Room code excluded by annotation). Known debt: `exportSchema = false` on
   `ProgressDatabase` (revisit at V2 streak schema); Robolectric pinned `@Config(sdk = [34])`.
   Handoff: [docs/sprints/sprint-0003-data-domain-layer.md](docs/sprints/sprint-0003-data-domain-layer.md).
-- Next up: **Sprint 4 — Today screen** (ViewModels over the Sprint 3 use cases, today's
-  three readings with per-reading + whole-day marks, Feb-29 empty state, Custom-Tab launch
-  for the `OpenReferenceUseCase` URL, optional loader error state — see
+- ✅ **Sprint 4 (Today screen) is DONE.** The primary user value is live: the Today screen
+  shows today's three readings (stream title + collapsed reference via `ReadingFormatter` —
+  "Genesis 1–2"; Jun 19/Dec 19 renders "2 John 1; 3 John 1"), per-reading checkbox + one-tap
+  whole-day mark/unmark persist via the Sprint 3 use cases, tapping a card opens the BLB URL
+  in a Chrome Custom Tab (`ui/browser/CustomTabLauncher.kt`, androidx.browser 1.10.0, plain
+  ACTION_VIEW fallback). Feb 29 → "No scheduled readings for Feb 29th"; asset load failure →
+  retryable error state (no crash). Pattern: stateless `TodayScreen` over sealed
+  `TodayUiState` + stateful `TodayRoute` owning side-effects; one-shot URL events via
+  Channel. Compose UI tests run under Robolectric in `testDebugUnitTest`
+  (`isIncludeAndroidResources = true`, `@Config(sdk = [34])`). 68/68 tests (23 new + all 45
+  prior incl. the 7-test Sprint 1 gate), mutation-verified; Kover 93.9% on domain/data.
+  Handoff: [docs/sprints/sprint-0004-today-screen.md](docs/sprints/sprint-0004-today-screen.md).
+- Next up: **Sprint 5 — Date picker** (browse any date's readings, "jump to today";
+  needs the year-semantics decision note per ESpec §6.1 — see
   [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3).
 
 ## The reading plan
