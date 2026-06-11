@@ -11,11 +11,20 @@ class FakeThemeRepository(
 ) : ThemeRepository {
     val stored = MutableStateFlow(initial)
     val setCalls = mutableListOf<ThemeMode>()
+    val storedFontScale = MutableStateFlow(ThemeRepository.DEFAULT_FONT_SCALE)
+    val fontScaleCalls = mutableListOf<Float>()
 
     override val themeMode: Flow<ThemeMode> = stored
+
+    override val fontScale: Flow<Float> = storedFontScale
 
     override suspend fun setThemeMode(mode: ThemeMode) {
         setCalls += mode
         stored.value = mode
+    }
+
+    override suspend fun setFontScale(scale: Float) {
+        fontScaleCalls += scale
+        storedFontScale.value = scale
     }
 }

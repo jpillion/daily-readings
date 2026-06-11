@@ -8,7 +8,10 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 
 // Internal (not private): the Glance widget reuses the static schemes for its own
@@ -57,11 +60,16 @@ fun ThemeMode.resolveDarkTheme(): Boolean =
  * App theme (S2-T4). Follows the system light/dark setting by default; Sprint 6's Settings
  * screen drives [darkTheme] from the persisted ThemeMode via [resolveDarkTheme]. Dynamic
  * color (D8) is honored on API 31+ with the static green palette as fallback.
+ *
+ * [fontScale] (S8, D-S8-5) multiplies the density's font scale, so every sp-sized text in
+ * the app — and nothing dp-sized — scales by the user's Settings choice *on top of* the
+ * system font-size setting (a11y composes, never overrides).
  */
 @Composable
 fun DailyReadingPlannerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
+    fontScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
     val colorScheme =
@@ -77,6 +85,11 @@ fun DailyReadingPlannerTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
         shapes = AppShapes,
-        content = content,
-    )
+    ) {
+        val density = LocalDensity.current
+        CompositionLocalProvider(
+            LocalDensity provides Density(density.density, density.fontScale * fontScale),
+            content = content,
+        )
+    }
 }

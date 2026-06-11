@@ -94,6 +94,53 @@ class ProgressRepositoryTest {
         }
 
     @Test
+    fun `read counts cover an inclusive range and count per-day marks`() =
+        runTest {
+            val start = LocalDate.of(2026, 6, 1)
+            val end = LocalDate.of(2026, 6, 30)
+            repository.setWholeDay(LocalDate.of(2026, 6, 1), isRead = true) // start bound, 3 marks
+            repository.setRead(LocalDate.of(2026, 6, 15), Stream.NEW_TESTAMENT, isRead = true) // 1 mark
+            repository.setWholeDay(LocalDate.of(2026, 6, 30), isRead = true) // end bound
+            repository.setWholeDay(LocalDate.of(2026, 5, 31), isRead = true) // just outside (before)
+            repository.setWholeDay(LocalDate.of(2026, 7, 1), isRead = true) // just outside (after)
+            assertThat(repository.readCounts(start, end).first()).containsExactly(
+                LocalDate.of(2026, 6, 1),
+                3,
+                LocalDate.of(2026, 6, 15),
+                1,
+                LocalDate.of(2026, 6, 30),
+                3,
+            )
+        }
+
+    @Test
+    fun `read counts flow emits when progress changes`() =
+        runTest {
+            val flow = repository.readCounts(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30))
+            assertThat(flow.first()).isEmpty()
+            repository.setWholeDay(LocalDate.of(2026, 6, 10), isRead = true)
+            assertThat(flow.first()).containsExactly(LocalDate.of(2026, 6, 10), 3)
+        }
+
+    @Test
+    fun `clearYear deletes Jan 1 through Dec 31 of that year and nothing else`() =
+        runTest {
+            repository.setWholeDay(LocalDate.of(2025, 12, 31), isRead = true) // prior year, adjacent
+            repository.setWholeDay(LocalDate.of(2026, 1, 1), isRead = true) // year start bound
+            repository.setRead(LocalDate.of(2026, 6, 10), Stream.LAW_AND_HISTORY, isRead = true)
+            repository.setWholeDay(LocalDate.of(2026, 12, 31), isRead = true) // year end bound
+            repository.setWholeDay(LocalDate.of(2027, 1, 1), isRead = true) // next year, adjacent
+            repository.clearYear(2026)
+            assertThat(repository.streamsRead(LocalDate.of(2026, 1, 1)).first()).isEmpty()
+            assertThat(repository.streamsRead(LocalDate.of(2026, 6, 10)).first()).isEmpty()
+            assertThat(repository.streamsRead(LocalDate.of(2026, 12, 31)).first()).isEmpty()
+            assertThat(repository.streamsRead(LocalDate.of(2025, 12, 31)).first())
+                .containsExactlyElementsIn(Stream.entries)
+            assertThat(repository.streamsRead(LocalDate.of(2027, 1, 1)).first())
+                .containsExactlyElementsIn(Stream.entries)
+        }
+
+    @Test
     fun `streams read flow emits when progress changes`() =
         runTest {
             val date = LocalDate.of(2026, 8, 1)

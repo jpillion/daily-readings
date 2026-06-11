@@ -67,6 +67,7 @@ class DayReadingsPagerScreenTest {
                 DayReadingsPagerScreen(
                     today = today,
                     uiStateFor = ::stateFor,
+                    monthCompletionFor = { MutableStateFlow(emptyMap()) },
                     onToggleReading = { date, reading -> toggleCalls += date to reading.portion.stream },
                     onMarkWholeDay = { date, dayComplete -> markCalls += date to dayComplete },
                     onReadingTapped = onReadingTapped,

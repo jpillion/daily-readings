@@ -3,25 +3,36 @@ package com.jpillion.dailyreadingplanner.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.data.prefs.ThemeRepository
+import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Clock
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * Settings state (FR-9): the persisted theme selection, read from and written to the
- * DataStore-backed [ThemeRepository]. The selected value here is the same flow MainActivity
- * themes from, so a selection restyles the app live.
+ * Settings state (FR-9 + S8): the persisted theme selection and text-size scale (both read
+ * from and written to the DataStore-backed [ThemeRepository] — the same flows MainActivity
+ * themes from, so changes restyle the app live), plus the year-scoped "Reset progress"
+ * action (owner decision, S8): clears the current year's marks and refreshes the widget.
  */
 @HiltViewModel
 class SettingsViewModel
     @Inject
     constructor(
         private val themeRepository: ThemeRepository,
+        private val resetYearProgress: ResetYearProgressUseCase,
+        private val widgetRefresher: WidgetRefresher,
+        clock: Clock,
     ) : ViewModel() {
+        /** The year a reset would clear — shown in the confirmation dialog. */
+        val currentYear: Int = LocalDate.now(clock).year
+
         val themeMode: StateFlow<ThemeMode> =
             themeRepository.themeMode.stateIn(
                 scope = viewModelScope,
@@ -29,7 +40,28 @@ class SettingsViewModel
                 initialValue = ThemeMode.SYSTEM,
             )
 
+        val fontScale: StateFlow<Float> =
+            themeRepository.fontScale.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = ThemeRepository.DEFAULT_FONT_SCALE,
+            )
+
         fun onThemeModeSelected(mode: ThemeMode) {
             viewModelScope.launch { themeRepository.setThemeMode(mode) }
+        }
+
+        /** Persists each slider position; the app-wide theme collects the same flow (live preview). */
+        fun onFontScaleChanged(scale: Float) {
+            viewModelScope.launch { themeRepository.setFontScale(scale) }
+        }
+
+        /** Only ever called from the confirmation dialog's positive action (S8). */
+        fun onResetProgressConfirmed() {
+            viewModelScope.launch {
+                resetYearProgress()
+                // The widget shows today's completion — a reset must not leave it stale (ESpec §7).
+                widgetRefresher.refreshTodayWidget()
+            }
         }
     }

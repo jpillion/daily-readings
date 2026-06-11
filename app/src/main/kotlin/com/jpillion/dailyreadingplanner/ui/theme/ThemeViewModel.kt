@@ -27,4 +27,12 @@ class ThemeViewModel
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = ThemeMode.SYSTEM,
             )
+
+        /** The persisted Settings text-size factor (S8); 1.0 until DataStore emits. */
+        val fontScale: StateFlow<Float> =
+            themeRepository.fontScale.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = ThemeRepository.DEFAULT_FONT_SCALE,
+            )
     }

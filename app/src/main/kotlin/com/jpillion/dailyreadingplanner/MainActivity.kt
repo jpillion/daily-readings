@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
+            val fontScale by themeViewModel.fontScale.collectAsStateWithLifecycle()
             val darkTheme = themeMode.resolveDarkTheme()
 
             // Keep system-bar icon contrast in sync with the *app* theme, not the device
@@ -53,7 +54,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
 
-            DailyReadingPlannerTheme(darkTheme = darkTheme) {
+            DailyReadingPlannerTheme(darkTheme = darkTheme, fontScale = fontScale) {
                 AppNavHost()
             }
         }

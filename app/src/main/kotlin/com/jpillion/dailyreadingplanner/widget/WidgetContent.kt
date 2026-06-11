@@ -1,11 +1,13 @@
 package com.jpillion.dailyreadingplanner.widget
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.appWidgetBackground
@@ -43,32 +45,59 @@ sealed interface TodayWidgetState {
     data object LoadFailed : TodayWidgetState
 }
 
+/** The three responsive breakpoints (S8, D-S8-1), keyed by available width. */
+enum class WidgetLayout { SMALL, MEDIUM, LARGE }
+
+// Launcher cells are ~57dp+ wide: 1 column always exceeds SMALL, 2 columns MEDIUM's
+// 130dp on common grids, 3 columns LARGE's 203dp. Height stays 2 rows across all three.
+internal val SMALL_SIZE = DpSize(57.dp, 102.dp)
+internal val MEDIUM_SIZE = DpSize(130.dp, 102.dp)
+internal val LARGE_SIZE = DpSize(203.dp, 102.dp)
+
+/** Pure breakpoint chooser: the widest layout whose minimum width fits. */
+internal fun layoutFor(size: DpSize): WidgetLayout =
+    when {
+        size.width >= LARGE_SIZE.width -> WidgetLayout.LARGE
+        size.width >= MEDIUM_SIZE.width -> WidgetLayout.MEDIUM
+        else -> WidgetLayout.SMALL
+    }
+
 private val HeaderDateFormat = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US)
+private val ShortDateFormat = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 /**
- * Widget UI (ESpec §7): read-only — three rows of stream title + collapsed reference (the
- * same [ReadingFormatter] the app uses) with a read/unread mark, an "all done" badge, and
- * the Feb 29 / load-failure states. The whole surface is one tap target that opens the app
- * on the Today route (FR-8); marking happens in-app (toggle-from-widget is a V2 candidate).
+ * Widget UI (ESpec §7 + S8 D-S8-1): read-only, one responsive surface.
+ * - LARGE (~3x2): three rows of stream title + collapsed reference (the same
+ *   [ReadingFormatter] the app uses) with read/unread marks and an "all done" badge.
+ * - MEDIUM (~2x2): drops the stream titles; marks + references only.
+ * - SMALL (~1x2): date plus an "n/3" completion summary — completion state at a glance.
+ * Every layout keeps the Feb 29 / load-failure states and the single whole-surface tap
+ * target into the app (FR-8); marking happens in-app (toggle-from-widget is a V2 candidate).
  */
 @Composable
 fun WidgetContent(state: TodayWidgetState) {
+    val layout = layoutFor(LocalSize.current)
     Column(
         modifier =
             GlanceModifier
                 .fillMaxSize()
                 .appWidgetBackground()
                 .background(GlanceTheme.colors.widgetBackground)
-                .padding(12.dp)
+                .padding(if (layout == WidgetLayout.SMALL) 8.dp else 12.dp)
                 .clickable(actionStartActivity<MainActivity>())
                 .semantics { testTag = "widget-root" },
     ) {
         when (state) {
-            is TodayWidgetState.LoadFailed -> LoadFailed()
+            is TodayWidgetState.LoadFailed -> LoadFailed(layout)
             is TodayWidgetState.Loaded ->
                 when (val day = state.day) {
-                    is DayReadings.NoScheduledReadings -> NoReadings(day.date)
-                    is DayReadings.Scheduled -> Readings(day)
+                    is DayReadings.NoScheduledReadings -> NoReadings(day.date, layout)
+                    is DayReadings.Scheduled ->
+                        when (layout) {
+                            WidgetLayout.LARGE -> Readings(day)
+                            WidgetLayout.MEDIUM -> CompactReadings(day)
+                            WidgetLayout.SMALL -> MinimalReadings(day)
+                        }
                 }
         }
     }
@@ -90,12 +119,82 @@ private fun Readings(day: DayReadings.Scheduled) {
     Spacer(modifier = GlanceModifier.height(8.dp))
     day.readings.forEachIndexed { index, reading ->
         if (index > 0) Spacer(modifier = GlanceModifier.height(6.dp))
-        ReadingRow(reading)
+        ReadingRow(reading, showStreamTitle = true)
     }
 }
 
 @Composable
-private fun ReadingRow(reading: ReadingStatus) {
+private fun CompactReadings(day: DayReadings.Scheduled) {
+    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Header(day.date)
+        Spacer(modifier = GlanceModifier.defaultWeight())
+        if (day.dayComplete) {
+            val dayCompleteText = LocalContext.current.getString(R.string.day_complete)
+            Text(
+                // The badge collapses to a checkmark at 2x2; a11y still speaks the full state.
+                text = "✓",
+                style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                modifier =
+                    GlanceModifier.semantics {
+                        testTag = "widget-day-complete"
+                        contentDescription = dayCompleteText
+                    },
+            )
+        }
+    }
+    Spacer(modifier = GlanceModifier.height(6.dp))
+    day.readings.forEachIndexed { index, reading ->
+        if (index > 0) Spacer(modifier = GlanceModifier.height(4.dp))
+        ReadingRow(reading, showStreamTitle = false)
+    }
+}
+
+@Composable
+private fun MinimalReadings(day: DayReadings.Scheduled) {
+    val readCount = day.readings.count { it.isRead }
+    val total = day.readings.size
+    val progressText = LocalContext.current.getString(R.string.day_progress, readCount, total)
+    val dayCompleteText = LocalContext.current.getString(R.string.day_complete)
+    Column(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = day.date.format(ShortDateFormat),
+            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold),
+            modifier = GlanceModifier.semantics { testTag = "widget-date" },
+        )
+        Spacer(modifier = GlanceModifier.height(6.dp))
+        Text(
+            text = "$readCount/$total",
+            style =
+                TextStyle(
+                    color = if (day.dayComplete) GlanceTheme.colors.primary else GlanceTheme.colors.onSurface,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+            modifier =
+                GlanceModifier.semantics {
+                    testTag = "widget-count"
+                    contentDescription = progressText
+                },
+        )
+        if (day.dayComplete) {
+            Text(
+                text = "✓",
+                style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                modifier =
+                    GlanceModifier.semantics {
+                        testTag = "widget-day-complete"
+                        contentDescription = dayCompleteText
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReadingRow(
+    reading: ReadingStatus,
+    showStreamTitle: Boolean,
+) {
     val context = LocalContext.current
     val stateDescription =
         context.getString(
@@ -129,10 +228,12 @@ private fun ReadingRow(reading: ReadingStatus) {
                         "${ReadingFormatter.format(reading.portion)}, $stateDescription"
                 },
         ) {
-            Text(
-                text = ReadingFormatter.streamTitle(reading.portion.stream),
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
-            )
+            if (showStreamTitle) {
+                Text(
+                    text = ReadingFormatter.streamTitle(reading.portion.stream),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                )
+            }
             Text(
                 text = ReadingFormatter.format(reading.portion),
                 style =
@@ -148,23 +249,60 @@ private fun ReadingRow(reading: ReadingStatus) {
 }
 
 @Composable
-private fun NoReadings(date: LocalDate) {
-    Header(date)
-    Spacer(modifier = GlanceModifier.height(8.dp))
-    Text(
-        text = LocalContext.current.getString(R.string.no_scheduled_readings_feb29),
-        style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 14.sp),
-        modifier = GlanceModifier.semantics { testTag = "widget-no-readings" },
-    )
+private fun NoReadings(
+    date: LocalDate,
+    layout: WidgetLayout,
+) {
+    if (layout == WidgetLayout.SMALL) {
+        val noReadingsText = LocalContext.current.getString(R.string.no_scheduled_readings_feb29)
+        Column(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = date.format(ShortDateFormat),
+                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                modifier = GlanceModifier.semantics { testTag = "widget-date" },
+            )
+            Spacer(modifier = GlanceModifier.height(6.dp))
+            Text(
+                text = "—",
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 22.sp),
+                modifier =
+                    GlanceModifier.semantics {
+                        testTag = "widget-no-readings"
+                        contentDescription = noReadingsText
+                    },
+            )
+        }
+    } else {
+        Header(date)
+        Spacer(modifier = GlanceModifier.height(8.dp))
+        Text(
+            text = LocalContext.current.getString(R.string.no_scheduled_readings_feb29),
+            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 14.sp),
+            modifier = GlanceModifier.semantics { testTag = "widget-no-readings" },
+        )
+    }
 }
 
 @Composable
-private fun LoadFailed() {
-    Text(
-        text = LocalContext.current.getString(R.string.widget_load_failed),
-        style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 14.sp),
-        modifier = GlanceModifier.semantics { testTag = "widget-error" },
-    )
+private fun LoadFailed(layout: WidgetLayout) {
+    if (layout == WidgetLayout.SMALL) {
+        val loadFailedText = LocalContext.current.getString(R.string.widget_load_failed)
+        Text(
+            text = "!",
+            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold),
+            modifier =
+                GlanceModifier.semantics {
+                    testTag = "widget-error"
+                    contentDescription = loadFailedText
+                },
+        )
+    } else {
+        Text(
+            text = LocalContext.current.getString(R.string.widget_load_failed),
+            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 14.sp),
+            modifier = GlanceModifier.semantics { testTag = "widget-error" },
+        )
+    }
 }
 
 @Composable

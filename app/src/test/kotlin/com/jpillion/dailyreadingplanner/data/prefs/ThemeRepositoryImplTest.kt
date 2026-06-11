@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
@@ -60,5 +61,30 @@ class ThemeRepositoryImplTest {
         themeTest { repository, dataStore ->
             dataStore.edit { it[stringPreferencesKey("theme_mode")] = "SOLARIZED" }
             assertThat(repository.themeMode.first()).isEqualTo(ThemeMode.SYSTEM)
+        }
+
+    @Test
+    fun `font scale defaults to 1x when nothing is stored`() =
+        themeTest { repository, _ ->
+            assertThat(repository.fontScale.first()).isEqualTo(ThemeRepository.DEFAULT_FONT_SCALE)
+        }
+
+    @Test
+    fun `set font scale persists and is observable`() =
+        themeTest { repository, _ ->
+            repository.setFontScale(1.25f)
+            assertThat(repository.fontScale.first()).isEqualTo(1.25f)
+        }
+
+    @Test
+    fun `font scale writes and reads are clamped to the supported range`() =
+        themeTest { repository, dataStore ->
+            repository.setFontScale(9f)
+            assertThat(repository.fontScale.first()).isEqualTo(ThemeRepository.MAX_FONT_SCALE)
+            repository.setFontScale(0.1f)
+            assertThat(repository.fontScale.first()).isEqualTo(ThemeRepository.MIN_FONT_SCALE)
+            // A bad stored value (e.g. from a future version) degrades to the range, not a crash.
+            dataStore.edit { it[floatPreferencesKey("font_scale")] = 42f }
+            assertThat(repository.fontScale.first()).isEqualTo(ThemeRepository.MAX_FONT_SCALE)
         }
 }

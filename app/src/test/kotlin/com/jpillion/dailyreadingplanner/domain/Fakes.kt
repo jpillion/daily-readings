@@ -45,6 +45,18 @@ class FakeProgressRepository : ProgressRepository {
         return marks.map { it[date] ?: emptySet() }.distinctUntilChanged()
     }
 
+    override fun readCounts(
+        start: LocalDate,
+        end: LocalDate,
+    ): Flow<Map<LocalDate, Int>> =
+        marks
+            .map { all ->
+                all
+                    .filterKeys { !it.isBefore(start) && !it.isAfter(end) }
+                    .filterValues { it.isNotEmpty() }
+                    .mapValues { (_, streams) -> streams.size }
+            }.distinctUntilChanged()
+
     override suspend fun setRead(
         date: LocalDate,
         stream: Stream,
@@ -67,6 +79,13 @@ class FakeProgressRepository : ProgressRepository {
                 this[date] = if (isRead) Stream.entries.toSet() else emptySet()
             }
     }
+
+    override suspend fun clearYear(year: Int) {
+        clearYearCalls += year
+        marks.value = marks.value.filterKeys { it.year != year }
+    }
+
+    val clearYearCalls = mutableListOf<Int>()
 
     fun marksFor(date: LocalDate): Set<Stream> = marks.value[date] ?: emptySet()
 }

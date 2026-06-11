@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
+import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.ui.browser.launchCustomTab
@@ -37,6 +38,7 @@ import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -72,6 +74,7 @@ fun DayReadingsRoute(
     DayReadingsPagerScreen(
         today = viewModel.today,
         uiStateFor = viewModel::uiStateFor,
+        monthCompletionFor = viewModel::monthCompletionFor,
         onToggleReading = viewModel::onToggleReading,
         onMarkWholeDay = viewModel::onMarkWholeDay,
         onReadingTapped = viewModel::onReadingTapped,
@@ -93,6 +96,7 @@ fun DayReadingsRoute(
 fun DayReadingsPagerScreen(
     today: LocalDate,
     uiStateFor: (LocalDate) -> StateFlow<DayUiState>,
+    monthCompletionFor: (YearMonth) -> StateFlow<Map<LocalDate, DayCompletion>>,
     onToggleReading: (LocalDate, ReadingStatus) -> Unit,
     onMarkWholeDay: (LocalDate, Boolean) -> Unit,
     onReadingTapped: (Portion) -> Unit,
@@ -181,7 +185,9 @@ fun DayReadingsPagerScreen(
     if (showDatePicker) {
         DayDatePickerDialog(
             year = today.year,
+            today = today,
             initialDate = if (currentDate.year == today.year) currentDate else today,
+            completionFor = monthCompletionFor,
             onConfirm = { picked ->
                 showDatePicker = false
                 scope.launch { pagerState.scrollToPage(pageForDate(today, picked)) }

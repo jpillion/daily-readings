@@ -9,6 +9,7 @@ import com.jpillion.dailyreadingplanner.data.reference.BlbUrlBuilder
 import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
+import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
@@ -40,13 +41,15 @@ class DayReadingsViewModelTest {
         planRepository: ReadingPlanRepository = FakeReadingPlanRepository(),
     ): DayReadingsViewModel {
         val resolver = ScheduleDateResolver()
+        val clock = clockAt(date)
         return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress),
+            getMonthCompletion = GetMonthCompletionUseCase(resolver, progress, clock),
             toggleReading = ToggleReadingUseCase(progress),
             markWholeDay = MarkWholeDayUseCase(progress),
             openReference = OpenReferenceUseCase(BlbUrlBuilder()),
             widgetRefresher = widgetRefresher,
-            clock = clockAt(date),
+            clock = clock,
         )
     }
 

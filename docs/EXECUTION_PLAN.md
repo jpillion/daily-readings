@@ -58,7 +58,7 @@ must close these on the timeline shown in the "Blocks" column.
 | **D4** | **Min SDK / target / compile SDK** (ESpec §10 / R3, PRD Q4) | ✅ **RESOLVED (owner unopinionated → accept architect rec):** **`minSdk = 26`** (clean `java.time`, ~95%+ device coverage); `targetSdk`/`compileSdk` = latest stable. | Diego | **Sprint 2** (scaffold/Gradle config). |
 | **D5** | **App name + package id** (ESpec §4.1 / R4, PRD Q2) | ✅ **RESOLVED:** app name = **"Daily Reading Planner"**; package id = **`com.jpillion.dailyreadingplanner`** (changeable before first Play publish). | Maya (name ✓) + Diego (package id) | **Sprint 2** (scaffold). |
 | **D6** | **Analytics / telemetry & privacy** (ESpec §13 / R8, PRD Q6) | ✅ **RESOLVED (owner):** **no analytics SDK in V1** and no networking dependency added. Revisit a privacy-respecting opt-in post-V1. | Maya + Diego | None (now settled — no one adds a tracking dep). |
-| **D7** | **Distribution: Play Store vs. sideload** (ESpec §13 / R9, PRD Q5) | ✅ **RESOLVED (owner):** **Play Store** (best update reach for shipping plan-data corrections). | Maya + Morgan | **Sprint 8** (release readiness / signing). Does not block earlier work. |
+| **D7** | **Distribution: Play Store vs. sideload** (ESpec §13 / R9, PRD Q5) | ✅ **RESOLVED (owner):** **Play Store** (best update reach for shipping plan-data corrections). | Maya + Morgan | **Sprint 9** (release readiness / signing; renumbered from 8). Does not block earlier work. |
 | **D8** | **Dynamic color (Material You)** (ESpec §10) | Honor dynamic color on Android 12+, static fallback palette below. Minor; tech-lead call. | Diego/Priya | **Sprint 2** (theme). Low risk; decide inline. |
 | **D9** | **Widget midnight refresh** (ESpec §7 / R7) | V1 = opportunistic refresh (on app resume / progress change) + system periodic update backstop. **No exact midnight alarm in V1** (AlarmManager is V2). | Diego/Avery | **Sprint 7** (widget). Already settled by ESpec; carry as a known limitation. |
 
@@ -83,14 +83,15 @@ unlocks**. No sprint closes unless the project builds and its tests pass (see §
 | **5** | **Date picker** | A month/day picker that shows any date's readings (same schedule source) with "jump to today". | Users can look ahead/back (David/Ruth personas, PRD U4). | Sam (screen), Priya (picker UI), Diego (VM) |
 | **6** | **Settings (theme)** | Settings screen with light/dark/system selector, persisted, driving the app theme live. | Users control appearance (PRD U6/FR-9). Small; can run parallel to 5. | Sam (lead), Priya (review) |
 | **7** | **Glance home-screen widget** | A widget showing today's three readings, tap → opens app on Today, refreshing on resume/progress-change + periodic backstop. | The app earns a home-screen habit slot (PRD G5/FR-8). | Avery (lead), Diego (shared repo access) |
-| **8** | **Hardening, a11y & release readiness** | All quality gates green: 66-book BLB link check signed off, accessibility smoke (TalkBack, font scaling, 48dp targets, contrast), StrictMode clean, cold-start ≤1s verified, Kover floor met, signing + release pipeline ready per distribution decision. | V1 is releasable: provably correct data, verified links, a11y baseline, performant, and a build that can ship. | Riley (QA gates), Avery (perf), Jordan (signing/release), Priya (a11y) |
+| **8** | **Owner-feedback features** *(inserted 2026-06-10 after the owner's partial device pass)* | ✅ DONE — responsive widget (3x2/2x2/1x2, D-S8-1), date-picker per-day completion indicators on a custom calendar grid (D-S8-2/3), confirm-gated year-scoped Reset progress, persisted text-size slider (D-S8-5). | The widget is useful at any size; the calendar shows how the reader is tracking; a year can be restarted safely; text size is user-controlled. | Avery (widget), Priya (picker UI), Diego (domain seams), Sam (settings), Riley (gate) |
+| **9** | **Hardening, a11y & release readiness** *(renumbered from 8; minus items the owner's 2026-06-10 device pass retired: widget-on-launcher ✅, 66-book BLB link check ✅ G-LINKS, performance ✅ G-PERF)* | Remaining gates green: accessibility smoke (TalkBack incl. the S8 picker grid, font scaling, 48dp targets, contrast), StrictMode clean, edge-to-edge scrim API 26–28, widget resize/refresh on launcher, signing + release pipeline ready per D7. | V1 is releasable: a11y baseline verified and a build that can ship to Play. | Riley (QA gates), Avery (device pass), Jordan (signing/release), Priya (a11y) |
 
 **Dependency notes:**
 - Sprint 1 blocks everything downstream that asserts correctness (3, and the data-verification gate carried through 8).
 - Sprint 2 blocks all app-code sprints (3–8) — nothing builds without the scaffold + CI.
 - Sprint 3 blocks 4, 5, 7 (they consume the data/domain layer).
 - Sprints 5 and 6 can run in parallel after 4. Sprint 7 depends on 3 (repos) and benefits from 4 (Today route to deep-link into).
-- Sprint 8 depends on everything; the 66-book link check (Sprint 1 artifact) is executed here against the live URL builder.
+- Sprint 9 (formerly 8) depends on everything. The 66-book link check was executed live and signed off during the owner's 2026-06-10 device pass (G-LINKS ✅), as were widget-on-launcher and performance (G-PERF ✅).
 
 ---
 
@@ -262,13 +263,14 @@ A sprint is **not done** until, on `main` (or the merge target):
 - **Sprint 3:** `ScheduleDateResolver` Feb-29 no-readings rule unit-tested (leap years return the no-readings state; non-leap years never hit Feb 29; all other dates resolve to a 3-portion `ReadingDate`); Room year-isolation test passes (1 Jan 2026 ≠ 1 Jan 2027); `BlbUrlBuilder` tested for all 66 books present.
 - **Sprint 4:** Compose UI test — Today renders 3 readings, toggle persists, "mark whole day" marks all three in ≤2 taps (M3), completion indicator shown (FR-11); tap opens a Custom Tab.
 - **Sprint 7:** widget verified on a real launcher (add, render, tap→Today, refresh on resume/progress).
-- **Sprint 8 (V1 release gates):** see below.
+- **Sprint 8 (owner features):** indicator classification (COMPLETE/MISSED/NONE incl. Feb-29-never-missed), year-scoped reset bounds, and the widget breakpoint chooser are unit-tested and mutation-verified; picker keeps the Sprint 5 dialog contract.
+- **Sprint 9 (V1 release gates, renumbered from 8):** see below — G-LINKS and G-PERF already signed off (owner device pass, 2026-06-10).
 
 ### 5.3 V1 definition of done (release gates)
 V1 is releasable only when **all** hold:
 - **G-DATA (M1, hard):** plan-data verification test green in CI — 100% match vs. second source.
-- **G-LINKS (M5, hard):** manual 66-book BLB link check signed off by Riley — 0 known broken books.
-- **G-PERF (M2):** cold launch to Today ≤ ~1s on a mid-range device; no I/O on main thread (StrictMode clean).
+- **G-LINKS (M5, hard):** ✅ SIGNED OFF (owner device pass, 2026-06-10) — all 66 books verified live.
+- **G-PERF (M2):** ✅ Performance verified good on device (owner device pass, 2026-06-10); StrictMode clean run still owed in Sprint 9.
 - **G-ERGO (M3):** whole-day mark in ≤2 taps from Today.
 - **G-A11Y:** TalkBack smoke pass on Today; system font scaling respected; touch targets ≥48dp; Material 3 contrast.
 - **G-OFFLINE (FR-10):** all planner functions work in airplane mode; only BLB hand-off needs network.

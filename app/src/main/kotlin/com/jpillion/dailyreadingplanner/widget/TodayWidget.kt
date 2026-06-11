@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.glance.GlanceId
 import androidx.glance.GlanceTheme
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.material3.ColorProviders
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
@@ -42,6 +43,10 @@ interface TodayWidgetEntryPoint {
  * (mirrors D-S4-3).
  */
 class TodayWidget : GlanceAppWidget() {
+    // D-S8-1: one responsive widget, three width breakpoints (1x2 / 2x2 / 3x2); Glance
+    // composes each declared size and the launcher picks the best fit as the user resizes.
+    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(SMALL_SIZE, MEDIUM_SIZE, LARGE_SIZE))
+
     override suspend fun provideGlance(
         context: Context,
         id: GlanceId,

@@ -114,10 +114,36 @@ Do not reference or depend on strikelog.
   mutation-verified; Kover 93.9% on domain/data. Known debt: no widget `previewImage`; no
   on-device run yet (Sprint 8).
   Handoff: [docs/sprints/sprint-0007-glance-widget.md](docs/sprints/sprint-0007-glance-widget.md).
-- Next up: **Sprint 8 — on-device verification pass** (everything JVM-only CI can't prove:
-  widget on a real launcher, API 26-30 static palette + edge-to-edge scrim, Custom Tabs
-  tap-through, StrictMode, TalkBack/a11y smoke, 66-book live BLB link check; see the
-  Sprint 7 handoff's carryover list).
+- ✅ **Sprint 8 (owner-feedback features) is DONE.** Four owner requests after a partial
+  device pass (which also retired three release checks: widget works on a real launcher ✅,
+  66-book live BLB link check ✅ = G-LINKS signed off, performance good ✅ = G-PERF).
+  (1) **Responsive widget** (D-S8-1): one widget, `SizeMode.Responsive` with three
+  width-keyed breakpoints in `widget/WidgetContent.kt` — LARGE ~3x2 (full rows), MEDIUM
+  ~2x2 (marks + references, no stream titles), SMALL ~1x2 (date + "n/3" completion);
+  `minResizeWidth=40dp` in `today_widget_info.xml`; every size keeps Feb-29/error states,
+  the single tap target, and spoken state. (2) **Date-picker completion indicators**
+  (D-S8-2): M3 `DatePicker` has no per-day-cell slot, so `ui/datepicker/DayDatePickerDialog`
+  is now a custom calendar grid (same dialog contract/tags, pinned year per D-S5-3, Feb 29
+  selectable) with a dot per day — green = all three read (past/today/future), red = past
+  day missed, none = incomplete today/future or Feb 29 — plus contentDescription (never
+  color alone). Domain seam: `ProgressRepository.readCounts(start,end)` (one grouped Room
+  query) → `GetMonthCompletionUseCase` → `DayReadingsViewModel.monthCompletionFor(YearMonth)`
+  (cached, live). (3) **Settings → Reset progress**: confirm-gated, clears the *current
+  year only* (`ProgressRepository.clearYear` ranged delete, `ResetYearProgressUseCase`),
+  refreshes the widget. (4) **Settings → text-size slider**: 0.85x–1.5x in 0.05 steps,
+  default 1.0, persisted as `fontScale` in the DataStore `ThemeRepository`, applied live
+  app-wide by multiplying `LocalDensity.fontScale` in `DailyReadingPlannerTheme` (composes
+  with system font scaling; does NOT affect the widget — D-S8-5/D-S7-3). 147/147 tests
+  (37 new/adapted; 7-test Sprint 1 gate untouched), 4 mutations killed (past-only guard,
+  Feb-29 guard, reset end-bound, breakpoint bound); Kover 95.1% on domain/data.
+  Handoff: [docs/sprints/sprint-0008-owner-feedback-features.md](docs/sprints/sprint-0008-owner-feedback-features.md).
+- Next up: **Sprint 9 — hardening, a11y & release readiness** (the former Sprint 8 plan
+  minus the owner-retired items above). Remaining: signing + Play release pipeline (D7,
+  Jordan), TalkBack/a11y smoke incl. the new picker grid + 48dp targets + contrast, system
+  font-scaling interplay with the in-app slider on device, edge-to-edge `SystemBarStyle`
+  scrim on API 26–28 (Sprint 6 debt), StrictMode clean run, Custom Tabs tap-through,
+  widget resize/breakpoints + 30-min update on a real launcher (new S8 surface), widget
+  `previewImage`. See the Sprint 8 handoff's carryover list.
 
 ## The reading plan
 

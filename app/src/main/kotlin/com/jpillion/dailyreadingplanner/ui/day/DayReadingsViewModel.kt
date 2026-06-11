@@ -3,9 +3,11 @@ package com.jpillion.dailyreadingplanner.ui.day
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
+import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
+import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 
 /**
@@ -46,6 +49,7 @@ class DayReadingsViewModel
     @Inject
     constructor(
         private val getDayReadings: GetDayReadingsUseCase,
+        private val getMonthCompletion: GetMonthCompletionUseCase,
         private val toggleReading: ToggleReadingUseCase,
         private val markWholeDay: MarkWholeDayUseCase,
         private val openReference: OpenReferenceUseCase,
@@ -72,6 +76,18 @@ class DayReadingsViewModel
                             // verified) — but a release build must degrade, not crash (D-S4-3).
                             .catch { emit(DayUiState.LoadFailed(date)) }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayUiState.Loading)
+            }
+
+        // Per-month completion cache for the date-picker indicators (S8); same lifecycle
+        // policy as dayStates. A failure degrades to "no indicators", never a crash.
+        private val monthStates = mutableMapOf<YearMonth, StateFlow<Map<LocalDate, DayCompletion>>>()
+
+        /** Live per-day completion for [month]; the date-picker grid collects exactly its displayed month. */
+        fun monthCompletionFor(month: YearMonth): StateFlow<Map<LocalDate, DayCompletion>> =
+            monthStates.getOrPut(month) {
+                getMonthCompletion(month)
+                    .catch { emit(emptyMap()) }
+                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
             }
 
         private val openUrlChannel = Channel<String>(Channel.BUFFERED)

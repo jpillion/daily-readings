@@ -25,3 +25,11 @@ val GreenSecondaryContainerDark = Color(0xFF364B40)
 val GreenOnSecondaryContainerDark = Color(0xFFCFE9D8)
 val GreenTertiaryDark = Color(0xFFA5CDDE)
 val GreenOnTertiaryDark = Color(0xFF073543)
+
+// Date-picker completion indicators (S8, D-S8-2): fixed semantic green/red — independent of
+// dynamic color so "done" and "missed" read consistently — with a lighter pair for dark
+// surfaces. The dot is never the only signal (cell contentDescription speaks the state).
+val IndicatorGreenLight = Color(0xFF2E7D32)
+val IndicatorGreenDark = Color(0xFF81C784)
+val IndicatorRedLight = Color(0xFFC62828)
+val IndicatorRedDark = Color(0xFFEF9A9A)
