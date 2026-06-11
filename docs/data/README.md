@@ -1,13 +1,14 @@
 # Plan data — sources, normalization & reconciliation
 
-This directory documents the provenance of the V1 data artifacts in `/data`:
+This documents the provenance of the V1 data artifacts (moved into `:app` in Sprint 2):
 
-- `data/reading_plan.json` — canonical 365-day Bible Companion plan (ESpec §5.1 schema).
-- `data/reading_plan_verify.json` — independent second-source comparison fixture (same schema).
-- `data/book_catalog.csv` — 66-book catalog: `order,canonicalName,chapterCount,blbAbbrev`.
+- `app/src/main/assets/reading_plan.json` — canonical 365-day Bible Companion plan (ESpec §5.1 schema).
+- `app/src/test/resources/reading_plan_verify.json` — independent second-source comparison fixture (same schema).
+- `app/src/test/resources/book_catalog.csv` — 66-book catalog: `order,canonicalName,chapterCount,blbAbbrev`.
 
 Extraction scripts live in `/tools` (`extract_primary.py`, `extract_antipas.py`). The
-verification gate lives in `/verification` (standalone Gradle JVM module, JUnit 5).
+verification gate lives in `app/src/test/.../data/plan/ReadingPlanVerificationTest.kt` and runs
+under `./gradlew testDebugUnitTest` (re-homed from the retired standalone `/verification` module in Sprint 2).
 
 ## Sources
 

@@ -29,16 +29,29 @@ Do not reference or depend on strikelog.
 
 ## Current status (as of 2026-06-10)
 
-- Repo on `main`; planning docs in `docs/`. Not pushed to a GitHub remote yet. **No app code yet.**
-- ✅ **Sprint 1 (Phase 0) is DONE** (commits `803ad3a`, `e22a123`): `data/reading_plan.json`
-  (365 days, Feb = 28, no Feb 29), `data/book_catalog.csv` (66 books, live-verified BLB
-  abbrevs), independent second-source fixture, and a green verification gate
-  (`cd verification && ./gradlew test` — 7 tests incl. day-by-day equality vs. second source).
+- Repo on `main`, pushed to private GitHub remote `https://github.com/jpillion/daily-readings`.
+- ✅ **Sprint 1 (Phase 0) is DONE** (commits `803ad3a`, `e22a123`): 365-day plan data (Feb = 28,
+  no Feb 29), 66-book BLB catalog (live-verified abbrevs), independent second-source fixture,
+  7-test verification gate incl. day-by-day equality vs. second source.
   Handoff: [docs/sprints/sprint-0001-trusted-plan-data.md](docs/sprints/sprint-0001-trusted-plan-data.md);
   reconciliation log: [docs/data/README.md](docs/data/README.md).
-- Next up: **Sprint 2 — scaffold + CI + DI + theme** (see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §4).
-  Note for Sprint 2: a portion can span two books (Jun 19 / Dec 19 = 2 John + 3 John); the gate
-  test takes `dataDir` as a system property for easy re-homing into `:app` (S2-T6).
+- ✅ **Sprint 2 (scaffold + CI + DI + theme) is DONE.** Installable `:app` (single-activity
+  Compose, Hilt live, M3 light/dark/system theme + dynamic color on API 31+, StrictMode in
+  debug), Gradle version catalog, GitHub Actions CI (`.github/workflows/ci.yml`). The Sprint 1
+  gate is re-homed: canonical plan now lives at `app/src/main/assets/reading_plan.json`,
+  fixtures in `app/src/test/resources/` (the old `data/` dir and standalone `verification/`
+  module are gone); gate runs under `./gradlew testDebugUnitTest` (7 tests, mutation-verified).
+  Full local quality pipeline:
+  `./gradlew spotlessCheck lintDebug assembleDebug testDebugUnitTest koverXmlReportAppDebug koverVerifyAppDebug`.
+  Toolchain: AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.3.21 / compileSdk 37 / Compose BOM 2026.05.01 /
+  Hilt 2.59.2 / Kover 0.9.8 (70% floor on domain/data classes only).
+  Handoff: [docs/sprints/sprint-0002-scaffold-ci-di-theme.md](docs/sprints/sprint-0002-scaffold-ci-di-theme.md).
+- Next up: **Sprint 3 — data + domain layer** (plan loader, `ScheduleDateResolver` incl. the
+  Feb-29 no-readings rule, Room progress store with year isolation, `BlbUrlBuilder`, theme
+  repo, use cases — see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3 and §5.2 gates).
+  Notes for Sprint 3: a portion can span two books (Jun 19 / Dec 19 = 2 John + 3 John);
+  supersede `book_catalog.csv` with a production `BookCatalog` reconciled against the CSV by
+  test; the Kover floor starts biting as real domain code lands.
 
 ## The reading plan
 
@@ -52,17 +65,21 @@ Over a year: **Old Testament once, New Testament twice.** ~3–4 chapters/day.
 ## Phase 0 (data foundation) — ✅ DONE (Sprint 1, 2026-06-10)
 
 The reading plan schedule is the project's real IP and the **only** V1 data asset (no Bible
-text is bundled in V1). It now exists and is gate-verified:
+text is bundled in V1). It now exists and is gate-verified (paths below reflect the
+Sprint 2 re-home; the original `data/` dir and standalone `verification/` module are gone):
 
-- `data/reading_plan.json` — 365 days (Feb = 28, **no Feb 29 entry** per D1), structured
-  `{book, chapter}` refs (per D3 — not the string form once sketched here), `schemaVersion: 1`.
-- `data/book_catalog.csv` — 66 books `(order, canonicalName, chapterCount, blbAbbrev)`,
-  all abbrevs verified live against BLB (D2 resolved).
-- `data/reading_plan_verify.json` — independent second-source fixture (antipas booklet;
-  the pricejh PDF turned out byte-identical to the primary, so it was substituted).
-- `verification/` — standalone Gradle JVM module; `cd verification && ./gradlew test` runs
-  the 7-test gate incl. day-by-day equality vs. the second source. Re-home into `:app` in
-  Sprint 2 (S2-T6; test takes `dataDir` as a system property).
+- `app/src/main/assets/reading_plan.json` — canonical plan, bundled in the APK. 365 days
+  (Feb = 28, **no Feb 29 entry** per D1), structured `{book, chapter}` refs (per D3),
+  `schemaVersion: 1`.
+- `app/src/test/resources/book_catalog.csv` — 66 books
+  `(order, canonicalName, chapterCount, blbAbbrev)`, all abbrevs verified live against BLB
+  (D2 resolved).
+- `app/src/test/resources/reading_plan_verify.json` — independent second-source fixture
+  (antipas booklet; the pricejh PDF turned out byte-identical to the primary, so it was
+  substituted).
+- The 7-test gate (incl. day-by-day equality vs. the second source) lives at
+  `app/src/test/kotlin/.../data/plan/ReadingPlanVerificationTest.kt` and runs under
+  `./gradlew testDebugUnitTest` on every CI run.
 - Sources, normalization rules, and the 7-conflict reconciliation log:
   [docs/data/README.md](docs/data/README.md).
 

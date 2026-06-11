@@ -21,7 +21,7 @@ import json, re, subprocess, sys, tempfile, urllib.request, os
 URL = ("https://antipas.org/library/Robert%20Roberts/Booklets/"
        "The%20Bible%20Companion.pdf")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "data", "reading_plan_verify.json")
+OUT = os.path.join(ROOT, "app", "src", "test", "resources", "reading_plan_verify.json")
 DAYS_PER_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31]
 
 # band -> (data start line, data end line (exclusive, 0-based),

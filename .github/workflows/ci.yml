@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, lint & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Format check (spotless/ktlint)
+        run: ./gradlew spotlessCheck
+
+      - name: Android Lint
+        run: ./gradlew lintDebug
+
+      - name: Build
+        run: ./gradlew assembleDebug
+
+      - name: Unit tests (includes the plan-data verification gate)
+        run: ./gradlew testDebugUnitTest
+
+      - name: Coverage report + floor (Kover, domain/data >= 70%)
+        run: ./gradlew koverXmlReportAppDebug koverVerifyAppDebug
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/tests/
+            app/build/reports/kover/
+          if-no-files-found: ignore
