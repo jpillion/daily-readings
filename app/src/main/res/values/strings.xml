@@ -18,4 +18,11 @@
     <string name="load_failed_title">Couldn\'t load the reading plan</string>
     <string name="load_failed_body">Something went wrong reading the bundled plan. Try again.</string>
     <string name="retry">Retry</string>
+    <string name="settings_title">Settings</string>
+    <string name="open_settings">Open settings</string>
+    <string name="navigate_back">Back</string>
+    <string name="theme_section_title">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System default</string>
 </resources>

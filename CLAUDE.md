@@ -86,9 +86,23 @@ Do not reference or depend on strikelog.
   (37 new/adapted UI tests incl. real swipe gestures under Robolectric; 7-test Sprint 1 gate
   untouched), mutation-verified; Kover 93.9% on domain/data.
   Handoff: [docs/sprints/sprint-0005-date-picker.md](docs/sprints/sprint-0005-date-picker.md).
-- Next up: **Sprint 6 — Settings (theme)** (light/dark/system selector over the Sprint 3
-  `ThemeRepository`; pushed `settings` route — note `openUrlEvents` assumes a single
-  collector; see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3).
+- ✅ **Sprint 6 (Settings — theme) is DONE.** The user controls appearance: a gear action in
+  the readings top bar pushes the first real route (`Routes.SETTINGS`, ESpec §7;
+  `ui/settings/SettingsRoute`/`SettingsScreen` — stateless screen over a Light/Dark/System
+  radio group). Selection persists via the Sprint 3 DataStore `ThemeRepository` and drives
+  the app live: activity-scoped `ui/theme/ThemeViewModel` + `ThemeMode.resolveDarkTheme()`
+  feed `DailyReadingPlannerTheme(darkTheme = …)` in `MainActivity`, and edge-to-edge is
+  re-issued via `DisposableEffect(darkTheme)` with `SystemBarStyle.auto` so system-bar icon
+  contrast follows the *app* theme, not the device theme. No ESpec deviations. 99/99 tests
+  (10 new: SettingsViewModel, SettingsScreen, resolveDarkTheme under Robolectric
+  night/notnight, gear-action wiring; 7-test Sprint 1 gate untouched), mutation-verified;
+  Kover 93.9% on domain/data. Known debt: `SystemBarStyle`/nav-bar scrim on API 26–28 needs
+  the Sprint 8 device pass (JVM-only pipeline); `AppNavHost` push/pop untested on JVM.
+  Handoff: [docs/sprints/sprint-0006-settings-theme.md](docs/sprints/sprint-0006-settings-theme.md).
+- Next up: **Sprint 7 — Glance widget** (today's readings + completion at a glance; taps
+  deep-link to the `today` route per ESpec §7; opportunistic refresh only — no midnight
+  alarm in V1 per D9; Glance runs outside the activity so its theming is independent of
+  `ThemeViewModel`; see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3).
 
 ## The reading plan
 

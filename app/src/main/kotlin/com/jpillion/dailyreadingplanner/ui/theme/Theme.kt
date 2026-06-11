@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 
 private val LightColorScheme =
     lightColorScheme(
@@ -39,9 +40,21 @@ private val DarkColorScheme =
     )
 
 /**
+ * Maps the persisted [ThemeMode] to the boolean [DailyReadingPlannerTheme] consumes (FR-9):
+ * LIGHT and DARK are absolute; SYSTEM follows the device dark-mode setting.
+ */
+@Composable
+fun ThemeMode.resolveDarkTheme(): Boolean =
+    when (this) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
+/**
  * App theme (S2-T4). Follows the system light/dark setting by default; Sprint 6's Settings
- * screen will drive [darkTheme] from the persisted ThemeMode. Dynamic color (D8) is honored
- * on API 31+ with the static green palette as fallback.
+ * screen drives [darkTheme] from the persisted ThemeMode via [resolveDarkTheme]. Dynamic
+ * color (D8) is honored on API 31+ with the static green palette as fallback.
  */
 @Composable
 fun DailyReadingPlannerTheme(

@@ -56,6 +56,8 @@ class DayReadingsPagerScreenTest {
             )
         }
 
+    private var openSettingsCalls = 0
+
     private fun setScreen(
         today: LocalDate,
         onReadingTapped: (Portion) -> Unit = {},
@@ -69,6 +71,7 @@ class DayReadingsPagerScreenTest {
                     onMarkWholeDay = { date, dayComplete -> markCalls += date to dayComplete },
                     onReadingTapped = onReadingTapped,
                     onRetry = {},
+                    onOpenSettings = { openSettingsCalls++ },
                 )
             }
         }
@@ -148,6 +151,13 @@ class DayReadingsPagerScreenTest {
         composeRule.onNodeWithText(formatted(LocalDate.of(2027, 1, 1))).assertIsDisplayed()
         composeRule.onNodeWithTag("whole-day-button").performScrollTo().performClick()
         assertThat(markCalls).containsExactly(LocalDate.of(2027, 1, 1) to false)
+    }
+
+    @Test
+    fun settingsAction_invokesOnOpenSettings() {
+        setScreen(LocalDate.of(2026, 6, 10))
+        composeRule.onNodeWithTag("open-settings").assertIsDisplayed().performClick()
+        assertThat(openSettingsCalls).isEqualTo(1)
     }
 
     @Test

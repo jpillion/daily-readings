@@ -7,6 +7,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,7 +61,10 @@ internal fun pageForDate(
 
 /** Stateful entry point: collects the ViewModel and owns the Custom-Tab side-effect (D-S4-2). */
 @Composable
-fun DayReadingsRoute(viewModel: DayReadingsViewModel = hiltViewModel()) {
+fun DayReadingsRoute(
+    onOpenSettings: () -> Unit,
+    viewModel: DayReadingsViewModel = hiltViewModel(),
+) {
     val context = LocalContext.current
     LaunchedEffect(viewModel) {
         viewModel.openUrlEvents.collect { url -> launchCustomTab(context, url) }
@@ -72,6 +76,7 @@ fun DayReadingsRoute(viewModel: DayReadingsViewModel = hiltViewModel()) {
         onMarkWholeDay = viewModel::onMarkWholeDay,
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -92,6 +97,7 @@ fun DayReadingsPagerScreen(
     onMarkWholeDay: (LocalDate, Boolean) -> Unit,
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(initialPage = TODAY_PAGE) { PAGE_COUNT }
@@ -134,6 +140,15 @@ fun DayReadingsPagerScreen(
                         Icon(
                             imageVector = Icons.Filled.DateRange,
                             contentDescription = stringResource(R.string.open_date_picker),
+                        )
+                    }
+                    IconButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.testTag("open-settings"),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.open_settings),
                         )
                     }
                 },
