@@ -25,7 +25,8 @@ class GetMonthCompletionUseCaseTest {
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val progress = FakeProgressRepository()
     private val settings = FakeSettingsRepository()
-    private val useCase = GetMonthCompletionUseCase(ScheduleDateResolver(), progress, settings, clock)
+    private val useCase =
+        GetMonthCompletionUseCase(DayCompletionClassifier(ScheduleDateResolver()), progress, settings, clock)
 
     private fun Map<LocalDate, DayCompletion>.june(day: Int) = this[LocalDate.of(2026, 6, day)]
 
@@ -80,7 +81,13 @@ class GetMonthCompletionUseCaseTest {
             // Clock in March 2028: Feb 29 2028 is in the past with zero marks — but it had no
             // scheduled readings (D1), so it must not be flagged as missed.
             val marchClock = Clock.fixed(Instant.parse("2028-03-15T12:00:00Z"), ZoneOffset.UTC)
-            val inMarch = GetMonthCompletionUseCase(ScheduleDateResolver(), progress, settings, marchClock)
+            val inMarch =
+                GetMonthCompletionUseCase(
+                    DayCompletionClassifier(ScheduleDateResolver()),
+                    progress,
+                    settings,
+                    marchClock,
+                )
             val map = inMarch(YearMonth.of(2028, 2)).first()
             assertThat(map[LocalDate.of(2028, 2, 29)]).isEqualTo(DayCompletion.NONE)
             assertThat(map[LocalDate.of(2028, 2, 28)]).isEqualTo(DayCompletion.MISSED)
@@ -141,7 +148,13 @@ class GetMonthCompletionUseCaseTest {
         runTest {
             settings.storedTrackingStartDate.value = LocalDate.of(2028, 3, 10)
             val marchClock = Clock.fixed(Instant.parse("2028-03-15T12:00:00Z"), ZoneOffset.UTC)
-            val inMarch = GetMonthCompletionUseCase(ScheduleDateResolver(), progress, settings, marchClock)
+            val inMarch =
+                GetMonthCompletionUseCase(
+                    DayCompletionClassifier(ScheduleDateResolver()),
+                    progress,
+                    settings,
+                    marchClock,
+                )
             val map = inMarch(YearMonth.of(2028, 2)).first()
             assertThat(map[LocalDate.of(2028, 2, 29)]).isEqualTo(DayCompletion.NONE)
             assertThat(map[LocalDate.of(2028, 2, 28)]).isEqualTo(DayCompletion.NONE) // pre-start, gated

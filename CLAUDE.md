@@ -180,11 +180,34 @@ Do not reference or depend on strikelog.
   (23 new; 7-test Sprint 1 gate untouched), 3 mutations killed (boundary, gate-vs-COMPLETE
   ordering, initializer gate); Kover 95.4% on domain/data. Version stays 1.0.0/10000 (V2 WIP).
   Handoff: [docs/sprints/sprint-0010-tracking-start-date.md](docs/sprints/sprint-0010-tracking-start-date.md).
-- Next up: **Sprint 11 — V2 streaks & stats** (`sprint-0011-streaks-stats`): PRD §13.1
-  (FR-15…18, R-STREAK-1…6) — Stats screen (current/longest streak, year %, per-stream %)
-  consuming the Sprint 10 predicate seam per R-STREAK-5; no guilt mechanics. V1 ship runs in
-  parallel on the owner's side (Sprint 9 checklists; add: fresh install defaults the
-  tracking start to today).
+- ✅ **Sprint 11 (streaks & stats) is DONE.** The sober V2 Stats screen (PRD §13.1,
+  FR-15…18) is live: a bar-chart action in the readings top bar (custom
+  `res/drawable/ic_stats.xml`, D-S11-5 — icons-core has no chart glyph) pushes `Routes.STATS`
+  (`ui/stats/StatsRoute`/`StatsScreen`/`StatsViewModel`) — read-only, exactly four stat
+  groups: current streak, longest streak (all-time), year progress (n of 1,095, full-year
+  denominator, **floor** rounding so 100% only at completion — D-S11-4), per-stream
+  progress (n of 365). No red, no missed-day copy anywhere (pinned by test). **D-S11-1:**
+  the S10 truth table was extracted verbatim into `domain/DayCompletionClassifier` and BOTH
+  `GetMonthCompletionUseCase` and the new `GetReadingStatsUseCase` inject it (R-STREAK-5
+  satisfied literally — one predicate, no drift). **D-S11-2:** streak walk = one forward
+  pass from the earliest stored mark to today: COMPLETE extends, MISSED resets, NONE is
+  neutral/skipped — so Feb 29 (R-STREAK-2), today-in-grace (R-STREAK-3), year-boundary
+  crossing (R-STREAK-4) and pre-start exclusion (R-STREAK-5; pre-start COMPLETE days still
+  extend, earned-green parity) all fall out of the classifier; future-dated marks never
+  enter the walk but count in year totals. **D-S11-3:** NO Room schema change and no
+  caching — two new grouped DAO queries (`allReadCounts`, `streamCountsInRange`) +
+  `ProgressRepository.allReadCounts()/streamCounts()`; stats are derived per R-STREAK-6
+  (Room invalidation = FR-17 liveness). 214/214 tests (31 new; 7-test Sprint 1 gate
+  untouched), 4 mutations killed (NONE-neutrality/Feb-29 skip, today-grace, pre-start gate,
+  year-boundary walk floor); Kover 96.2% on domain/data. New user-visible strings await
+  owner tone sign-off (PRD M8) — listed in the handoff. Version stays 1.0.0/10000 (V2 WIP).
+  Handoff: [docs/sprints/sprint-0011-streaks-stats.md](docs/sprints/sprint-0011-streaks-stats.md).
+- Next up: **Sprint 12 — V2 reading reminders** (`sprint-0012-reminders`): PRD §13.2 — an
+  optional, user-scheduled daily notification with the day's readings; off by default;
+  owner constraint: time configurable in Settings, or not at all. Mind exact-alarm vs
+  inexact (API 26+), reuse the `WidgetRefresher`-style seam thinking, notification copy
+  needs owner tone sign-off. V1 ship still runs in parallel on the owner's side (Sprint 9
+  checklists; add: fresh install defaults the tracking start to today).
 
 ## The reading plan
 

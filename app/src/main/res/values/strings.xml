@@ -47,6 +47,19 @@
     <string name="tracking_start_help">Days before this date are never counted as missed. You can still open and mark them.</string>
     <string name="tracking_start_dialog_confirm">Set date</string>
     <string name="tracking_start_dialog_cancel">Cancel</string>
+    <string name="stats_title">Stats</string>
+    <string name="open_stats">Open stats</string>
+    <string name="stats_current_streak">Current streak</string>
+    <string name="stats_longest_streak">Longest streak</string>
+    <plurals name="stats_streak_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="stats_year_section">This year</string>
+    <string name="stats_percent">%1$d%%</string>
+    <string name="stats_year_count">%1$s of %2$s readings</string>
+    <string name="stats_stream_section">By stream</string>
+    <string name="stats_stream_count">%1$d of %2$d</string>
     <string name="widget_description">Today\'s three Bible Companion readings at a glance</string>
     <string name="widget_load_failed">Couldn\'t load readings — tap to open the app</string>
     <string name="widget_reading_read">Read</string>

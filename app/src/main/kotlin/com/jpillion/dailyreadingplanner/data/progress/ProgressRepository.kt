@@ -20,6 +20,22 @@ interface ProgressRepository {
     ): Flow<Map<LocalDate, Int>>
 
     /**
+     * Per-day mark counts over every stored mark, all years (S11): the streak walk's input.
+     * Days with zero marks are absent. Re-emits whenever marks change.
+     */
+    fun allReadCounts(): Flow<Map<LocalDate, Int>>
+
+    /**
+     * How many days in [start]..[end] (inclusive) each stream is marked read on (S11):
+     * backs the per-stream stat rows and, summed, the year-progress total. Streams with
+     * zero marks are absent. Re-emits whenever marks change.
+     */
+    fun streamCounts(
+        start: LocalDate,
+        end: LocalDate,
+    ): Flow<Map<Stream, Int>>
+
+    /**
      * True iff any reading mark exists for any date. Used only by the one-time
      * tracking-start first-run default (S10, D-S10-1): an install with existing history
      * must not be retroactively defaulted.

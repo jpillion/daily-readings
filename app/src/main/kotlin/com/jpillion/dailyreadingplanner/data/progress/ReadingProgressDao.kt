@@ -12,6 +12,12 @@ data class DayReadCount(
     val readCount: Int,
 )
 
+/** One row of the per-stream grouped query: a stream and how many of its days are marked. */
+data class StreamReadCount(
+    val stream: Int,
+    val readCount: Int,
+)
+
 @Dao
 interface ReadingProgressDao {
     @Query("SELECT stream FROM reading_progress WHERE dateEpochDay = :dateEpochDay")
@@ -29,6 +35,27 @@ interface ReadingProgressDao {
         startEpochDay: Long,
         endEpochDay: Long,
     ): Flow<List<DayReadCount>>
+
+    /**
+     * Per-day mark counts over ALL stored marks, in one grouped query — the streak walk's
+     * input (S11, R-STREAK-4: longest streak is all-time, so no year bound). The table holds
+     * at most ~1,095 rows per tracked year; loading every grouped row is trivially cheap.
+     */
+    @Query("SELECT dateEpochDay, COUNT(stream) AS readCount FROM reading_progress GROUP BY dateEpochDay")
+    fun allReadCounts(): Flow<List<DayReadCount>>
+
+    /**
+     * Per-stream mark counts over an inclusive range, in one grouped query — backs both the
+     * year-progress total (as the sum) and the three per-stream stat rows (S11).
+     */
+    @Query(
+        "SELECT stream, COUNT(*) AS readCount FROM reading_progress " +
+            "WHERE dateEpochDay BETWEEN :startEpochDay AND :endEpochDay GROUP BY stream",
+    )
+    fun streamCountsInRange(
+        startEpochDay: Long,
+        endEpochDay: Long,
+    ): Flow<List<StreamReadCount>>
 
     /** True iff any mark exists at all — backs the one-time tracking-start default (S10). */
     @Query("SELECT EXISTS(SELECT 1 FROM reading_progress LIMIT 1)")

@@ -6,10 +6,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.jpillion.dailyreadingplanner.ui.day.DayReadingsRoute
 import com.jpillion.dailyreadingplanner.ui.settings.SettingsRoute
+import com.jpillion.dailyreadingplanner.ui.stats.StatsRoute
 
 object Routes {
     const val TODAY = "today"
     const val SETTINGS = "settings"
+    const val STATS = "stats"
 }
 
 @Composable
@@ -20,10 +22,16 @@ fun AppNavHost() {
         // is a dialog over it, not a pushed route (D-S5-2). Settings is the first pushed
         // route (ESpec §7); Today remains the back-stack root.
         composable(Routes.TODAY) {
-            DayReadingsRoute(onOpenSettings = { navController.navigate(Routes.SETTINGS) })
+            DayReadingsRoute(
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onOpenStats = { navController.navigate(Routes.STATS) },
+            )
         }
         composable(Routes.SETTINGS) {
             SettingsRoute(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.STATS) {
+            StatsRoute(onBack = { navController.popBackStack() })
         }
     }
 }

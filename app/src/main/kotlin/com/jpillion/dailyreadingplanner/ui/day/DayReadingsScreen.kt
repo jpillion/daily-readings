@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,6 +66,7 @@ internal fun pageForDate(
 @Composable
 fun DayReadingsRoute(
     onOpenSettings: () -> Unit,
+    onOpenStats: () -> Unit,
     viewModel: DayReadingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -80,6 +82,7 @@ fun DayReadingsRoute(
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
         onOpenSettings = onOpenSettings,
+        onOpenStats = onOpenStats,
     )
 }
 
@@ -102,6 +105,7 @@ fun DayReadingsPagerScreen(
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(initialPage = TODAY_PAGE) { PAGE_COUNT }
@@ -144,6 +148,15 @@ fun DayReadingsPagerScreen(
                         Icon(
                             imageVector = Icons.Filled.DateRange,
                             contentDescription = stringResource(R.string.open_date_picker),
+                        )
+                    }
+                    IconButton(
+                        onClick = onOpenStats,
+                        modifier = Modifier.testTag("open-stats"),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_stats),
+                            contentDescription = stringResource(R.string.open_stats),
                         )
                     }
                     IconButton(

@@ -159,4 +159,52 @@ class ProgressRepositoryTest {
             repository.setRead(LocalDate.of(2026, 6, 1), Stream.NEW_TESTAMENT, isRead = false)
             assertThat(repository.hasAnyMarks()).isFalse()
         }
+
+    @Test
+    fun `allReadCounts spans every stored year and groups per day`() =
+        runTest {
+            repository.setWholeDay(LocalDate.of(2025, 12, 31), isRead = true)
+            repository.setRead(LocalDate.of(2026, 1, 1), Stream.LAW_AND_HISTORY, isRead = true)
+            repository.setRead(LocalDate.of(2026, 1, 1), Stream.NEW_TESTAMENT, isRead = true)
+            repository.setRead(LocalDate.of(2027, 6, 10), Stream.PSALMS_AND_PROPHECY, isRead = true)
+
+            assertThat(repository.allReadCounts().first())
+                .containsExactly(
+                    LocalDate.of(2025, 12, 31),
+                    3,
+                    LocalDate.of(2026, 1, 1),
+                    2,
+                    LocalDate.of(2027, 6, 10),
+                    1,
+                )
+        }
+
+    @Test
+    fun `allReadCounts re-emits when marks change`() =
+        runTest {
+            val flow = repository.allReadCounts()
+            assertThat(flow.first()).isEmpty()
+            repository.setWholeDay(LocalDate.of(2026, 6, 10), isRead = true)
+            assertThat(flow.first()).containsExactly(LocalDate.of(2026, 6, 10), 3)
+        }
+
+    @Test
+    fun `streamCounts groups per stream and respects inclusive range bounds`() =
+        runTest {
+            // Inside 2026: two L&H days, one NT day.
+            repository.setRead(LocalDate.of(2026, 1, 1), Stream.LAW_AND_HISTORY, isRead = true)
+            repository.setRead(LocalDate.of(2026, 12, 31), Stream.LAW_AND_HISTORY, isRead = true)
+            repository.setRead(LocalDate.of(2026, 6, 10), Stream.NEW_TESTAMENT, isRead = true)
+            // Outside both bounds by exactly one day: must not count.
+            repository.setRead(LocalDate.of(2025, 12, 31), Stream.LAW_AND_HISTORY, isRead = true)
+            repository.setRead(LocalDate.of(2027, 1, 1), Stream.NEW_TESTAMENT, isRead = true)
+
+            val counts =
+                repository
+                    .streamCounts(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))
+                    .first()
+            assertThat(counts)
+                .containsExactly(Stream.LAW_AND_HISTORY, 2, Stream.NEW_TESTAMENT, 1)
+            assertThat(counts).doesNotContainKey(Stream.PSALMS_AND_PROPHECY)
+        }
 }

@@ -57,6 +57,26 @@ class FakeProgressRepository : ProgressRepository {
                     .mapValues { (_, streams) -> streams.size }
             }.distinctUntilChanged()
 
+    override fun allReadCounts(): Flow<Map<LocalDate, Int>> =
+        marks
+            .map { all ->
+                all.filterValues { it.isNotEmpty() }.mapValues { (_, streams) -> streams.size }
+            }.distinctUntilChanged()
+
+    override fun streamCounts(
+        start: LocalDate,
+        end: LocalDate,
+    ): Flow<Map<Stream, Int>> =
+        marks
+            .map { all ->
+                Stream.entries
+                    .associateWith { stream ->
+                        all.count { (date, streams) ->
+                            stream in streams && !date.isBefore(start) && !date.isAfter(end)
+                        }
+                    }.filterValues { it > 0 }
+            }.distinctUntilChanged()
+
     override suspend fun hasAnyMarks(): Boolean = marks.value.any { it.value.isNotEmpty() }
 
     override suspend fun setRead(

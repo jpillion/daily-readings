@@ -57,6 +57,7 @@ class DayReadingsPagerScreenTest {
         }
 
     private var openSettingsCalls = 0
+    private var openStatsCalls = 0
 
     private fun setScreen(
         today: LocalDate,
@@ -73,6 +74,7 @@ class DayReadingsPagerScreenTest {
                     onReadingTapped = onReadingTapped,
                     onRetry = {},
                     onOpenSettings = { openSettingsCalls++ },
+                    onOpenStats = { openStatsCalls++ },
                 )
             }
         }
@@ -159,6 +161,13 @@ class DayReadingsPagerScreenTest {
         setScreen(LocalDate.of(2026, 6, 10))
         composeRule.onNodeWithTag("open-settings").assertIsDisplayed().performClick()
         assertThat(openSettingsCalls).isEqualTo(1)
+    }
+
+    @Test
+    fun statsAction_invokesOnOpenStats() {
+        setScreen(LocalDate.of(2026, 6, 10))
+        composeRule.onNodeWithTag("open-stats").assertIsDisplayed().performClick()
+        assertThat(openStatsCalls).isEqualTo(1)
     }
 
     @Test

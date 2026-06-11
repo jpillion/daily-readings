@@ -1,6 +1,7 @@
 package com.jpillion.dailyreadingplanner.ui
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
@@ -11,13 +12,16 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
+import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.day.DayContent
 import com.jpillion.dailyreadingplanner.ui.day.DayUiState
 import com.jpillion.dailyreadingplanner.ui.settings.SettingsScreen
+import com.jpillion.dailyreadingplanner.ui.stats.StatsScreen
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
@@ -158,4 +162,52 @@ class AccessibilityGateTest {
         composeRule.onNodeWithTag("date-picker-confirm").assertTouchTargetAtLeast(48.dp)
         composeRule.onNodeWithTag("date-picker-cancel").assertTouchTargetAtLeast(48.dp)
     }
+
+    @Test
+    fun `stats screen - back is 48dp and every stat group speaks label plus value as one node`() {
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                StatsScreen(
+                    stats =
+                        ReadingStats(
+                            currentStreakDays = 4,
+                            longestStreakDays = 12,
+                            yearReadCount = 438,
+                            streamReadCounts =
+                                mapOf(
+                                    Stream.LAW_AND_HISTORY to 150,
+                                    Stream.PSALMS_AND_PROPHECY to 144,
+                                    Stream.NEW_TESTAMENT to 144,
+                                ),
+                        ),
+                    onBack = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("stats-back").assertTouchTargetAtLeast(48.dp)
+        // The screen is read-only: the only interactive control is back. Each stat group is
+        // one merged semantics node so TalkBack reads label and value together.
+        composeRule
+            .onNodeWithTag("stats-current-streak")
+            .assert(hasTextContaining("Current streak"))
+            .assert(hasTextContaining("4 days"))
+        composeRule
+            .onNodeWithTag("stats-longest-streak")
+            .assert(hasTextContaining("Longest streak"))
+            .assert(hasTextContaining("12 days"))
+        composeRule
+            .onNodeWithTag("stats-year")
+            .assert(hasTextContaining("This year"))
+            .assert(hasTextContaining("40%"))
+        composeRule
+            .onNodeWithTag("stats-stream-1")
+            .performScrollTo()
+            .assert(hasTextContaining("Law & History"))
+            .assert(hasTextContaining("150 of 365"))
+    }
+
+    private fun hasTextContaining(substring: String): SemanticsMatcher =
+        SemanticsMatcher("has text containing '$substring'") { node ->
+            node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.contains(substring) } == true
+        }
 }
