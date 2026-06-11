@@ -1,0 +1,67 @@
+order,canonicalName,chapterCount,blbAbbrev
+1,Genesis,50,gen
+2,Exodus,40,exo
+3,Leviticus,27,lev
+4,Numbers,36,num
+5,Deuteronomy,34,deu
+6,Joshua,24,jos
+7,Judges,21,jdg
+8,Ruth,4,rth
+9,1 Samuel,31,1sa
+10,2 Samuel,24,2sa
+11,1 Kings,22,1ki
+12,2 Kings,25,2ki
+13,1 Chronicles,29,1ch
+14,2 Chronicles,36,2ch
+15,Ezra,10,ezr
+16,Nehemiah,13,neh
+17,Esther,10,est
+18,Job,42,job
+19,Psalms,150,psa
+20,Proverbs,31,pro
+21,Ecclesiastes,12,ecc
+22,Song of Solomon,8,sng
+23,Isaiah,66,isa
+24,Jeremiah,52,jer
+25,Lamentations,5,lam
+26,Ezekiel,48,eze
+27,Daniel,12,dan
+28,Hosea,14,hos
+29,Joel,3,joe
+30,Amos,9,amo
+31,Obadiah,1,oba
+32,Jonah,4,jon
+33,Micah,7,mic
+34,Nahum,3,nah
+35,Habakkuk,3,hab
+36,Zephaniah,3,zep
+37,Haggai,2,hag
+38,Zechariah,14,zec
+39,Malachi,4,mal
+40,Matthew,28,mat
+41,Mark,16,mar
+42,Luke,24,luk
+43,John,21,jhn
+44,Acts,28,act
+45,Romans,16,rom
+46,1 Corinthians,16,1co
+47,2 Corinthians,13,2co
+48,Galatians,6,gal
+49,Ephesians,6,eph
+50,Philippians,4,phl
+51,Colossians,4,col
+52,1 Thessalonians,5,1th
+53,2 Thessalonians,3,2th
+54,1 Timothy,6,1ti
+55,2 Timothy,4,2ti
+56,Titus,3,tit
+57,Philemon,1,phm
+58,Hebrews,13,heb
+59,James,5,jas
+60,1 Peter,5,1pe
+61,2 Peter,3,2pe
+62,1 John,5,1jo
+63,2 John,1,2jo
+64,3 John,1,3jo
+65,Jude,1,jde
+66,Revelation,22,rev
