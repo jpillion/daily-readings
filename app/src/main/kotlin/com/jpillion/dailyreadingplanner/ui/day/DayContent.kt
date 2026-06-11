@@ -1,4 +1,4 @@
-package com.jpillion.dailyreadingplanner.ui.today
+package com.jpillion.dailyreadingplanner.ui.day
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,108 +16,49 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
-import com.jpillion.dailyreadingplanner.ui.browser.launchCustomTab
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
-/** Stateful entry point: collects the ViewModel and owns the Custom-Tab side-effect (D-S4-2). */
+/**
+ * Stateless content for one day's readings — directly testable without Hilt or a ViewModel.
+ * Sprint 5 (D-S5-1): this is Sprint 4's TodayScreen body, generalized so each pager page
+ * renders one [DayUiState]; the caller binds the page's date into the callbacks. The Scaffold
+ * and top bar live above the pager in [DayReadingsPagerScreen].
+ */
 @Composable
-fun TodayRoute(viewModel: TodayViewModel = hiltViewModel()) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    LaunchedEffect(viewModel) {
-        viewModel.openUrlEvents.collect { url -> launchCustomTab(context, url) }
-    }
-    TodayScreen(
-        state = state,
-        onToggleReading = viewModel::onToggleReading,
-        onMarkWholeDay = viewModel::onMarkWholeDay,
-        onReadingTapped = viewModel::onReadingTapped,
-        onRetry = viewModel::onRetry,
-    )
-}
-
-/** Stateless screen over [TodayUiState] — directly testable without Hilt or a ViewModel. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TodayScreen(
-    state: TodayUiState,
+fun DayContent(
+    state: DayUiState,
     onToggleReading: (ReadingStatus) -> Unit,
     onMarkWholeDay: () -> Unit,
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(text = stringResource(R.string.today_title))
-                        Text(
-                            text = formatDate(state.dateOrNull()),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-        ) {
-            when (state) {
-                is TodayUiState.Loading -> LoadingContent()
-                is TodayUiState.Scheduled ->
-                    ScheduledContent(
-                        state = state,
-                        onToggleReading = onToggleReading,
-                        onMarkWholeDay = onMarkWholeDay,
-                        onReadingTapped = onReadingTapped,
-                    )
-                is TodayUiState.NoScheduledReadings -> NoReadingsContent()
-                is TodayUiState.LoadFailed -> LoadFailedContent(onRetry = onRetry)
-            }
+    Box(modifier = modifier.fillMaxSize()) {
+        when (state) {
+            is DayUiState.Loading -> LoadingContent()
+            is DayUiState.Scheduled ->
+                ScheduledContent(
+                    state = state,
+                    onToggleReading = onToggleReading,
+                    onMarkWholeDay = onMarkWholeDay,
+                    onReadingTapped = onReadingTapped,
+                )
+            is DayUiState.NoScheduledReadings -> NoReadingsContent()
+            is DayUiState.LoadFailed -> LoadFailedContent(onRetry = onRetry)
         }
     }
 }
-
-private fun TodayUiState.dateOrNull(): LocalDate? =
-    when (this) {
-        is TodayUiState.Loading -> null
-        is TodayUiState.Scheduled -> date
-        is TodayUiState.NoScheduledReadings -> date
-        is TodayUiState.LoadFailed -> date
-    }
-
-private fun formatDate(date: LocalDate?): String =
-    date?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)).orEmpty()
 
 @Composable
 private fun LoadingContent() {
@@ -128,7 +69,7 @@ private fun LoadingContent() {
 
 @Composable
 private fun ScheduledContent(
-    state: TodayUiState.Scheduled,
+    state: DayUiState.Scheduled,
     onToggleReading: (ReadingStatus) -> Unit,
     onMarkWholeDay: () -> Unit,
     onReadingTapped: (Portion) -> Unit,
@@ -215,7 +156,7 @@ private fun ReadingCard(
 }
 
 @Composable
-private fun CompletionIndicator(state: TodayUiState.Scheduled) {
+private fun CompletionIndicator(state: DayUiState.Scheduled) {
     val readCount = state.readings.count { it.isRead }
     Row(
         modifier = Modifier.fillMaxWidth(),

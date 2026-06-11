@@ -1,4 +1,4 @@
-package com.jpillion.dailyreadingplanner.ui.today
+package com.jpillion.dailyreadingplanner.ui.day
 
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference

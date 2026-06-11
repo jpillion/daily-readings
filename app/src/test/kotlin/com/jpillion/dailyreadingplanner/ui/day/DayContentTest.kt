@@ -1,4 +1,4 @@
-package com.jpillion.dailyreadingplanner.ui.today
+package com.jpillion.dailyreadingplanner.ui.day
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -20,26 +20,27 @@ import org.robolectric.annotation.Config
 import java.time.LocalDate
 
 /**
- * Compose UI tests for the stateless TodayScreen, run under Robolectric so they execute in
- * the standard testDebugUnitTest pipeline (D-S4-1; EXECUTION_PLAN §5.2 Sprint 4 gate).
+ * Compose UI tests for the stateless single-day content, run under Robolectric so they
+ * execute in the standard testDebugUnitTest pipeline (D-S4-1). Adapted from Sprint 4's
+ * TodayScreenTest; the top bar moved up into DayReadingsPagerScreen (D-S5-1).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
-class TodayScreenTest {
+class DayContentTest {
     @get:Rule
     val composeRule = createComposeRule()
 
     private val date = LocalDate.of(2026, 6, 10)
 
-    private fun scheduled(read: Set<Stream> = emptySet()): TodayUiState.Scheduled =
-        TodayUiState.Scheduled(
+    private fun scheduled(read: Set<Stream> = emptySet()): DayUiState.Scheduled =
+        DayUiState.Scheduled(
             date = date,
             readings = threePortions.map { ReadingStatus(it, it.stream in read) },
             dayComplete = read == Stream.entries.toSet(),
         )
 
-    private fun setScreen(
-        state: TodayUiState,
+    private fun setContent(
+        state: DayUiState,
         onToggleReading: (ReadingStatus) -> Unit = {},
         onMarkWholeDay: () -> Unit = {},
         onReadingTapped: (Portion) -> Unit = {},
@@ -47,7 +48,7 @@ class TodayScreenTest {
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
-                TodayScreen(
+                DayContent(
                     state = state,
                     onToggleReading = onToggleReading,
                     onMarkWholeDay = onMarkWholeDay,
@@ -60,7 +61,7 @@ class TodayScreenTest {
 
     @Test
     fun scheduledDay_rendersThreeStreamsWithFormattedReferences() {
-        setScreen(scheduled())
+        setContent(scheduled())
         composeRule.onNodeWithText("Law & History").assertIsDisplayed()
         composeRule.onNodeWithText("Psalms & Prophecy").assertIsDisplayed()
         composeRule.onNodeWithText("New Testament").assertIsDisplayed()
@@ -73,7 +74,7 @@ class TodayScreenTest {
     @Test
     fun checkboxClick_invokesToggleForThatReading() {
         val toggled = mutableListOf<ReadingStatus>()
-        setScreen(scheduled(), onToggleReading = { toggled += it })
+        setContent(scheduled(), onToggleReading = { toggled += it })
         composeRule.onNodeWithTag("toggle-2").performClick()
         assertThat(toggled).hasSize(1)
         assertThat(toggled.single().portion.stream).isEqualTo(Stream.PSALMS_AND_PROPHECY)
@@ -82,7 +83,7 @@ class TodayScreenTest {
     @Test
     fun cardClick_invokesReadingTappedForThatPortion() {
         val tapped = mutableListOf<Portion>()
-        setScreen(scheduled(), onReadingTapped = { tapped += it })
+        setContent(scheduled(), onReadingTapped = { tapped += it })
         composeRule.onNodeWithTag("reading-3").performClick()
         assertThat(tapped).hasSize(1)
         assertThat(tapped.single().stream).isEqualTo(Stream.NEW_TESTAMENT)
@@ -91,27 +92,27 @@ class TodayScreenTest {
     @Test
     fun wholeDayButton_invokesMarkWholeDay_singleTap() {
         var taps = 0
-        setScreen(scheduled(), onMarkWholeDay = { taps++ })
+        setContent(scheduled(), onMarkWholeDay = { taps++ })
         composeRule.onNodeWithTag("whole-day-button").performScrollTo().performClick()
         assertThat(taps).isEqualTo(1)
     }
 
     @Test
     fun completeDay_showsDoneIndicatorAndUnmarkLabel() {
-        setScreen(scheduled(read = Stream.entries.toSet()))
-        composeRule.onNodeWithText("All readings done for today").performScrollTo().assertIsDisplayed()
+        setContent(scheduled(read = Stream.entries.toSet()))
+        composeRule.onNodeWithText("All readings done").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Unmark whole day").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun partialDay_showsProgressCount() {
-        setScreen(scheduled(read = setOf(Stream.LAW_AND_HISTORY, Stream.NEW_TESTAMENT)))
+        setContent(scheduled(read = setOf(Stream.LAW_AND_HISTORY, Stream.NEW_TESTAMENT)))
         composeRule.onNodeWithText("2 of 3 readings done").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun feb29_showsNoScheduledReadingsMessage() {
-        setScreen(TodayUiState.NoScheduledReadings(LocalDate.of(2028, 2, 29)))
+        setContent(DayUiState.NoScheduledReadings(LocalDate.of(2028, 2, 29)))
         composeRule.onNodeWithText("No scheduled readings for Feb 29th").assertIsDisplayed()
         composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
         composeRule.onNodeWithTag("toggle-1").assertDoesNotExist()
@@ -120,7 +121,7 @@ class TodayScreenTest {
     @Test
     fun loadFailed_showsRetryThatInvokesCallback() {
         var retries = 0
-        setScreen(TodayUiState.LoadFailed(date), onRetry = { retries++ })
+        setContent(DayUiState.LoadFailed(date), onRetry = { retries++ })
         composeRule.onNodeWithText("Couldn't load the reading plan").assertIsDisplayed()
         composeRule.onNodeWithTag("retry-button").performClick()
         assertThat(retries).isEqualTo(1)

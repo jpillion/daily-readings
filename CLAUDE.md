@@ -71,9 +71,24 @@ Do not reference or depend on strikelog.
   (`isIncludeAndroidResources = true`, `@Config(sdk = [34])`). 68/68 tests (23 new + all 45
   prior incl. the 7-test Sprint 1 gate), mutation-verified; Kover 93.9% on domain/data.
   Handoff: [docs/sprints/sprint-0004-today-screen.md](docs/sprints/sprint-0004-today-screen.md).
-- Next up: **Sprint 5 — Date picker** (browse any date's readings, "jump to today";
-  needs the year-semantics decision note per ESpec §6.1 — see
-  [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3).
+- ✅ **Sprint 5 (Date picker + day swiping) is DONE.** The readings screen is now "a day's
+  readings for any date": `ui/today/` was generalized into `ui/day/` — date-parameterized
+  `DayReadingsViewModel` (`uiStateFor(date): StateFlow<DayUiState>`, per-date cache) under a
+  `HorizontalPager` (`DayReadingsPagerScreen`, ±10,000-day window, today at the center page),
+  so the user swipes left/right through real calendar days. M3 date-picker **dialog**
+  (`ui/datepicker/DayDatePickerDialog`, year pinned to the current year — recorded ESpec
+  deviation: no pushed picker route) plus a "Today" jump affordance in the top bar.
+  **Year semantics decided (D-S5-3, ESpec §6.1):** progress always keys to the displayed
+  *full* date; the picker targets the current year's occurrence; swipe steps real dates so
+  Dec 31 → Jan 1 crosses into the adjacent year (test-pinned). Feb 29 reachable by swipe and
+  picker, shows the no-readings state. Marks + BLB taps work on whatever day is displayed.
+  New dep: `material-icons-core` 1.7.8 (frozen artifact, outside the BOM). 89/89 tests
+  (37 new/adapted UI tests incl. real swipe gestures under Robolectric; 7-test Sprint 1 gate
+  untouched), mutation-verified; Kover 93.9% on domain/data.
+  Handoff: [docs/sprints/sprint-0005-date-picker.md](docs/sprints/sprint-0005-date-picker.md).
+- Next up: **Sprint 6 — Settings (theme)** (light/dark/system selector over the Sprint 3
+  `ThemeRepository`; pushed `settings` route — note `openUrlEvents` assumes a single
+  collector; see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3).
 
 ## The reading plan
 

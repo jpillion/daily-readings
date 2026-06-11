@@ -1,4 +1,4 @@
-package com.jpillion.dailyreadingplanner.ui.today
+package com.jpillion.dailyreadingplanner.ui.day
 
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.Stream

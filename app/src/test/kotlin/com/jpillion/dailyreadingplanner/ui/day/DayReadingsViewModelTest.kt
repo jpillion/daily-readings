@@ -1,4 +1,4 @@
-package com.jpillion.dailyreadingplanner.ui.today
+package com.jpillion.dailyreadingplanner.ui.day
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
@@ -23,21 +23,22 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-class TodayViewModelTest {
+class DayReadingsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
     private val progress = FakeProgressRepository()
+    private val today = LocalDate.of(2026, 6, 10)
 
     private fun clockAt(date: LocalDate): Clock =
         Clock.fixed(date.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
 
     private fun viewModel(
-        date: LocalDate = LocalDate.of(2026, 6, 10),
+        date: LocalDate = today,
         planRepository: ReadingPlanRepository = FakeReadingPlanRepository(),
-    ): TodayViewModel {
+    ): DayReadingsViewModel {
         val resolver = ScheduleDateResolver()
-        return TodayViewModel(
+        return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress),
             toggleReading = ToggleReadingUseCase(progress),
             markWholeDay = MarkWholeDayUseCase(progress),
@@ -47,12 +48,17 @@ class TodayViewModelTest {
     }
 
     @Test
+    fun `today is pinned from the injected clock`() {
+        assertThat(viewModel().today).isEqualTo(today)
+    }
+
+    @Test
     fun `scheduled day loads three unread readings`() =
         runTest {
             val vm = viewModel()
-            vm.uiState.test {
+            vm.uiStateFor(today).test {
                 val state = awaitScheduled()
-                assertThat(state.date).isEqualTo(LocalDate.of(2026, 6, 10))
+                assertThat(state.date).isEqualTo(today)
                 assertThat(state.readings).hasSize(3)
                 assertThat(state.readings.map { it.portion.stream })
                     .containsExactly(Stream.LAW_AND_HISTORY, Stream.PSALMS_AND_PROPHECY, Stream.NEW_TESTAMENT)
@@ -66,9 +72,9 @@ class TodayViewModelTest {
     fun `toggling an unread reading marks it read and updates state`() =
         runTest {
             val vm = viewModel()
-            vm.uiState.test {
+            vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
-                vm.onToggleReading(initial.readings[1])
+                vm.onToggleReading(today, initial.readings[1])
                 val updated = awaitScheduled()
                 assertThat(updated.readings[1].isRead).isTrue()
                 assertThat(updated.readings[0].isRead).isFalse()
@@ -80,12 +86,12 @@ class TodayViewModelTest {
     @Test
     fun `toggling a read reading unmarks it`() =
         runTest {
-            progress.setRead(LocalDate.of(2026, 6, 10), Stream.NEW_TESTAMENT, true)
+            progress.setRead(today, Stream.NEW_TESTAMENT, true)
             val vm = viewModel()
-            vm.uiState.test {
+            vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
                 assertThat(initial.readings[2].isRead).isTrue()
-                vm.onToggleReading(initial.readings[2])
+                vm.onToggleReading(today, initial.readings[2])
                 val updated = awaitScheduled()
                 assertThat(updated.readings[2].isRead).isFalse()
             }
@@ -95,9 +101,9 @@ class TodayViewModelTest {
     fun `mark whole day marks all three readings in one tap`() =
         runTest {
             val vm = viewModel()
-            vm.uiState.test {
-                awaitScheduled()
-                vm.onMarkWholeDay()
+            vm.uiStateFor(today).test {
+                val initial = awaitScheduled()
+                vm.onMarkWholeDay(today, initial.dayComplete)
                 val updated = awaitScheduled()
                 assertThat(updated.readings.all { it.isRead }).isTrue()
                 assertThat(updated.dayComplete).isTrue()
@@ -107,12 +113,12 @@ class TodayViewModelTest {
     @Test
     fun `mark whole day on a complete day unmarks all three`() =
         runTest {
-            progress.setWholeDay(LocalDate.of(2026, 6, 10), true)
+            progress.setWholeDay(today, true)
             val vm = viewModel()
-            vm.uiState.test {
+            vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
                 assertThat(initial.dayComplete).isTrue()
-                vm.onMarkWholeDay()
+                vm.onMarkWholeDay(today, initial.dayComplete)
                 val updated = awaitScheduled()
                 assertThat(updated.readings.none { it.isRead }).isTrue()
                 assertThat(updated.dayComplete).isFalse()
@@ -120,17 +126,69 @@ class TodayViewModelTest {
         }
 
     @Test
-    fun `Feb 29 resolves to the no-scheduled-readings state`() =
+    fun `browsing another date yields that date's state and marks write to that actual date`() =
         runTest {
-            val vm = viewModel(date = LocalDate.of(2028, 2, 29))
-            vm.uiState.test {
+            val yesterday = today.minusDays(1)
+            val vm = viewModel()
+            vm.uiStateFor(yesterday).test {
+                val initial = awaitScheduled()
+                assertThat(initial.date).isEqualTo(yesterday)
+                vm.onToggleReading(yesterday, initial.readings[0])
+                val updated = awaitScheduled()
+                assertThat(updated.readings[0].isRead).isTrue()
+            }
+            // D-S5-3: progress is keyed to the displayed full date — today is untouched.
+            assertThat(progress.marksFor(yesterday)).containsExactly(Stream.LAW_AND_HISTORY)
+            assertThat(progress.marksFor(today)).isEmpty()
+        }
+
+    @Test
+    fun `each date's state flow is independent`() =
+        runTest {
+            val tomorrow = today.plusDays(1)
+            val vm = viewModel()
+            vm.uiStateFor(today).test {
+                vm.onMarkWholeDay(today, false)
+                awaitScheduledWhere { it.dayComplete }
+            }
+            vm.uiStateFor(tomorrow).test {
+                val state = awaitScheduled()
+                assertThat(state.date).isEqualTo(tomorrow)
+                assertThat(state.dayComplete).isFalse()
+            }
+        }
+
+    @Test
+    fun `whole-day mark across the year boundary writes to the adjacent year's date`() =
+        runTest {
+            // D-S5-3: swiping steps real calendar days, so Dec 31 2026 -> Jan 1 *2027*.
+            val newYearsEve = LocalDate.of(2026, 12, 31)
+            val jan1Next = LocalDate.of(2027, 1, 1)
+            val vm = viewModel(date = newYearsEve)
+            vm.uiStateFor(jan1Next).test {
+                val initial = awaitScheduled()
+                vm.onMarkWholeDay(jan1Next, initial.dayComplete)
+                val updated = awaitScheduled()
+                assertThat(updated.dayComplete).isTrue()
+            }
+            assertThat(progress.marksFor(jan1Next)).isEqualTo(Stream.entries.toSet())
+            // Year isolation: neither today nor the *current* year's Jan 1 got marked.
+            assertThat(progress.marksFor(newYearsEve)).isEmpty()
+            assertThat(progress.marksFor(LocalDate.of(2026, 1, 1))).isEmpty()
+        }
+
+    @Test
+    fun `Feb 29 resolves to the no-scheduled-readings state with no progress touched`() =
+        runTest {
+            val feb29 = LocalDate.of(2028, 2, 29)
+            val vm = viewModel(date = LocalDate.of(2028, 2, 28))
+            vm.uiStateFor(feb29).test {
                 val state = awaitNonLoading()
-                assertThat(state).isInstanceOf(TodayUiState.NoScheduledReadings::class.java)
-                assertThat((state as TodayUiState.NoScheduledReadings).date)
-                    .isEqualTo(LocalDate.of(2028, 2, 29))
+                assertThat(state).isInstanceOf(DayUiState.NoScheduledReadings::class.java)
+                assertThat((state as DayUiState.NoScheduledReadings).date).isEqualTo(feb29)
             }
             // D1: no progress is ever queried or written for Feb 29.
-            assertThat(progress.marksFor(LocalDate.of(2028, 2, 29))).isEmpty()
+            assertThat(progress.marksFor(feb29)).isEmpty()
         }
 
     @Test
@@ -138,9 +196,9 @@ class TodayViewModelTest {
         runTest {
             val flaky = FlakyPlanRepository()
             val vm = viewModel(planRepository = flaky)
-            vm.uiState.test {
+            vm.uiStateFor(today).test {
                 val failed = awaitNonLoading()
-                assertThat(failed).isInstanceOf(TodayUiState.LoadFailed::class.java)
+                assertThat(failed).isInstanceOf(DayUiState.LoadFailed::class.java)
                 flaky.failing = false
                 vm.onRetry()
                 val recovered = awaitScheduled()
@@ -152,7 +210,7 @@ class TodayViewModelTest {
     fun `tapping a reading emits its BLB URL for the first ref`() =
         runTest {
             val vm = viewModel()
-            vm.uiState.test {
+            vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openUrlEvents.test {
                     vm.onReadingTapped(state.readings[0].portion)
@@ -163,16 +221,24 @@ class TodayViewModelTest {
             }
         }
 
-    private suspend fun app.cash.turbine.ReceiveTurbine<TodayUiState>.awaitNonLoading(): TodayUiState {
+    private suspend fun app.cash.turbine.ReceiveTurbine<DayUiState>.awaitNonLoading(): DayUiState {
         var state = awaitItem()
-        while (state is TodayUiState.Loading) state = awaitItem()
+        while (state is DayUiState.Loading) state = awaitItem()
         return state
     }
 
-    private suspend fun app.cash.turbine.ReceiveTurbine<TodayUiState>.awaitScheduled(): TodayUiState.Scheduled {
+    private suspend fun app.cash.turbine.ReceiveTurbine<DayUiState>.awaitScheduled(): DayUiState.Scheduled {
         val state = awaitNonLoading()
-        assertThat(state).isInstanceOf(TodayUiState.Scheduled::class.java)
-        return state as TodayUiState.Scheduled
+        assertThat(state).isInstanceOf(DayUiState.Scheduled::class.java)
+        return state as DayUiState.Scheduled
+    }
+
+    private suspend fun app.cash.turbine.ReceiveTurbine<DayUiState>.awaitScheduledWhere(
+        predicate: (DayUiState.Scheduled) -> Boolean,
+    ): DayUiState.Scheduled {
+        var state = awaitScheduled()
+        while (!predicate(state)) state = awaitScheduled()
+        return state
     }
 }
 
