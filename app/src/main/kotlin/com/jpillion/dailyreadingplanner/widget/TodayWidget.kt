@@ -43,9 +43,10 @@ interface TodayWidgetEntryPoint {
  * (mirrors D-S4-3).
  */
 class TodayWidget : GlanceAppWidget() {
-    // D-S8-1: one responsive widget, three width breakpoints (1x2 / 2x2 / 3x2); Glance
-    // composes each declared size and the launcher picks the best fit as the user resizes.
-    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(SMALL_SIZE, MEDIUM_SIZE, LARGE_SIZE))
+    // D-S8-1 + D-S9-2: one responsive widget, four breakpoints (1x1 / 1x2 / 2x2 / 3x2);
+    // Glance composes each declared size and the launcher picks the best fit on resize.
+    override val sizeMode: SizeMode =
+        SizeMode.Responsive(setOf(TINY_SIZE, SMALL_SIZE, MEDIUM_SIZE, LARGE_SIZE))
 
     override suspend fun provideGlance(
         context: Context,

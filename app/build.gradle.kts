@@ -1,4 +1,19 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+
+// D7 / S9-T5: release signing reads from keystore.properties (untracked) or environment —
+// the repo never contains key material. The owner generates and holds the upload key; see
+// docs/sprints/sprint-0009-hardening-release.md for the exact steps and secret names.
+val keystoreProperties: Properties =
+    Properties().apply {
+        val f = rootProject.file("keystore.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+
+fun signingSecret(
+    property: String,
+    envVar: String,
+): String? = keystoreProperties.getProperty(property) ?: System.getenv(envVar)
 
 plugins {
     alias(libs.plugins.android.application)
@@ -17,15 +32,40 @@ android {
         applicationId = "com.jpillion.dailyreadingplanner"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        // D-S9-3: versionCode = MAJOR*10000 + MINOR*100 + PATCH (1.0.0 -> 10000) — monotonic
+        // for Play, derivable from versionName, with room for 99 patch/minor steps each.
+        versionCode = 10000
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            val storePath = signingSecret("storeFile", "DRP_UPLOAD_KEYSTORE_FILE")
+            if (storePath != null) {
+                storeFile = rootProject.file(storePath)
+                storePassword = signingSecret("storePassword", "DRP_UPLOAD_STORE_PASSWORD")
+                keyAlias = signingSecret("keyAlias", "DRP_UPLOAD_KEY_ALIAS")
+                keyPassword = signingSecret("keyPassword", "DRP_UPLOAD_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // S9-T5: R8 + resource shrinking on for release; keep rules in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Until the owner provisions the upload key, release builds debug-sign so
+            // bundleRelease is CI-provable end to end (the Play upload key swaps in via
+            // keystore.properties/env with zero build-script changes).
+            signingConfig =
+                if (signingConfigs.getByName("release").storeFile != null) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 
@@ -66,6 +106,12 @@ kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
     }
+}
+
+ksp {
+    // D-S9-4: export the Room schema (app/schemas, checked in) so the V2 streak-schema
+    // migration has a pinned baseline to migrate *from*.
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 kover {

@@ -43,6 +43,28 @@ class ReadingFormatterTest {
     }
 
     @Test
+    fun `abbreviated form uses derived display abbrevs with the same range collapse - D-S9-1`() {
+        val p = portion(Stream.LAW_AND_HISTORY, "Genesis" to 1, "Genesis" to 2)
+        assertThat(ReadingFormatter.formatAbbreviated(p)).isEqualTo("Gen 1–2")
+        val psalms = portion(Stream.PSALMS_AND_PROPHECY, "Psalms" to 1, "Psalms" to 2)
+        assertThat(ReadingFormatter.formatAbbreviated(psalms)).isEqualTo("Psa 1–2")
+        val matthew = portion(Stream.NEW_TESTAMENT, "Matthew" to 1, "Matthew" to 2)
+        assertThat(ReadingFormatter.formatAbbreviated(matthew)).isEqualTo("Mat 1–2")
+    }
+
+    @Test
+    fun `abbreviated two-book portion still joins runs - Jun 19 and Dec 19 case`() {
+        val p = portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1)
+        assertThat(ReadingFormatter.formatAbbreviated(p)).isEqualTo("2Jo 1; 3Jo 1")
+    }
+
+    @Test
+    fun `abbreviated single chapter formats without a range`() {
+        val p = portion(Stream.PSALMS_AND_PROPHECY, "Obadiah" to 1)
+        assertThat(ReadingFormatter.formatAbbreviated(p)).isEqualTo("Oba 1")
+    }
+
+    @Test
     fun `stream titles match the Bible Companion stream names`() {
         assertThat(ReadingFormatter.streamTitle(Stream.LAW_AND_HISTORY)).isEqualTo("Law & History")
         assertThat(ReadingFormatter.streamTitle(Stream.PSALMS_AND_PROPHECY)).isEqualTo("Psalms & Prophecy")

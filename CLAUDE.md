@@ -137,13 +137,32 @@ Do not reference or depend on strikelog.
   (37 new/adapted; 7-test Sprint 1 gate untouched), 4 mutations killed (past-only guard,
   Feb-29 guard, reset end-bound, breakpoint bound); Kover 95.1% on domain/data.
   Handoff: [docs/sprints/sprint-0008-owner-feedback-features.md](docs/sprints/sprint-0008-owner-feedback-features.md).
-- Next up: **Sprint 9 — hardening, a11y & release readiness** (the former Sprint 8 plan
-  minus the owner-retired items above). Remaining: signing + Play release pipeline (D7,
-  Jordan), TalkBack/a11y smoke incl. the new picker grid + 48dp targets + contrast, system
-  font-scaling interplay with the in-app slider on device, edge-to-edge `SystemBarStyle`
-  scrim on API 26–28 (Sprint 6 debt), StrictMode clean run, Custom Tabs tap-through,
-  widget resize/breakpoints + 30-min update on a real launcher (new S8 surface), widget
-  `previewImage`. See the Sprint 8 handoff's carryover list.
+- ✅ **Sprint 9 (widget sizing refinement + hardening & release readiness) is DONE.**
+  (1) **Widget feedback (owner):** the widget lists the **three readings at every size
+  down to 1x1** — completion is never the focus. `WidgetLayout` gained `TINY` (1x1,
+  57x48dp; `minResizeHeight=40dp`); the chooser is width-first then height-split
+  (SMALL ~1x2 = date + abbreviated rows, TINY ~1x1 = abbreviated rows only); the old
+  "n/3" layout is gone. Abbreviations are *derived* from the live-verified BLB tokens —
+  `Book.displayAbbrev` ("gen"→"Gen", "2jo"→"2Jo") + `ReadingFormatter.formatAbbreviated`
+  ("Gen 1–2"; Jun 19/Dec 19 = "2Jo 1; 3Jo 1") per **D-S9-1** (no second 66-row table; no
+  drift). A11y still speaks full canonical names; Feb-29/error states + single tap target
+  hold at all sizes; static `res/drawable/widget_preview.xml` is the picker preview.
+  (2) **Release readiness:** `./gradlew bundleRelease` builds an R8-minified,
+  resource-shrunk `.aab` (debug-signed until the owner provisions the upload key — signing
+  reads gitignored `keystore.properties` or `DRP_UPLOAD_*` env, D-S9-5); CI gained a
+  `release-bundle` job; versioning is `1.0.0`/`10000` (D-S9-3: MAJOR*10000+MINOR*100+PATCH);
+  Room schema exported + checked in at `app/schemas/` (D-S9-4, Sprint 3 debt retired);
+  `ui/AccessibilityGateTest.kt` pins the JVM-provable a11y gate (48dp touch bounds on all
+  authored controls, picker-grid spoken dates, slider range semantics; stock M3 Slider
+  accepted at its 44dp handle token). StrictMode review: all I/O off main on JVM-provable
+  paths. 160/160 tests (13 new; 7-test Sprint 1 gate untouched), 3 mutations killed;
+  Kover 95.2% on domain/data.
+  Handoff (incl. the owner's keystore/Play-listing/device-pass checklists):
+  [docs/sprints/sprint-0009-hardening-release.md](docs/sprints/sprint-0009-hardening-release.md).
+- Next up: **Sprint 10 — V1 release support** (`sprint-0010-v1-release`): the owner runs
+  the final device pass + creates the upload key + Play listing (checklists in the Sprint 9
+  handoff); the team reacts to findings (abbrev overrides, 1x1 fit, API 26–28 scrim) and
+  ships 1.0.0. If clean, V2 planning (streaks, reminders, in-app KJV text) starts there.
 
 ## The reading plan
 

@@ -6,7 +6,20 @@ data class Book(
     val canonicalName: String,
     val chapterCount: Int,
     val blbAbbrev: String,
-)
+) {
+    /**
+     * Compact display form for width-constrained surfaces (the 1x1/1x2 widget, D-S9-1):
+     * the live-verified BLB URL token with its first letter uppercased — "gen" -> "Gen",
+     * "2jo" -> "2Jo". Derived, never hand-authored, so it can't drift from the catalog.
+     */
+    val displayAbbrev: String
+        get() {
+            val i = blbAbbrev.indexOfFirst { it.isLetter() }
+            return blbAbbrev.substring(0, i) +
+                blbAbbrev[i].uppercaseChar() +
+                blbAbbrev.substring(i + 1)
+        }
+}
 
 /**
  * Production source of truth for the 66-book canon (ESpec §5.2). Supersedes the Sprint 1

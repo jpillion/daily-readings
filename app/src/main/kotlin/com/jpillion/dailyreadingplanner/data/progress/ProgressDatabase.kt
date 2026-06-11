@@ -6,7 +6,8 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [ReadingProgressEntity::class],
     version = 1,
-    exportSchema = false, // no migrations until the V2 streak schema; revisit with the Room Gradle plugin then
+    // D-S9-4: schema checked in at app/schemas — the pinned baseline V2 migrations start from.
+    exportSchema = true,
 )
 abstract class ProgressDatabase : RoomDatabase() {
     abstract fun readingProgressDao(): ReadingProgressDao

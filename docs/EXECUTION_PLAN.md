@@ -84,7 +84,7 @@ unlocks**. No sprint closes unless the project builds and its tests pass (see §
 | **6** | **Settings (theme)** | Settings screen with light/dark/system selector, persisted, driving the app theme live. | Users control appearance (PRD U6/FR-9). Small; can run parallel to 5. | Sam (lead), Priya (review) |
 | **7** | **Glance home-screen widget** | A widget showing today's three readings, tap → opens app on Today, refreshing on resume/progress-change + periodic backstop. | The app earns a home-screen habit slot (PRD G5/FR-8). | Avery (lead), Diego (shared repo access) |
 | **8** | **Owner-feedback features** *(inserted 2026-06-10 after the owner's partial device pass)* | ✅ DONE — responsive widget (3x2/2x2/1x2, D-S8-1), date-picker per-day completion indicators on a custom calendar grid (D-S8-2/3), confirm-gated year-scoped Reset progress, persisted text-size slider (D-S8-5). | The widget is useful at any size; the calendar shows how the reader is tracking; a year can be restarted safely; text size is user-controlled. | Avery (widget), Priya (picker UI), Diego (domain seams), Sam (settings), Riley (gate) |
-| **9** | **Hardening, a11y & release readiness** *(renumbered from 8; minus items the owner's 2026-06-10 device pass retired: widget-on-launcher ✅, 66-book BLB link check ✅ G-LINKS, performance ✅ G-PERF)* | Remaining gates green: accessibility smoke (TalkBack incl. the S8 picker grid, font scaling, 48dp targets, contrast), StrictMode clean, edge-to-edge scrim API 26–28, widget resize/refresh on launcher, signing + release pipeline ready per D7. | V1 is releasable: a11y baseline verified and a build that can ship to Play. | Riley (QA gates), Avery (device pass), Jordan (signing/release), Priya (a11y) |
+| **9** | **Widget sizing refinement + hardening & release readiness** *(renumbered from 8)* | ✅ DONE — widget lists the three readings at every size incl. new 1x1 (derived display abbrevs, D-S9-1/2); R8+shrink release bundle builds in CI with keystore.properties/env signing scaffold (D-S9-5); version scheme 1.0.0/10000 (D-S9-3); Room schema exported (D-S9-4); JVM a11y gate pinned (48dp/semantics). Device-only remainder moved to the owner checklists in the Sprint 9 handoff. | V1 is releasable pending the owner's device pass, upload key, and Play listing. | Avery (widget), Diego (abbrev seam), Jordan (release/CI), Priya+Riley (a11y gate) |
 
 **Dependency notes:**
 - Sprint 1 blocks everything downstream that asserts correctness (3, and the data-verification gate carried through 8).
@@ -274,7 +274,7 @@ V1 is releasable only when **all** hold:
 - **G-ERGO (M3):** whole-day mark in ≤2 taps from Today.
 - **G-A11Y:** TalkBack smoke pass on Today; system font scaling respected; touch targets ≥48dp; Material 3 contrast.
 - **G-OFFLINE (FR-10):** all planner functions work in airplane mode; only BLB hand-off needs network.
-- **G-BUILD:** CI green (build + lint/format + tests + Kover floor); signing + release pipeline ready per D7.
+- **G-BUILD:** ✅ CI green (build + lint/format + tests + Kover floor + release bundle); signing + release pipeline ready per D7 (S9 — owner provisions the upload key per the Sprint 9 handoff).
 
 ---
 

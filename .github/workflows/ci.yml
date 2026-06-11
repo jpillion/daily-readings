@@ -52,3 +52,32 @@ jobs:
             app/build/reports/tests/
             app/build/reports/kover/
           if-no-files-found: ignore
+
+  release-bundle:
+    name: Release bundle (R8, unsigned-key proof)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      # Proves minify/shrink/keep-rules stay healthy on every change. No key material in
+      # CI: without keystore.properties/env secrets the bundle debug-signs (S9-T5); the
+      # real upload key only ever lives on the owner's machine for Play uploads.
+      - name: Build release bundle
+        run: ./gradlew bundleRelease
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-bundle
+          path: app/build/outputs/bundle/release/app-release.aab

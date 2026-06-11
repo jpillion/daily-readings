@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Static widget-picker preview (S9 debt sweep): a stylized sketch of the LARGE layout —
+    rounded card, date line, three reading rows with read/unread marks. Hand-authored
+    vector because rendering a real Glance snapshot needs a device (JVM-only pipeline).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="180dp"
+    android:height="110dp"
+    android:viewportWidth="180"
+    android:viewportHeight="110">
+
+    <!-- Card background -->
+    <path
+        android:fillColor="#FFFBFE"
+        android:pathData="M16,0 L164,0 A16,16 0 0 1 180,16 L180,94 A16,16 0 0 1 164,110 L16,110 A16,16 0 0 1 0,94 L0,16 A16,16 0 0 1 16,0 Z" />
+
+    <!-- Date line -->
+    <path
+        android:fillColor="#1D1B20"
+        android:pathData="M14,12 L74,12 A4,4 0 0 1 78,16 A4,4 0 0 1 74,20 L14,20 A4,4 0 0 1 10,16 A4,4 0 0 1 14,12 Z" />
+
+    <!-- Row 1: read mark + reference bar -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M17,40 m-7,0 a7,7 0 1 1 14,0 a7,7 0 1 1 -14,0" />
+    <path
+        android:fillColor="#FFFBFE"
+        android:pathData="M13.2,40.2 L16,43 L21,37.4 L19.6,36 L16,40.2 L14.6,38.8 Z" />
+    <path
+        android:fillColor="#49454F"
+        android:pathData="M34,36 L114,36 A4,4 0 0 1 118,40 A4,4 0 0 1 114,44 L34,44 A4,4 0 0 1 30,40 A4,4 0 0 1 34,36 Z" />
+
+    <!-- Row 2: unread mark + reference bar -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#79747E"
+        android:strokeWidth="2"
+        android:pathData="M17,66 m-6,0 a6,6 0 1 1 12,0 a6,6 0 1 1 -12,0" />
+    <path
+        android:fillColor="#49454F"
+        android:pathData="M34,62 L104,62 A4,4 0 0 1 108,66 A4,4 0 0 1 104,70 L34,70 A4,4 0 0 1 30,66 A4,4 0 0 1 34,62 Z" />
+
+    <!-- Row 3: unread mark + reference bar -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#79747E"
+        android:strokeWidth="2"
+        android:pathData="M17,92 m-6,0 a6,6 0 1 1 12,0 a6,6 0 1 1 -12,0" />
+    <path
+        android:fillColor="#49454F"
+        android:pathData="M34,88 L122,88 A4,4 0 0 1 126,92 A4,4 0 0 1 122,96 L34,96 A4,4 0 0 1 30,92 A4,4 0 0 1 34,88 Z" />
+</vector>

@@ -15,3 +15,6 @@ local.properties
 # Captures / logs
 captures/
 *.log
+
+# Release signing (S9-T5): local key material, never committed
+keystore.properties
