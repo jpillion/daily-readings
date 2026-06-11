@@ -5,6 +5,7 @@ import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** In-memory [SettingsRepository] for ViewModel tests; records writes. */
 class FakeSettingsRepository(
@@ -44,5 +45,26 @@ class FakeSettingsRepository(
 
     override suspend fun markTrackingStartInitialized() {
         storedTrackingStartInitialized.value = true
+    }
+
+    // --- S12: reminders. ---
+
+    val storedReminderEnabled = MutableStateFlow(false)
+    val reminderEnabledCalls = mutableListOf<Boolean>()
+    val storedReminderTime = MutableStateFlow(SettingsRepository.DEFAULT_REMINDER_TIME)
+    val reminderTimeCalls = mutableListOf<LocalTime>()
+
+    override val reminderEnabled: Flow<Boolean> = storedReminderEnabled
+
+    override val reminderTime: Flow<LocalTime> = storedReminderTime
+
+    override suspend fun setReminderEnabled(enabled: Boolean) {
+        reminderEnabledCalls += enabled
+        storedReminderEnabled.value = enabled
+    }
+
+    override suspend fun setReminderTime(time: LocalTime) {
+        reminderTimeCalls += time
+        storedReminderTime.value = time
     }
 }

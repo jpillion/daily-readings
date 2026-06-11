@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- S12 (PRD §13.2): the only two new permissions reminders need. POST_NOTIFICATIONS is
+         requested at runtime, only when the user enables the toggle (R-REM-7);
+         RECEIVE_BOOT_COMPLETED re-arms alarms after reboot (R-REM-8). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".DailyReadingsApp"
         android:allowBackup="true"
@@ -31,6 +37,22 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/today_widget_info" />
+        </receiver>
+
+        <!-- S12: alarm target for the daily reminder + the midnight widget refresh
+             (D-S12-1/2). Explicit-intent only — never exported. -->
+        <receiver
+            android:name=".reminders.ReminderAlarmReceiver"
+            android:exported="false" />
+
+        <!-- S12: re-arms alarms after reboot (R-REM-8). BOOT_COMPLETED is a protected
+             broadcast only the system can send, so non-exported is safe and standard. -->
+        <receiver
+            android:name=".reminders.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
         </receiver>
     </application>
 

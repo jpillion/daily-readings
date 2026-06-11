@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-    Today widget metadata (ESpec §7, D9). updatePeriodMillis is the system periodic
-    backstop (30 min, the platform minimum) for date rollover; V1 deliberately has no
-    midnight alarm (risk R6 accepted). minResize 40dp both axes lets the user shrink the
-    widget to a single 1x1 cell (S9 owner request, D-S9-2); the default add size stays 3x2.
+    Today widget metadata (ESpec §7, D9 → D-S12-2). Date rollover is now owned by the
+    precise midnight alarm (S12, FR-23 — risk R6 retired); updatePeriodMillis stays as the
+    30-min backstop for the force-stop case, where pending alarms are cleared. minResize
+    40dp both axes lets the user shrink the widget to a single 1x1 cell (S9 owner request,
+    D-S9-2); the default add size stays 3x2.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"

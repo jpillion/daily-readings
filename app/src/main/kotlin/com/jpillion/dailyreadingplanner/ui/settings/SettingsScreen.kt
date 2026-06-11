@@ -1,5 +1,10 @@
 package com.jpillion.dailyreadingplanner.ui.settings
 
+import android.content.Intent
+import android.provider.Settings
+import android.text.format.DateFormat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,17 +28,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -46,6 +57,7 @@ import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -60,14 +72,44 @@ fun SettingsRoute(
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val trackingStartDate by viewModel.trackingStartDate.collectAsStateWithLifecycle()
+    val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
+    val reminderTime by viewModel.reminderTime.collectAsStateWithLifecycle()
+    val showPermissionRationale by viewModel.showPermissionRationale.collectAsStateWithLifecycle()
+
+    // R-REM-7: the system POST_NOTIFICATIONS prompt, launched only when the user flips the
+    // toggle on without permission (the ViewModel emits the one-shot request event).
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            viewModel.onNotificationPermissionResult(granted)
+        }
+    LaunchedEffect(viewModel) {
+        viewModel.permissionRequests.collect {
+            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    val context = LocalContext.current
     SettingsScreen(
         selectedMode = themeMode,
         fontScale = fontScale,
         currentYear = viewModel.currentYear,
         trackingStartDate = trackingStartDate,
+        reminderEnabled = reminderEnabled,
+        reminderTime = reminderTime,
+        showReminderPermissionRationale = showPermissionRationale,
         onThemeModeSelected = viewModel::onThemeModeSelected,
         onFontScaleChanged = viewModel::onFontScaleChanged,
         onTrackingStartChanged = viewModel::onTrackingStartChanged,
+        onReminderToggled = viewModel::onReminderToggled,
+        onReminderTimeChanged = viewModel::onReminderTimeChanged,
+        onPermissionRationaleDismissed = viewModel::onPermissionRationaleDismissed,
+        onOpenNotificationSettings = {
+            viewModel.onPermissionRationaleDismissed()
+            context.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+            )
+        },
         onResetProgressConfirmed = viewModel::onResetProgressConfirmed,
         onBack = onBack,
     )
@@ -86,15 +128,23 @@ fun SettingsScreen(
     fontScale: Float,
     currentYear: Int,
     trackingStartDate: LocalDate?,
+    reminderEnabled: Boolean,
+    reminderTime: LocalTime,
+    showReminderPermissionRationale: Boolean,
     onThemeModeSelected: (ThemeMode) -> Unit,
     onFontScaleChanged: (Float) -> Unit,
     onTrackingStartChanged: (LocalDate?) -> Unit,
+    onReminderToggled: (Boolean) -> Unit,
+    onReminderTimeChanged: (LocalTime) -> Unit,
+    onPermissionRationaleDismissed: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onResetProgressConfirmed: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
     var showTrackingStartDialog by rememberSaveable { mutableStateOf(false) }
+    var showReminderTimeDialog by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -149,6 +199,24 @@ fun SettingsScreen(
 
             SectionTitle(stringResource(R.string.text_size_section_title))
             TextSizeSlider(fontScale = fontScale, onFontScaleChanged = onFontScaleChanged)
+
+            SectionTitle(stringResource(R.string.reminders_section_title))
+            ReminderToggleRow(
+                reminderEnabled = reminderEnabled,
+                onReminderToggled = onReminderToggled,
+            )
+            if (reminderEnabled) {
+                ReminderTimeRow(
+                    reminderTime = reminderTime,
+                    onOpenPicker = { showReminderTimeDialog = true },
+                )
+            }
+            Text(
+                text = stringResource(R.string.reminder_help),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+            )
 
             SectionTitle(stringResource(R.string.tracking_section_title))
             TrackingStartRow(
@@ -219,6 +287,138 @@ fun SettingsScreen(
             onDismiss = { showTrackingStartDialog = false },
         )
     }
+
+    if (showReminderTimeDialog) {
+        ReminderTimePickerDialog(
+            initialTime = reminderTime,
+            onConfirm = { picked ->
+                showReminderTimeDialog = false
+                onReminderTimeChanged(picked)
+            },
+            onDismiss = { showReminderTimeDialog = false },
+        )
+    }
+
+    if (showReminderPermissionRationale) {
+        // R-REM-7: a denial leaves the toggle off and explains why, with the system-settings
+        // path — never a silent pretend-on, never an unprompted re-ask.
+        AlertDialog(
+            onDismissRequest = onPermissionRationaleDismissed,
+            title = { Text(text = stringResource(R.string.reminder_permission_title)) },
+            text = { Text(text = stringResource(R.string.reminder_permission_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = onOpenNotificationSettings,
+                    modifier = Modifier.testTag("reminder-permission-settings"),
+                ) { Text(text = stringResource(R.string.reminder_permission_settings)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onPermissionRationaleDismissed,
+                    modifier = Modifier.testTag("reminder-permission-dismiss"),
+                ) { Text(text = stringResource(R.string.reminder_permission_dismiss)) }
+            },
+            modifier = Modifier.testTag("reminder-permission-dialog"),
+        )
+    }
+}
+
+/** The daily-reminder opt-in (R-REM-1/2): a labeled switch row, off by default. */
+@Composable
+private fun ReminderToggleRow(
+    reminderEnabled: Boolean,
+    onReminderToggled: (Boolean) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .toggleable(
+                    value = reminderEnabled,
+                    role = Role.Switch,
+                    onValueChange = onReminderToggled,
+                ).testTag("reminder-toggle")
+                .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.reminder_toggle_title),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = reminderEnabled, onCheckedChange = null)
+    }
+}
+
+/** Label + the chosen time; tapping opens the time-picker dialog (R-REM-2). */
+@Composable
+private fun ReminderTimeRow(
+    reminderTime: LocalTime,
+    onOpenPicker: () -> Unit,
+) {
+    val valueText = reminderTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+    val rowDescription = stringResource(R.string.reminder_time_row_description, valueText)
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .selectable(
+                    selected = false,
+                    role = Role.Button,
+                    onClick = onOpenPicker,
+                ).testTag("reminder-time-row")
+                .semantics { contentDescription = rowDescription }
+                .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.reminder_time_title),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = valueText,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("reminder-time-value"),
+        )
+    }
+}
+
+/** Stock M3 time picker in a plain dialog; 12/24-hour input follows the device setting. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderTimePickerDialog(
+    initialTime: LocalTime,
+    onConfirm: (LocalTime) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val state =
+        rememberTimePickerState(
+            initialHour = initialTime.hour,
+            initialMinute = initialTime.minute,
+            is24Hour = DateFormat.is24HourFormat(LocalContext.current),
+        )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.reminder_time_dialog_title)) },
+        text = { TimePicker(state = state) },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) },
+                modifier = Modifier.testTag("reminder-time-confirm"),
+            ) { Text(text = stringResource(R.string.reminder_time_dialog_confirm)) }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("reminder-time-cancel"),
+            ) { Text(text = stringResource(R.string.reminder_time_dialog_cancel)) }
+        },
+        modifier = Modifier.testTag("reminder-time-dialog"),
+    )
 }
 
 /**

@@ -6,6 +6,8 @@ import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.testing.FakeNotificationPermissionChecker
+import com.jpillion.dailyreadingplanner.testing.FakeReminderScheduler
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
@@ -15,6 +17,7 @@ import org.junit.Test
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneOffset
 
 class SettingsViewModelTest {
@@ -24,12 +27,16 @@ class SettingsViewModelTest {
     private val repository = FakeSettingsRepository()
     private val progress = FakeProgressRepository()
     private val widgetRefresher = FakeWidgetRefresher()
+    private val reminderScheduler = FakeReminderScheduler()
+    private val permissionChecker = FakeNotificationPermissionChecker(granted = true)
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val viewModel by lazy {
         SettingsViewModel(
             settingsRepository = repository,
             resetYearProgress = ResetYearProgressUseCase(progress, clock),
             widgetRefresher = widgetRefresher,
+            reminderScheduler = reminderScheduler,
+            notificationPermissionChecker = permissionChecker,
             clock = clock,
         )
     }
@@ -132,5 +139,81 @@ class SettingsViewModelTest {
             viewModel.onTrackingStartChanged(LocalDate.of(2026, 1, 1))
             assertThat(progress.clearYearCalls).hasSize(clearsBefore)
             assertThat(progress.marksFor(LocalDate.of(2026, 5, 1))).isNotEmpty()
+        }
+
+    // --- S12: daily reminder (R-REM-1/2/7). ---
+
+    @Test
+    fun `reminder defaults off with the 8am time`() {
+        assertThat(viewModel.reminderEnabled.value).isFalse()
+        assertThat(viewModel.reminderTime.value).isEqualTo(LocalTime.of(8, 0))
+    }
+
+    @Test
+    fun `enabling with permission persists and arms the alarm at the stored time`() =
+        runTest {
+            repository.storedReminderTime.value = LocalTime.of(7, 15)
+            viewModel.onReminderToggled(true)
+            assertThat(repository.reminderEnabledCalls).containsExactly(true)
+            assertThat(reminderScheduler.scheduledTimes).containsExactly(LocalTime.of(7, 15))
+        }
+
+    @Test
+    fun `disabling persists off and cancels the alarm`() =
+        runTest {
+            repository.storedReminderEnabled.value = true
+            viewModel.onReminderToggled(false)
+            assertThat(repository.reminderEnabledCalls).containsExactly(false)
+            assertThat(reminderScheduler.cancelCount).isEqualTo(1)
+            assertThat(reminderScheduler.scheduledTimes).isEmpty()
+        }
+
+    @Test
+    fun `enabling without permission requests it instead of persisting - toggle reflects reality`() =
+        runTest {
+            permissionChecker.granted = false
+            viewModel.permissionRequests.test {
+                viewModel.onReminderToggled(true)
+                awaitItem()
+                assertThat(repository.reminderEnabledCalls).isEmpty()
+                assertThat(reminderScheduler.scheduledTimes).isEmpty()
+            }
+        }
+
+    @Test
+    fun `permission granted from the prompt enables and arms`() =
+        runTest {
+            viewModel.onNotificationPermissionResult(granted = true)
+            assertThat(repository.reminderEnabledCalls).containsExactly(true)
+            assertThat(reminderScheduler.scheduledTimes).hasSize(1)
+            assertThat(viewModel.showPermissionRationale.value).isFalse()
+        }
+
+    @Test
+    fun `permission denied keeps the setting off and shows the explanation until dismissed`() =
+        runTest {
+            viewModel.onNotificationPermissionResult(granted = false)
+            assertThat(repository.reminderEnabledCalls).isEmpty()
+            assertThat(reminderScheduler.scheduledTimes).isEmpty()
+            assertThat(viewModel.showPermissionRationale.value).isTrue()
+            viewModel.onPermissionRationaleDismissed()
+            assertThat(viewModel.showPermissionRationale.value).isFalse()
+        }
+
+    @Test
+    fun `changing the time while enabled persists and reschedules to the new time`() =
+        runTest {
+            repository.storedReminderEnabled.value = true
+            viewModel.onReminderTimeChanged(LocalTime.of(21, 0))
+            assertThat(repository.reminderTimeCalls).containsExactly(LocalTime.of(21, 0))
+            assertThat(reminderScheduler.scheduledTimes).containsExactly(LocalTime.of(21, 0))
+        }
+
+    @Test
+    fun `changing the time while disabled persists but never arms an alarm`() =
+        runTest {
+            viewModel.onReminderTimeChanged(LocalTime.of(21, 0))
+            assertThat(repository.reminderTimeCalls).containsExactly(LocalTime.of(21, 0))
+            assertThat(reminderScheduler.scheduledTimes).isEmpty()
         }
 }

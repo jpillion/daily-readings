@@ -30,6 +30,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * S9-T7: the JVM-provable slice of release gate G-A11Y, pinned so regressions fail CI:
@@ -93,9 +94,16 @@ class AccessibilityGateTest {
                     fontScale = 1f,
                     currentYear = 2026,
                     trackingStartDate = today,
+                    reminderEnabled = true,
+                    reminderTime = LocalTime.of(8, 0),
+                    showReminderPermissionRationale = false,
                     onThemeModeSelected = {},
                     onFontScaleChanged = {},
                     onTrackingStartChanged = {},
+                    onReminderToggled = {},
+                    onReminderTimeChanged = {},
+                    onPermissionRationaleDismissed = {},
+                    onOpenNotificationSettings = {},
                     onResetProgressConfirmed = {},
                     onBack = {},
                 )
@@ -126,6 +134,18 @@ class AccessibilityGateTest {
             .performScrollTo()
             .assertTouchTargetAtLeast(48.dp)
             .assert(hasAnyContentDescription())
+        // S12: the reminder rows are authored controls -> 48dp; the toggle row exposes
+        // switch semantics and the time row speaks label+value.
+        composeRule
+            .onNodeWithTag("reminder-toggle")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState))
+        composeRule
+            .onNodeWithTag("reminder-time-row")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assertContentDescriptionContains("Reminder time", substring = true)
     }
 
     @Test

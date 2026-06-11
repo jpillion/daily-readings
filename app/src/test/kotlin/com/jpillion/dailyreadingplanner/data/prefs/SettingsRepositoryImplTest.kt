@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
@@ -20,6 +21,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** S3-T6: theme preference persists via DataStore; default and bad values degrade to SYSTEM. */
 class SettingsRepositoryImplTest {
@@ -120,5 +122,43 @@ class SettingsRepositoryImplTest {
             assertThat(repository.trackingStartInitialized.first()).isFalse()
             repository.markTrackingStartInitialized()
             assertThat(repository.trackingStartInitialized.first()).isTrue()
+        }
+
+    // --- S12: reminder persistence (R-REM-1/2). ---
+
+    @Test
+    fun `reminder defaults to off with the 8am default time when nothing is stored`() =
+        themeTest { repository, _ ->
+            assertThat(repository.reminderEnabled.first()).isFalse()
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
+        }
+
+    @Test
+    fun `reminder enabled round-trips both ways`() =
+        themeTest { repository, _ ->
+            repository.setReminderEnabled(true)
+            assertThat(repository.reminderEnabled.first()).isTrue()
+            repository.setReminderEnabled(false)
+            assertThat(repository.reminderEnabled.first()).isFalse()
+        }
+
+    @Test
+    fun `reminder time round-trips, including midnight and 23-59 boundaries`() =
+        themeTest { repository, _ ->
+            repository.setReminderTime(LocalTime.of(21, 15))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(21, 15))
+            repository.setReminderTime(LocalTime.MIDNIGHT)
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.MIDNIGHT)
+            repository.setReminderTime(LocalTime.of(23, 59))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(23, 59))
+        }
+
+    @Test
+    fun `a corrupt stored reminder minute degrades to the default instead of crashing`() =
+        themeTest { repository, dataStore ->
+            dataStore.edit { it[intPreferencesKey("reminder_minute_of_day")] = 4_000 }
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
+            dataStore.edit { it[intPreferencesKey("reminder_minute_of_day")] = -1 }
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
         }
 }

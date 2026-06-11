@@ -5,14 +5,23 @@ import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
+import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
 import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 
 /**
@@ -29,6 +38,8 @@ class SettingsViewModel
         private val settingsRepository: SettingsRepository,
         private val resetYearProgress: ResetYearProgressUseCase,
         private val widgetRefresher: WidgetRefresher,
+        private val reminderScheduler: ReminderScheduler,
+        private val notificationPermissionChecker: NotificationPermissionChecker,
         clock: Clock,
     ) : ViewModel() {
         /** The year a reset would clear — shown in the confirmation dialog. */
@@ -68,6 +79,81 @@ class SettingsViewModel
         /** Persists the picked tracking start date; null clears it (S10). Never touches marks. */
         fun onTrackingStartChanged(date: LocalDate?) {
             viewModelScope.launch { settingsRepository.setTrackingStartDate(date) }
+        }
+
+        // --- S12: daily reminder (PRD §13.2). ---
+
+        val reminderEnabled: StateFlow<Boolean> =
+            settingsRepository.reminderEnabled.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = false,
+            )
+
+        val reminderTime: StateFlow<LocalTime> =
+            settingsRepository.reminderTime.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = SettingsRepository.DEFAULT_REMINDER_TIME,
+            )
+
+        private val permissionRequestChannel = Channel<Unit>(Channel.BUFFERED)
+
+        /** One-shot "launch the POST_NOTIFICATIONS prompt" events for the Route (R-REM-7). */
+        val permissionRequests: Flow<Unit> = permissionRequestChannel.receiveAsFlow()
+
+        private val showPermissionRationaleState = MutableStateFlow(false)
+
+        /** True after a denial: the toggle stays off and a brief explanation shows (R-REM-7). */
+        val showPermissionRationale: StateFlow<Boolean> = showPermissionRationaleState.asStateFlow()
+
+        /**
+         * The toggle (R-REM-1/2/7): enabling without notification permission requests it
+         * instead of persisting — the setting only ever reflects reality. Disabling cancels
+         * the alarm immediately.
+         */
+        fun onReminderToggled(enabled: Boolean) {
+            viewModelScope.launch {
+                if (enabled && !notificationPermissionChecker.hasNotificationPermission()) {
+                    permissionRequestChannel.send(Unit)
+                    return@launch
+                }
+                persistReminderEnabled(enabled)
+            }
+        }
+
+        /** Result of the system permission prompt: granted → enable; denied → explain, stay off. */
+        fun onNotificationPermissionResult(granted: Boolean) {
+            viewModelScope.launch {
+                if (granted) {
+                    persistReminderEnabled(true)
+                } else {
+                    showPermissionRationaleState.value = true
+                }
+            }
+        }
+
+        fun onPermissionRationaleDismissed() {
+            showPermissionRationaleState.value = false
+        }
+
+        /** Persists the picked time; an enabled reminder is rescheduled to the new time at once. */
+        fun onReminderTimeChanged(time: LocalTime) {
+            viewModelScope.launch {
+                settingsRepository.setReminderTime(time)
+                if (settingsRepository.reminderEnabled.first()) {
+                    reminderScheduler.scheduleReminder(time)
+                }
+            }
+        }
+
+        private suspend fun persistReminderEnabled(enabled: Boolean) {
+            settingsRepository.setReminderEnabled(enabled)
+            if (enabled) {
+                reminderScheduler.scheduleReminder(settingsRepository.reminderTime.first())
+            } else {
+                reminderScheduler.cancelReminder()
+            }
         }
 
         /** Only ever called from the confirmation dialog's positive action (S8). */

@@ -3,6 +3,7 @@ package com.jpillion.dailyreadingplanner.data.prefs
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * User-settings persistence (ESpec §5.5 + S8 + S10): theme mode, text-size scale, and the
@@ -45,9 +46,29 @@ interface SettingsRepository {
     /** Marks the one-time tracking-start default as having run (never unset). */
     suspend fun markTrackingStartInitialized()
 
+    /**
+     * Daily reminder opt-in (S12, PRD R-REM-1/2): off by default — the app is silent until
+     * the user asks. One reminder per day, no per-weekday schedules.
+     */
+    val reminderEnabled: Flow<Boolean>
+
+    /**
+     * The local time of day the daily reminder fires (S12, R-REM-2). Stored as minute-of-day
+     * (timezone-free wall-clock semantics: "8:00 wherever the device is"). Defaults to
+     * [DEFAULT_REMINDER_TIME]; only meaningful while [reminderEnabled] is true.
+     */
+    val reminderTime: Flow<LocalTime>
+
+    suspend fun setReminderEnabled(enabled: Boolean)
+
+    suspend fun setReminderTime(time: LocalTime)
+
     companion object {
         const val MIN_FONT_SCALE = 0.85f
         const val MAX_FONT_SCALE = 1.5f
         const val DEFAULT_FONT_SCALE = 1.0f
+
+        /** D-S12-5: the pre-filled reminder time on first enable — one tap away from editing. */
+        val DEFAULT_REMINDER_TIME: LocalTime = LocalTime.of(8, 0)
     }
 }

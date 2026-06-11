@@ -27,7 +27,7 @@ offline; the text link needs network.
 This is a **standalone repo**, deliberately separate from the unrelated `strikelog` project.
 Do not reference or depend on strikelog.
 
-## Current status (as of 2026-06-10)
+## Current status (as of 2026-06-11)
 
 - Repo on `main`, pushed to private GitHub remote `https://github.com/jpillion/daily-readings`.
 - ✅ **Sprint 1 (Phase 0) is DONE** (commits `803ad3a`, `e22a123`): 365-day plan data (Feb = 28,
@@ -202,12 +202,41 @@ Do not reference or depend on strikelog.
   year-boundary walk floor); Kover 96.2% on domain/data. New user-visible strings await
   owner tone sign-off (PRD M8) — listed in the handoff. Version stays 1.0.0/10000 (V2 WIP).
   Handoff: [docs/sprints/sprint-0011-streaks-stats.md](docs/sprints/sprint-0011-streaks-stats.md).
-- Next up: **Sprint 12 — V2 reading reminders** (`sprint-0012-reminders`): PRD §13.2 — an
-  optional, user-scheduled daily notification with the day's readings; off by default;
-  owner constraint: time configurable in Settings, or not at all. Mind exact-alarm vs
-  inexact (API 26+), reuse the `WidgetRefresher`-style seam thinking, notification copy
-  needs owner tone sign-off. V1 ship still runs in parallel on the owner's side (Sprint 9
-  checklists; add: fresh install defaults the tracking start to today).
+- ✅ **Sprint 12 (reading reminders) is DONE.** PRD §13.2 (FR-19…23): Settings → Reminders
+  — "Daily reminder" switch (**off by default**, R-REM-1) + M3 time-picker row (default
+  08:00, D-S12-5), persisted in the DataStore `SettingsRepository`
+  (`reminder_enabled`/`reminder_minute_of_day`). At the chosen time one respectful
+  notification ("Today's readings" + the day's collapsed references, e.g.
+  "Genesis 1–2 · Psalms 1–2 · Matthew 1–2") opens the app on today; quietly suppressed
+  when the day is already complete (R-REM-4) and on Feb 29 (R-REM-5), decided **at fire
+  time** (D-S12-3) via the same `GetDayReadingsUseCase` the UI uses; never retroactive.
+  **Inexact alarms** (`setAndAllowWhileIdle(RTC_WAKEUP)`, D-S12-1 — no exact-alarm
+  permission/Play policy burden); the standing alarm is re-armed after each fire, on
+  BOOT_COMPLETED, and on every app launch (`RescheduleAlarmsUseCase` in
+  `MainActivity.onCreate`); a disable cancels it and a stale alarm no-ops.
+  POST_NOTIFICATIONS is requested only when the user enables the toggle; denial keeps the
+  setting off + explanation dialog with a system-settings path (R-REM-7;
+  `NotificationPermissionChecker` seam, D-S12-6). **FR-23 landed:** an independent
+  midnight alarm snaps the widget to the new day at date rollover (D-S12-2 — D9 risk R6
+  retired; the 30-min `updatePeriodMillis` backstop remains for force-stop). New package
+  `reminders/` (pure `AlarmTimes`, `ReminderScheduler`/`AlarmManagerReminderScheduler`,
+  `ReminderNotifier`/`SystemReminderNotifier`, thin `ReminderAlarmReceiver`/`BootReceiver`);
+  domain `DeliverDueReminderUseCase` + `RescheduleAlarmsUseCase`; manifest gains ONLY
+  POST_NOTIFICATIONS + RECEIVE_BOOT_COMPLETED (receivers non-exported). 260/260 tests
+  (46 new; 7-test Sprint 1 gate untouched), 4 mutations killed (complete-day skip, Feb-29
+  skip, exactly-now no-refire boundary, disable-cancel); Kover 96.4% on domain/data.
+  Notification/settings strings await owner tone sign-off (PRD M8 — table in the handoff,
+  note "Psalms" vs the PRD's "Psalm"). Device-pass items (real fire time, reboot, permission
+  prompt, midnight rollover) listed in the handoff. Version stays 1.0.0/10000 (V2 WIP).
+  Handoff: [docs/sprints/sprint-0012-reminders.md](docs/sprints/sprint-0012-reminders.md).
+- Next up: **Sprint 13 — Bible-app links** (`sprint-0013-bible-app-links`): the specced
+  provider-choice feature ([docs/features/bible-app-links.md](docs/features/bible-app-links.md))
+  — reading taps open the user's chosen KJV destination (BLB stays the zero-setup default),
+  outbound intents only, no networking. Generalize `OpenReferenceUseCase` (today returns a
+  BLB URL only) and the `CustomTabLauncher` seam; each provider needs its own live-verified
+  book-token table (Sprint 1 verification pattern — don't drift from `BookCatalog`). Owner
+  decisions in spec §10 may gate scope. V1 ship still runs in parallel on the owner's side
+  (device-pass + keystore/Play checklists in the Sprint 9–12 handoffs).
 
 ## The reading plan
 

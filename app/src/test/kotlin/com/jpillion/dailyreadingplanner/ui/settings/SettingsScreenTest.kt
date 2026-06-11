@@ -3,6 +3,8 @@ package com.jpillion.dailyreadingplanner.ui.settings
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -20,6 +22,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /**
  * Settings screen behavior (FR-9 + S8): theme selector, the text-size slider, the
@@ -34,6 +39,10 @@ class SettingsScreenTest {
     private val selections = mutableListOf<ThemeMode>()
     private val fontScaleChanges = mutableListOf<Float>()
     private val trackingStartChanges = mutableListOf<LocalDate?>()
+    private val reminderToggles = mutableListOf<Boolean>()
+    private val reminderTimeChanges = mutableListOf<LocalTime>()
+    private var rationaleDismissals = 0
+    private var openNotificationSettingsCalls = 0
     private var resetConfirms = 0
     private var backCalls = 0
 
@@ -41,6 +50,9 @@ class SettingsScreenTest {
         selectedMode: ThemeMode,
         fontScale: Float = 1f,
         trackingStartDate: LocalDate? = null,
+        reminderEnabled: Boolean = false,
+        reminderTime: LocalTime = LocalTime.of(8, 0),
+        showReminderPermissionRationale: Boolean = false,
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -49,9 +61,16 @@ class SettingsScreenTest {
                     fontScale = fontScale,
                     currentYear = 2026,
                     trackingStartDate = trackingStartDate,
+                    reminderEnabled = reminderEnabled,
+                    reminderTime = reminderTime,
+                    showReminderPermissionRationale = showReminderPermissionRationale,
                     onThemeModeSelected = { selections += it },
                     onFontScaleChanged = { fontScaleChanges += it },
                     onTrackingStartChanged = { trackingStartChanges += it },
+                    onReminderToggled = { reminderToggles += it },
+                    onReminderTimeChanged = { reminderTimeChanges += it },
+                    onPermissionRationaleDismissed = { rationaleDismissals++ },
+                    onOpenNotificationSettings = { openNotificationSettingsCalls++ },
                     onResetProgressConfirmed = { resetConfirms++ },
                     onBack = { backCalls++ },
                 )
@@ -171,5 +190,72 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("tracking-start-clear").performScrollTo().performClick()
         assertThat(trackingStartChanges).containsExactly(null as LocalDate?)
         composeRule.onNodeWithTag("tracking-start-dialog").assertDoesNotExist()
+    }
+
+    // --- S12: reminders section (R-REM-1/2/7). ---
+
+    @Test
+    fun reminderToggle_isOffByDefault_andHidesTheTimeRow() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule
+            .onNodeWithTag("reminder-toggle")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertIsOff()
+        composeRule.onNodeWithTag("reminder-time-row").assertDoesNotExist()
+    }
+
+    @Test
+    fun reminderToggle_reportsTheNewValue() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("reminder-toggle").performScrollTo().performClick()
+        assertThat(reminderToggles).containsExactly(true)
+    }
+
+    @Test
+    fun enabledReminder_showsTheTimeRow_withTheFormattedTime() {
+        setScreen(ThemeMode.SYSTEM, reminderEnabled = true, reminderTime = LocalTime.of(21, 30))
+        composeRule.onNodeWithTag("reminder-toggle").performScrollTo().assertIsOn()
+        val expected = LocalTime.of(21, 30).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+        composeRule
+            .onNodeWithTag("reminder-time-value", useUnmergedTree = true)
+            .performScrollTo()
+            .assertTextEquals(expected)
+    }
+
+    @Test
+    fun timeRow_opensThePicker_andConfirmReportsTheChosenTime() {
+        setScreen(ThemeMode.SYSTEM, reminderEnabled = true, reminderTime = LocalTime.of(8, 0))
+        composeRule.onNodeWithTag("reminder-time-row").performScrollTo().performClick()
+        composeRule.onNodeWithTag("reminder-time-dialog").assertIsDisplayed()
+        // Confirm without changing the dial: reports the initial time.
+        composeRule.onNodeWithTag("reminder-time-confirm").performClick()
+        composeRule.onNodeWithTag("reminder-time-dialog").assertDoesNotExist()
+        assertThat(reminderTimeChanges).containsExactly(LocalTime.of(8, 0))
+    }
+
+    @Test
+    fun timePicker_cancelReportsNothing() {
+        setScreen(ThemeMode.SYSTEM, reminderEnabled = true)
+        composeRule.onNodeWithTag("reminder-time-row").performScrollTo().performClick()
+        composeRule.onNodeWithTag("reminder-time-cancel").performClick()
+        composeRule.onNodeWithTag("reminder-time-dialog").assertDoesNotExist()
+        assertThat(reminderTimeChanges).isEmpty()
+    }
+
+    @Test
+    fun permissionRationale_showsWhenFlagged_withSettingsAndDismissActions() {
+        setScreen(ThemeMode.SYSTEM, showReminderPermissionRationale = true)
+        composeRule.onNodeWithTag("reminder-permission-dialog").assertIsDisplayed()
+        composeRule.onNodeWithText("Notifications are turned off").assertIsDisplayed()
+        composeRule.onNodeWithTag("reminder-permission-settings").performClick()
+        assertThat(openNotificationSettingsCalls).isEqualTo(1)
+    }
+
+    @Test
+    fun permissionRationale_dismissReportsDismissal() {
+        setScreen(ThemeMode.SYSTEM, showReminderPermissionRationale = true)
+        composeRule.onNodeWithTag("reminder-permission-dismiss").performClick()
+        assertThat(rationaleDismissals).isEqualTo(1)
     }
 }

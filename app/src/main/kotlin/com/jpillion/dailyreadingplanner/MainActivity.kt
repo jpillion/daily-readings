@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.jpillion.dailyreadingplanner.domain.InitializeTrackingStartUseCase
+import com.jpillion.dailyreadingplanner.domain.RescheduleAlarmsUseCase
 import com.jpillion.dailyreadingplanner.ui.navigation.AppNavHost
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import com.jpillion.dailyreadingplanner.ui.theme.ThemeViewModel
@@ -31,6 +32,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var initializeTrackingStart: InitializeTrackingStartUseCase
 
+    @Inject
+    lateinit var rescheduleAlarms: RescheduleAlarmsUseCase
+
     override fun onResume() {
         super.onResume()
         // Opportunistic widget refresh on resume (D9/ESpec §7): the dominant date-rollover
@@ -42,6 +46,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // One-time tracking-start default (S10, D-S10-1); idempotent via its marker pref.
         lifecycleScope.launch { initializeTrackingStart() }
+        // S12 (R-REM-8 + D-S12-2): re-arm the standing alarms from persisted settings on
+        // every launch — idempotent, covers app update and relaunch after a force-stop.
+        lifecycleScope.launch { rescheduleAlarms() }
         enableEdgeToEdge()
         setContent {
             val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
