@@ -7,7 +7,9 @@ import android.text.format.DateFormat
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,19 +17,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -50,6 +54,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -199,57 +204,19 @@ fun SettingsScreen(
                     .verticalScroll(rememberScrollState()),
         ) {
             SectionTitle(stringResource(R.string.theme_section_title))
-            Column(modifier = Modifier.selectableGroup()) {
-                ThemeModeRow(
-                    mode = ThemeMode.LIGHT,
-                    label = stringResource(R.string.theme_light),
-                    testTag = "theme-option-light",
-                    selectedMode = selectedMode,
-                    onThemeModeSelected = onThemeModeSelected,
-                )
-                ThemeModeRow(
-                    mode = ThemeMode.DARK,
-                    label = stringResource(R.string.theme_dark),
-                    testTag = "theme-option-dark",
-                    selectedMode = selectedMode,
-                    onThemeModeSelected = onThemeModeSelected,
-                )
-                ThemeModeRow(
-                    mode = ThemeMode.SYSTEM,
-                    label = stringResource(R.string.theme_system),
-                    testTag = "theme-option-system",
-                    selectedMode = selectedMode,
-                    onThemeModeSelected = onThemeModeSelected,
-                )
-            }
+            ThemeDropdown(
+                selectedMode = selectedMode,
+                onThemeModeSelected = onThemeModeSelected,
+            )
 
             SectionTitle(stringResource(R.string.text_size_section_title))
             TextSizeSlider(fontScale = fontScale, onFontScaleChanged = onFontScaleChanged)
 
             SectionTitle(stringResource(R.string.provider_section_title))
-            Column(modifier = Modifier.selectableGroup()) {
-                BibleProviderRow(
-                    provider = BibleProvider.BLB,
-                    label = stringResource(R.string.provider_blb),
-                    testTag = "provider-option-blb",
-                    selectedProvider = selectedProvider,
-                    onBibleProviderSelected = onBibleProviderSelected,
-                )
-                BibleProviderRow(
-                    provider = BibleProvider.BIBLE_GATEWAY,
-                    label = stringResource(R.string.provider_biblegateway),
-                    testTag = "provider-option-biblegateway",
-                    selectedProvider = selectedProvider,
-                    onBibleProviderSelected = onBibleProviderSelected,
-                )
-                BibleProviderRow(
-                    provider = BibleProvider.YOUVERSION,
-                    label = stringResource(R.string.provider_youversion),
-                    testTag = "provider-option-youversion",
-                    selectedProvider = selectedProvider,
-                    onBibleProviderSelected = onBibleProviderSelected,
-                )
-            }
+            ProviderDropdown(
+                selectedProvider = selectedProvider,
+                onBibleProviderSelected = onBibleProviderSelected,
+            )
             Row(
                 modifier =
                     Modifier
@@ -632,69 +599,162 @@ private fun SectionTitle(title: String) {
     )
 }
 
-/** S13: one provider choice, the theme-selector pattern (spec §5) — radio row, persisted. */
+/**
+ * S14 (owner request): the theme selector as a compact dropdown — one row showing the
+ * current value; tapping opens an M3 [DropdownMenu] with the three modes. The option test
+ * tags (`theme-option-*`) carry over from the S6 radio rows onto the menu items.
+ */
 @Composable
-private fun BibleProviderRow(
-    provider: BibleProvider,
-    label: String,
-    testTag: String,
+private fun ThemeDropdown(
+    selectedMode: ThemeMode,
+    onThemeModeSelected: (ThemeMode) -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val options =
+        listOf(
+            Triple(ThemeMode.LIGHT, stringResource(R.string.theme_light), "theme-option-light"),
+            Triple(ThemeMode.DARK, stringResource(R.string.theme_dark), "theme-option-dark"),
+            Triple(ThemeMode.SYSTEM, stringResource(R.string.theme_system), "theme-option-system"),
+        )
+    val valueText = options.first { it.first == selectedMode }.second
+    SettingsDropdownRow(
+        valueText = valueText,
+        rowDescription = stringResource(R.string.theme_dropdown_description, valueText),
+        testTag = "theme-dropdown",
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        options.forEach { (mode, label, tag) ->
+            SelectableMenuItem(
+                label = label,
+                selected = mode == selectedMode,
+                testTag = tag,
+                onClick = {
+                    expanded = false
+                    onThemeModeSelected(mode)
+                },
+            )
+        }
+    }
+}
+
+/**
+ * S14: the S13 provider selector as the same compact dropdown (`provider-option-*` tags
+ * carry over), plus a visible-but-disabled "Read in this app (coming soon)" teaser row.
+ * The teaser is render-layer ONLY — deliberately not a [BibleProvider] entry, so no tap
+ * can ever persist it; `enabled = false` gives proper disabled semantics for TalkBack.
+ */
+@Composable
+private fun ProviderDropdown(
     selectedProvider: BibleProvider,
     onBibleProviderSelected: (BibleProvider) -> Unit,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .selectable(
-                    selected = provider == selectedProvider,
-                    role = Role.RadioButton,
-                    onClick = { onBibleProviderSelected(provider) },
-                ).testTag(testTag)
-                .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(
-            selected = provider == selectedProvider,
-            onClick = null,
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val options =
+        listOf(
+            Triple(BibleProvider.BLB, stringResource(R.string.provider_blb), "provider-option-blb"),
+            Triple(
+                BibleProvider.BIBLE_GATEWAY,
+                stringResource(R.string.provider_biblegateway),
+                "provider-option-biblegateway",
+            ),
+            Triple(
+                BibleProvider.YOUVERSION,
+                stringResource(R.string.provider_youversion),
+                "provider-option-youversion",
+            ),
         )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp),
+    val valueText = options.first { it.first == selectedProvider }.second
+    SettingsDropdownRow(
+        valueText = valueText,
+        rowDescription = stringResource(R.string.provider_dropdown_description, valueText),
+        testTag = "provider-dropdown",
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        options.forEach { (provider, label, tag) ->
+            SelectableMenuItem(
+                label = label,
+                selected = provider == selectedProvider,
+                testTag = tag,
+                onClick = {
+                    expanded = false
+                    onBibleProviderSelected(provider)
+                },
+            )
+        }
+        DropdownMenuItem(
+            text = { Text(text = stringResource(R.string.provider_inapp_coming_soon)) },
+            onClick = {},
+            enabled = false,
+            modifier = Modifier.testTag("provider-option-inapp"),
         )
     }
 }
 
+/**
+ * S14: the shared dropdown idiom — a 56dp settings row (current value + drop-down arrow,
+ * [Role.DropdownList], spoken as "label, value") anchoring an M3 [DropdownMenu].
+ */
 @Composable
-private fun ThemeModeRow(
-    mode: ThemeMode,
-    label: String,
+private fun SettingsDropdownRow(
+    valueText: String,
+    rowDescription: String,
     testTag: String,
-    selectedMode: ThemeMode,
-    onThemeModeSelected: (ThemeMode) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    menuContent: @Composable ColumnScope.() -> Unit,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .selectable(
-                    selected = mode == selectedMode,
-                    role = Role.RadioButton,
-                    onClick = { onThemeModeSelected(mode) },
-                ).testTag(testTag)
-                .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(
-            selected = mode == selectedMode,
-            onClick = null,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp),
+    Box {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .selectable(
+                        selected = false,
+                        role = Role.DropdownList,
+                        onClick = { onExpandedChange(true) },
+                    ).testTag(testTag)
+                    .semantics { contentDescription = rowDescription }
+                    .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = valueText,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            content = menuContent,
         )
     }
+}
+
+/** One selectable menu option: a leading check on the current value + selection semantics. */
+@Composable
+private fun SelectableMenuItem(
+    label: String,
+    selected: Boolean,
+    testTag: String,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(text = label) },
+        onClick = onClick,
+        leadingIcon =
+            if (selected) {
+                { Icon(imageVector = Icons.Filled.Check, contentDescription = null) }
+            } else {
+                null
+            },
+        modifier =
+            Modifier
+                .testTag(testTag)
+                .semantics { this.selected = selected },
+    )
 }

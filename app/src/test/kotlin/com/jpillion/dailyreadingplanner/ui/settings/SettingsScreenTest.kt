@@ -1,7 +1,9 @@
 package com.jpillion.dailyreadingplanner.ui.settings
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -28,8 +30,9 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 /**
- * Settings screen behavior (FR-9 + S8): theme selector, the text-size slider, the
- * confirm-gated year-scoped reset, and back navigation.
+ * Settings screen behavior (FR-9 + S8; S14 reworked the theme + provider selectors into
+ * compact dropdown rows): selectors, the text-size slider, the confirm-gated year-scoped
+ * reset, and back navigation.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -86,27 +89,34 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun rendersThemeSection_withTheSelectedModeChecked() {
+    fun themeDropdownRow_showsTheCurrentMode_andSpeaksIt() {
         setScreen(ThemeMode.DARK)
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Theme").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme-option-light").assertIsDisplayed().assertIsNotSelected()
-        composeRule.onNodeWithTag("theme-option-dark").assertIsDisplayed().assertIsSelected()
-        composeRule.onNodeWithTag("theme-option-system").assertIsDisplayed().assertIsNotSelected()
+        composeRule
+            .onNodeWithTag("theme-dropdown")
+            .assertIsDisplayed()
+            .assertContentDescriptionEquals("Theme, Dark")
+        // The menu is closed until the row is tapped.
+        composeRule.onNodeWithTag("theme-option-dark").assertDoesNotExist()
     }
 
     @Test
-    fun systemDefault_isTheSelectedRowForSystemMode() {
+    fun openingTheThemeMenu_marksTheCurrentModeSelected() {
         setScreen(ThemeMode.SYSTEM)
-        composeRule.onNodeWithTag("theme-option-system").assertIsSelected()
+        composeRule.onNodeWithTag("theme-dropdown").performClick()
+        composeRule.onNodeWithTag("theme-option-system").assertIsDisplayed().assertIsSelected()
         composeRule.onNodeWithTag("theme-option-light").assertIsNotSelected()
         composeRule.onNodeWithTag("theme-option-dark").assertIsNotSelected()
     }
 
     @Test
-    fun clickingARow_reportsThatMode() {
+    fun pickingAThemeFromTheMenu_reportsThatMode_andClosesTheMenu() {
         setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("theme-dropdown").performClick()
         composeRule.onNodeWithTag("theme-option-dark").performClick()
+        composeRule.onNodeWithTag("theme-option-dark").assertDoesNotExist() // menu closed
+        composeRule.onNodeWithTag("theme-dropdown").performClick() // reopen for a second pick
         composeRule.onNodeWithTag("theme-option-light").performClick()
         assertThat(selections).containsExactly(ThemeMode.DARK, ThemeMode.LIGHT).inOrder()
     }
@@ -266,34 +276,57 @@ class SettingsScreenTest {
         assertThat(rationaleDismissals).isEqualTo(1)
     }
 
-    // --- S13: "Open readings in" provider selector + request-an-app row. ---
+    // --- S13 (S14: dropdown): "Open readings in" provider selector + request-an-app row. ---
 
     @Test
-    fun providerSection_showsAllRows_withTheStoredChoiceSelected() {
+    fun providerDropdown_showsTheStoredChoice_andMarksItSelectedInTheMenu() {
         setScreen(ThemeMode.SYSTEM, selectedProvider = BibleProvider.YOUVERSION)
         composeRule.onNodeWithText("Open readings in").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("provider-option-blb").performScrollTo().assertIsNotSelected()
         composeRule
-            .onNodeWithTag("provider-option-biblegateway")
+            .onNodeWithTag("provider-dropdown")
+            .assertContentDescriptionEquals("Open readings in, YouVersion / Bible.com")
             .performScrollTo()
-            .assertIsNotSelected()
-        composeRule.onNodeWithTag("provider-option-youversion").performScrollTo().assertIsSelected()
+            .performClick()
+        composeRule.onNodeWithTag("provider-option-blb").assertIsNotSelected()
+        composeRule.onNodeWithTag("provider-option-biblegateway").assertIsNotSelected()
+        composeRule.onNodeWithTag("provider-option-youversion").assertIsSelected()
     }
 
     @Test
-    fun providerSection_defaultsToBlueLetterBible() {
+    fun providerDropdown_defaultsToBlueLetterBible() {
         setScreen(ThemeMode.SYSTEM)
-        composeRule.onNodeWithTag("provider-option-blb").performScrollTo().assertIsSelected()
+        composeRule
+            .onNodeWithTag("provider-dropdown")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Open readings in, Blue Letter Bible (default)")
+            .performClick()
+        composeRule.onNodeWithTag("provider-option-blb").assertIsSelected()
     }
 
     @Test
-    fun clickingAProviderRow_reportsThatProvider() {
+    fun pickingAProviderFromTheMenu_reportsThatProvider() {
         setScreen(ThemeMode.SYSTEM)
-        composeRule.onNodeWithTag("provider-option-biblegateway").performScrollTo().performClick()
-        composeRule.onNodeWithTag("provider-option-youversion").performScrollTo().performClick()
+        composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
+        composeRule.onNodeWithTag("provider-option-biblegateway").performClick()
+        composeRule.onNodeWithTag("provider-dropdown").performClick()
+        composeRule.onNodeWithTag("provider-option-youversion").performClick()
         assertThat(providerSelections)
             .containsExactly(BibleProvider.BIBLE_GATEWAY, BibleProvider.YOUVERSION)
             .inOrder()
+    }
+
+    @Test
+    fun comingSoonOption_isVisibleButDisabled_andNeverReportsASelection() {
+        // S14 owner request: the in-app reading teaser is render-layer only — present so
+        // users know it's coming, disabled so no tap can ever persist it.
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
+        composeRule
+            .onNodeWithTag("provider-option-inapp")
+            .assertIsDisplayed()
+            .assertIsNotEnabled()
+            .performClick()
+        assertThat(providerSelections).isEmpty()
     }
 
     @Test

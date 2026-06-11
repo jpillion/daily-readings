@@ -249,10 +249,42 @@ Do not reference or depend on strikelog.
   279/279 tests (19 net-new; 7-test Sprint 1 gate untouched), 4 mutations killed; Kover
   96.5% on domain/data. S13 strings need owner tone sign-off (table in the handoff).
   Handoff: [docs/sprints/sprint-0013-bible-app-links.md](docs/sprints/sprint-0013-bible-app-links.md).
-- Next up: **Sprint 14 — V2 release prep** (`sprint-0014-v2-release-prep`): version bump
-  past 1.0.0/10000, the owner's consolidated device pass (S9 checklists + tracking-start +
-  stats + S12 reminders + S13 provider items), S12/S13 string tone sign-offs, upload key +
-  Play listing if still pending, closed-track rollout.
+- ✅ **Sprint 14 (Settings UI tweaks + widget visual redesign — owner feedback) is DONE**
+  (owner-redirected again from `v2-release-prep`; uncommitted in the working tree by
+  request). (1) **Theme + "Open readings in" are compact dropdown rows** (shared
+  `SettingsDropdownRow` idiom in `SettingsScreen.kt`: 56dp row showing the current value,
+  `Role.DropdownList`, spoken "label, value", anchoring an M3 `DropdownMenu`; the old
+  `theme-option-*`/`provider-option-*` tags carry over onto the menu items, new row tags
+  `theme-dropdown`/`provider-dropdown`). The provider menu adds a **visible-but-disabled
+  teaser** "Read in this app (coming soon)" (`provider-option-inapp`) — render-layer ONLY,
+  deliberately not a `BibleProvider` value, so no tap can ever persist it; proper disabled
+  semantics for TalkBack (pinned: disabled + never reports a selection). (2) **D-S14-1**
+  (supersedes that part of D-S10-1): the tracking-start initializer defaults to **Jan 1 of
+  the current year**, not the install date. Already-initialized devices keep their stored
+  value — auto-set vs user-set is indistinguishable in the store, so no migration (owner
+  changes his manually); pinned by a no-rewrite test. (3) **D-S14-2 — widget redesign**
+  (owner: every size must look deliberate, not squeezed): reading rows now share the card
+  height equally via `defaultWeight()` (vertically centered per row — no more dead zone
+  below top-stacked content); per-tier type scale + insets (`WidgetScale`/`scaleFor`:
+  LARGE 16sp date/17sp refs/16dp padding down to TINY 12sp/8dp); **LARGE requires BOTH
+  axes** (≥203x102); new wide-short size points `MEDIUM_SHORT_SIZE` (130x48) +
+  `WIDE_SHORT_SIZE` (203x48) in `SizeMode.Responsive` (`RESPONSIVE_SIZES`) so a wide 1-row
+  widget gets full references instead of falling to TINY (the likely cause of the owner's
+  "squeezed" 3x2 screenshot — Responsive only picks sizes fitting BOTH dims); the date
+  header is a height decision (`showsHeader`: short tiers spend the room on readings);
+  Feb-29/error states centered both axes; headerless complete day keeps a spoken badge;
+  all S9 invariants hold (three readings at every size, marks, single tap target, TalkBack
+  full names, system theme); `widget_preview.xml` refreshed. 285/285 tests (net +6; 7-test
+  Sprint 1 gate untouched), 4 mutations killed (LARGE both-axes rule, header height gate,
+  Jan-1 default, teaser enabled), each by exactly its intended test; Kover 96.5% on
+  domain/data. **Version stays 1.1.1/10101 — these changes need a bump to ship.** S14
+  strings need owner tone sign-off (table in the handoff). Weight-based distribution and
+  per-size look are NOT JVM-provable — top of the device-pass list.
+  Handoff: [docs/sprints/sprint-0014-settings-widget-polish.md](docs/sprints/sprint-0014-settings-widget-polish.md).
+- Next up: **Sprint 15 — V2 release prep** (`sprint-0015-v2-release-prep`): version bump
+  past 1.1.1/10101, the owner's consolidated device pass (S9 checklists + tracking-start +
+  stats + S12 reminders + S13 provider items + S14 widget-look-per-size), S12/S13/S14
+  string tone sign-offs, upload key + Play listing if still pending, closed-track rollout.
 
 ## The reading plan
 

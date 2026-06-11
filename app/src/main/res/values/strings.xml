@@ -25,6 +25,7 @@
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_system">System default</string>
+    <string name="theme_dropdown_description">Theme, %1$s</string>
     <string name="previous_month">Previous month</string>
     <string name="next_month">Next month</string>
     <string name="day_missed">Readings missed</string>
@@ -85,6 +86,8 @@
     <string name="provider_blb">Blue Letter Bible (default)</string>
     <string name="provider_biblegateway">Bible Gateway (website)</string>
     <string name="provider_youversion">YouVersion / Bible.com</string>
+    <string name="provider_inapp_coming_soon">Read in this app (coming soon)</string>
+    <string name="provider_dropdown_description">Open readings in, %1$s</string>
     <string name="request_app_title">Request another app or site</string>
     <string name="request_app_subject">Daily Reading Planner — Bible app request</string>
     <string name="request_app_body">I would like my readings to open in: </string>

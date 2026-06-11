@@ -11,9 +11,11 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
- * S10, D-S10-1 (spec §3 option B): the one-time tracking-start default. Fresh install =>
- * defaulted to "today"; existing history => left null; a deliberate clear is never
- * re-defaulted (the marker, not the value, gates the initializer).
+ * S10, D-S10-1 (spec §3 option B; default value superseded by S14 D-S14-1): the one-time
+ * tracking-start default. Fresh install => defaulted to **Jan 1 of the current year**
+ * (owner decision, S14; was "today" in S10–S13); existing history => left null; a
+ * deliberate clear is never re-defaulted (the marker, not the value, gates the
+ * initializer). Already-initialized devices keep their stored value untouched.
  */
 class InitializeTrackingStartUseCaseTest {
     // Fixed "today": 2026-06-10.
@@ -23,10 +25,10 @@ class InitializeTrackingStartUseCaseTest {
     private val useCase = InitializeTrackingStartUseCase(settings, progress, clock)
 
     @Test
-    fun `fresh install - no marker, no marks - defaults the start date to today`() =
+    fun `fresh install - no marker, no marks - defaults the start date to Jan 1 of the current year`() =
         runTest {
             useCase()
-            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 6, 10))
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 1, 1))
             assertThat(settings.storedTrackingStartInitialized.value).isTrue()
         }
 
@@ -46,6 +48,17 @@ class InitializeTrackingStartUseCaseTest {
             settings.setTrackingStartDate(null) // user deliberately clears
             useCase() // next launch
             assertThat(settings.storedTrackingStartDate.value).isNull()
+        }
+
+    @Test
+    fun `already-initialized device keeps its stored install-date value - D-S14-1, no migration`() =
+        runTest {
+            // Simulates a device the S10 initializer already stamped with its install date:
+            // the marker is set and the value is a mid-year date. S14 must not rewrite it.
+            settings.markTrackingStartInitialized()
+            settings.setTrackingStartDate(LocalDate.of(2026, 4, 17))
+            useCase()
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 4, 17))
         }
 
     @Test

@@ -22,12 +22,14 @@ import org.robolectric.annotation.Config
 import java.time.LocalDate
 
 /**
- * S8 D-S8-1, refined S9 D-S9-2: the responsive breakpoints. The three readings are listed
- * at EVERY size (owner feedback — completion is never the focus): LARGE keeps the full
- * layout (pinned by WidgetContentTest at the rig's default size); MEDIUM drops stream
- * titles; SMALL (1x2) and TINY (1x1) show abbreviated references (D-S9-1) with marks —
- * SMALL keeps the date, TINY drops it. Every size keeps the Feb 29 / load-failure states,
- * the single tap target, and full spoken descriptions (never glyphs or abbreviations alone).
+ * S8 D-S8-1, refined S9 D-S9-2, redesigned S14 D-S14-2: the responsive tiers. The three
+ * readings are listed at EVERY size (owner feedback — completion is never the focus):
+ * LARGE (needs room in both axes) keeps the full layout; MEDIUM (any MEDIUM-or-wider
+ * width, including the wide-short size points) drops stream titles but keeps full
+ * references — the date header only when the height affords it; SMALL (1x2) and TINY
+ * (1x1) show abbreviated references (D-S9-1) with marks — SMALL keeps the date, TINY
+ * drops it. Every size keeps the Feb 29 / load-failure states, the single tap target,
+ * and full spoken descriptions (never glyphs or abbreviations alone).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -58,9 +60,13 @@ class WidgetContentSizesTest {
         )
 
     @Test
-    fun `breakpoint chooser maps width then height to layouts with exact bounds`() {
+    fun `tier chooser maps width and height to layouts with exact bounds`() {
         assertThat(layoutFor(DpSize(250.dp, 110.dp))).isEqualTo(WidgetLayout.LARGE)
         assertThat(layoutFor(LARGE_SIZE)).isEqualTo(WidgetLayout.LARGE)
+        // S14 D-S14-2: LARGE needs room in BOTH axes — a wide-but-short widget is MEDIUM.
+        assertThat(layoutFor(DpSize(250.dp, 101.dp))).isEqualTo(WidgetLayout.MEDIUM)
+        assertThat(layoutFor(WIDE_SHORT_SIZE)).isEqualTo(WidgetLayout.MEDIUM)
+        assertThat(layoutFor(MEDIUM_SHORT_SIZE)).isEqualTo(WidgetLayout.MEDIUM)
         assertThat(layoutFor(DpSize(202.dp, 110.dp))).isEqualTo(WidgetLayout.MEDIUM)
         assertThat(layoutFor(MEDIUM_SIZE)).isEqualTo(WidgetLayout.MEDIUM)
         // Below MEDIUM width, the height decides: >= 102dp is 1x2 (SMALL), under it 1x1 (TINY).
@@ -70,6 +76,63 @@ class WidgetContentSizesTest {
         assertThat(layoutFor(TINY_SIZE)).isEqualTo(WidgetLayout.TINY)
         assertThat(layoutFor(DpSize(40.dp, 40.dp))).isEqualTo(WidgetLayout.TINY)
     }
+
+    @Test
+    fun `the date header is a height decision - tall tiers keep it, short tiers spend the room on readings`() {
+        assertThat(showsHeader(WidgetLayout.LARGE, LARGE_SIZE)).isTrue()
+        assertThat(showsHeader(WidgetLayout.MEDIUM, MEDIUM_SIZE)).isTrue()
+        assertThat(showsHeader(WidgetLayout.MEDIUM, MEDIUM_SHORT_SIZE)).isFalse()
+        assertThat(showsHeader(WidgetLayout.MEDIUM, WIDE_SHORT_SIZE)).isFalse()
+        assertThat(showsHeader(WidgetLayout.SMALL, SMALL_SIZE)).isTrue()
+        assertThat(showsHeader(WidgetLayout.TINY, TINY_SIZE)).isFalse()
+    }
+
+    @Test
+    fun `every declared responsive size point resolves to its intended tier`() {
+        // The declared set is what the launcher picks from (D-S14-2): each entry must land
+        // on the tier it was added for, or a resize renders the wrong design.
+        assertThat(RESPONSIVE_SIZES.associateWith { layoutFor(it) })
+            .containsExactly(
+                TINY_SIZE,
+                WidgetLayout.TINY,
+                SMALL_SIZE,
+                WidgetLayout.SMALL,
+                MEDIUM_SHORT_SIZE,
+                WidgetLayout.MEDIUM,
+                MEDIUM_SIZE,
+                WidgetLayout.MEDIUM,
+                WIDE_SHORT_SIZE,
+                WidgetLayout.MEDIUM,
+                LARGE_SIZE,
+                WidgetLayout.LARGE,
+            )
+    }
+
+    @Test
+    fun `wide-short widget keeps full references and marks but drops the date header`() =
+        runGlanceAppWidgetUnitTest {
+            setContext(ApplicationProvider.getApplicationContext())
+            setAppWidgetSize(WIDE_SHORT_SIZE)
+            provideComposable { WidgetContent(scheduled(Stream.LAW_AND_HISTORY)) }
+
+            onNode(hasText("Genesis 1–2")).assertExists()
+            onNode(hasText("Psalms 1–2")).assertExists()
+            onNode(hasText("Matthew 1–2")).assertExists()
+            onAllNodes(hasTestTag("widget-mark-read")).assertCountEquals(1)
+            onAllNodes(hasTestTag("widget-mark-unread")).assertCountEquals(2)
+            onAllNodes(hasTestTag("widget-date")).assertCountEquals(0)
+        }
+
+    @Test
+    fun `headerless complete day still speaks its state via the compact badge`() =
+        runGlanceAppWidgetUnitTest {
+            setContext(ApplicationProvider.getApplicationContext())
+            setAppWidgetSize(TINY_SIZE)
+            provideComposable { WidgetContent(scheduled(*Stream.entries.toTypedArray())) }
+
+            onNode(hasTestTag("widget-day-complete")).assertExists()
+            onNode(hasContentDescriptionEqualTo("All readings done")).assertExists()
+        }
 
     @Test
     fun `medium drops stream titles but keeps marked full references`() =

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -114,9 +115,17 @@ class AccessibilityGateTest {
             }
         }
         composeRule.onNodeWithTag("settings-back").assertTouchTargetAtLeast(48.dp)
+        // S14: the theme selector is a dropdown row (speaks label+value); the menu items
+        // are stock M3 DropdownMenuItems at the 48dp item token — verified open.
+        composeRule
+            .onNodeWithTag("theme-dropdown")
+            .assertTouchTargetAtLeast(48.dp)
+            .assertContentDescriptionContains("Theme", substring = true)
+            .performClick()
         for (tag in listOf("theme-option-light", "theme-option-dark", "theme-option-system")) {
             composeRule.onNodeWithTag(tag).assertTouchTargetAtLeast(48.dp)
         }
+        composeRule.onNodeWithTag("theme-option-system").performClick() // close the menu
         // Stock M3 Slider: its semantics/touch node is the handle container, pinned at the
         // M3 handle-height token (44dp) regardless of outer padding. Accepted as the design
         // system's standard control (S9-T7 finding); TalkBack/switch-access usability of the
@@ -140,14 +149,24 @@ class AccessibilityGateTest {
             .assert(hasAnyContentDescription())
         // S12: the reminder rows are authored controls -> 48dp; the toggle row exposes
         // switch semantics and the time row speaks label+value.
-        // S13: the provider radio rows and the request-an-app row are authored controls -> 48dp.
+        // S13 (S14: dropdown): the provider dropdown row and the request-an-app row are
+        // authored controls -> 48dp; menu items (incl. the disabled coming-soon teaser,
+        // which TalkBack must still reach and announce) verified open.
+        composeRule
+            .onNodeWithTag("provider-dropdown")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assertContentDescriptionContains("Open readings in", substring = true)
+            .performClick()
         for (tag in listOf(
             "provider-option-blb",
             "provider-option-biblegateway",
             "provider-option-youversion",
+            "provider-option-inapp",
         )) {
-            composeRule.onNodeWithTag(tag).performScrollTo().assertTouchTargetAtLeast(48.dp)
+            composeRule.onNodeWithTag(tag).assertTouchTargetAtLeast(48.dp)
         }
+        composeRule.onNodeWithTag("provider-option-blb").performClick() // close the menu
         composeRule.onNodeWithTag("request-app-row").performScrollTo().assertTouchTargetAtLeast(48.dp)
         composeRule
             .onNodeWithTag("reminder-toggle")
