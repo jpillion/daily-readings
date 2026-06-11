@@ -1,6 +1,7 @@
 # Daily Readings — Product Requirements Document (PRD)
 
-> **Owner:** Maya (Product) · **Status:** Draft for build · **Last updated:** 2026-06-10
+> **Owner:** Maya (Product) · **Status:** V1 shipped to Play closed testing (1.0.0); V2 scope
+> defined in §13 · **Last updated:** 2026-06-11
 > **Companion docs:** [docs/SPEC.md](SPEC.md) (full spec + build plan), [CLAUDE.md](../CLAUDE.md) (session handoff)
 >
 > This PRD owns **what** we're building and **why**. It defers **how to build** to the tech
@@ -138,15 +139,16 @@ against a second source**, plus a canonical
 - **Progress** keyed by the **full date including year** — a reading marked done on
   1 Jan 2026 must *not* appear done on 1 Jan 2027. The schedule repeats; history does not.
 
-### V2 — Motivation — *deferred*
+### V2 — Motivation — **scheduled (Sprints 10–11); detailed in §13**
 
-- **Streaks & stats:** current/longest streak, % of year read, per-stream progress.
-- **Reminders** for missed readings (notifications) and other motivational features.
+- **Streaks & stats (Sprint 10):** current streak, longest streak, % of year completed,
+  per-stream progress — presented soberly. Full requirements: §13.1.
+- **Reading reminders (Sprint 11):** an optional, user-scheduled daily notification with the
+  day's readings; off by default. Full requirements: §13.2.
 
-**Why deferring is safe:** the core value (know today's readings, mark them, read the text)
-is fully delivered by V1. Streaks/reminders amplify a habit that must first exist; shipping
-them before the planner would be premature. V1's progress data is keyed by full date, which is
-the foundation streak/stats queries need later, so V2 builds on V1 without rework.
+V1 delivered the foundation V2 needs: progress keyed by full date (streak/stats queries),
+the exported Room schema baseline (D-S9-4) for any streak-supporting migration, and the
+`WidgetRefresher` seam that reminders' alarm infrastructure can also serve (§13.2, R6/D9).
 
 ### V3 — Text & beyond — *deferred*
 
@@ -287,7 +289,207 @@ keeps the V1 app small and avoids the offline-Bible storage/schema work entirely
 - Optional configurable text size / accessibility pass beyond the comfortable default.
 - Share today's readings (text snippet/deep link) with others or an ecclesia group.
 - Fallback/secondary text source if BLB is unavailable.
+- **Choose your Bible app/site** (owner-requested, unscheduled): pick the destination for
+  reading taps from a vetted provider list — specced at
+  [docs/features/bible-app-links.md](features/bible-app-links.md).
 - Surfacing study notes (dailyreadings.org.uk style) — formally a V3 item, listed here as the
   natural next content step once in-app text exists.
 
 *New ideas above are candidates only and must not be read as committed scope.*
+
+---
+
+## 13. V2 — Motivation: detailed requirements
+
+> Added 2026-06-11, after 1.0.0 published to Play closed testing. This section is the V2
+> queue the owner requested. It is build-ready at the product level; Diego owns the technical
+> spec and Morgan the sequencing. A third owner request — **choose your Bible app/site** — is
+> specced separately at [docs/features/bible-app-links.md](features/bible-app-links.md) and is
+> **not scheduled**; it is not part of Sprints 10–11.
+
+### 13.0 Owner constraints (verbatim — design to these)
+
+On streaks & stats:
+
+> "I don't want this over gamified - it's the bible and should be dealt with respectfully.
+> However, having stats and % completed, etc helps track progress and motivate you."
+
+On reminders:
+
+> "Let the user set (in the settings) what time they want reminders to be prompted (or not
+> at all)."
+
+**Product interpretation — the "sober motivation" principle.** Stats inform; they do not
+perform. We show honest numbers a reader can take encouragement from. We do not celebrate,
+penalize, or nag: **no confetti, badges, levels, trophies, animations-on-milestone, or guilt
+mechanics** ("you broke your streak!", shame copy, red alarm states). Missed days are visible
+only as the *absence* of progress, never as an accusation. This principle extends §10
+("Respect the source") and governs every V2 surface, including notification copy.
+
+### 13.1 Feature 1 — Streaks & stats (Sprint 10)
+
+**User stories**
+
+- **U8.** As a daily reader (Hannah), I want to see my current and longest streak, so I have a
+  quiet sense of momentum without the app making a show of it.
+- **U9.** As a reader working through the year (David), I want to see what % of the year's
+  readings I've completed, overall and per stream, so I know where I stand.
+- **U10.** As a returning reader (Ruth), I want past missed days to read neutrally, so
+  checking my stats encourages me to continue rather than reminding me I failed.
+
+**Surface.** A dedicated **Stats screen**, pushed as a route (like Settings) from an icon in
+the readings top bar. It is read-only — no actions other than back. Not a tab, not on the
+Today screen: today's surface stays focused on "what do I read today" (G1); stats are
+opt-in glance material. Plain Material 3 typography and standard progress indicators only.
+
+**Content (exactly four stat groups in V2 — nothing more):**
+
+1. **Current streak** — N days (see streak rules below).
+2. **Longest streak** — N days, all-time across all stored progress.
+3. **Year progress** — % of this year's scheduled portions marked read: marks in the current
+   calendar year ÷ 1,095 (365 days × 3 portions), shown as a percentage plus "n of 1,095
+   readings". Denominator is the **full year**, not year-to-date — the number answers "how
+   much of the year's plan have I completed", which is how the plan community talks about it.
+4. **Per-stream progress** — three rows (Law & History · Psalms & Prophecy · New Testament),
+   each a quiet progress bar with "n of 365".
+
+**Streak rules (product decisions — record once, do not relitigate):**
+
+- **R-STREAK-1 — What counts.** A calendar day counts toward a streak iff **all three**
+  readings for that date are marked read. (Tracking is per-reading; a streak day is a
+  complete day. Partial days do not extend a streak and end it once the day has passed.)
+- **R-STREAK-2 — Feb 29 is neutral.** Feb 29 has no scheduled readings (settled, §12), so it
+  can **neither extend nor break** a streak: in a leap year, a complete Feb 28 followed by a
+  complete Mar 1 is consecutive. The streak walk simply skips dates with no scheduled
+  readings.
+- **R-STREAK-3 — Today is in grace.** An incomplete *today* does not break the current
+  streak; the streak only breaks when a scheduled, tracked day **passes** incomplete. (If
+  today is complete, it extends the streak immediately.) Rationale: "your streak is broken"
+  at 7 a.m. before the user has read is exactly the guilt mechanic the owner ruled out.
+- **R-STREAK-4 — Streaks cross year boundaries.** Progress is keyed by full date, so a
+  complete Dec 31 followed by a complete Jan 1 is consecutive. Longest streak is all-time.
+- **R-STREAK-5 — Tracking start date is honored.** Days before the configured tracking start
+  date ([docs/features/tracking-start-date.md](features/tracking-start-date.md)) are neutral:
+  excluded from streak/missed computation exactly as that spec's classification predicate
+  already defines. Stats must use the same predicate — one source of truth, no drift between
+  the picker dots and the stats screen.
+- **R-STREAK-6 — Stats are derived, never stored counters.** Every number on the stats screen
+  must be derivable from the stored marks at display time, so "Reset progress (current
+  year)" and any manual re-marking of past days are automatically reflected and stats can
+  never contradict the picker indicators. (How to compute/cache is Diego's call; the
+  *consistency requirement* is product.)
+
+**How missed days read.** Missed past days appear on the stats screen only implicitly — as
+the gap between n and the denominator. No "days missed: 12" line, no red, no streak-loss
+messaging. The date picker's existing red dot (Sprint 8) remains the one place a specific
+missed day is identifiable, and it stays a small neutral indicator.
+
+**Functional requirements**
+
+- **FR-15 (U8, U9)** A Stats screen, reachable from the readings top bar, shows current
+  streak, longest streak, year progress %, and per-stream progress per the content list and
+  rules R-STREAK-1…6 above.
+- **FR-16 (U10)** The stats presentation contains no gamification or guilt mechanics per
+  §13.0; copy is plain and factual.
+- **FR-17** Stats reflect the current stored marks immediately (after marking, resetting the
+  year, or changing the tracking start date, reopening Stats shows consistent numbers).
+- **FR-18** The Stats screen works fully offline and honors theme + in-app text-size settings.
+
+**V2 streaks non-goals:** badges/awards/levels/milestone celebrations; streak freezes/repair
+("use a token to save your streak"); leaderboards or any social comparison; week/month goal
+setting; stats on the widget (widget stays readings-focused per Sprint 9 owner feedback);
+"behind by N days" catch-up affordance (still a candidate in §12, not committed).
+
+### 13.2 Feature 2 — Reading reminders (Sprint 11)
+
+**User stories**
+
+- **U11.** As a daily reader, I want an optional reminder at a time I choose, so the readings
+  fit my routine — and no reminders at all if I don't ask for them.
+- **U12.** As a reader who already finished today, I don't want a reminder for readings I've
+  already done.
+
+**Behavior (product decisions):**
+
+- **R-REM-1 — Off by default.** Reminders are opt-in. A devotional app must not nag by
+  surprise; the respectful posture is silence until asked. (Recommended and adopted —
+  flagged for owner confirmation in §13.3 only because the brief asked the question.)
+- **R-REM-2 — Settings UI.** In Settings: a "Daily reminder" toggle (default off) and, when
+  on, a time picker for the reminder time. One reminder time, one reminder per day. No
+  per-day-of-week schedules, no repeat/escalation options in V2.
+- **R-REM-3 — Notification content.** One standard notification, respectful and factual:
+  title "Today's readings", body = the day's three references in the established collapsed
+  format (e.g. "Genesis 1–2 · Psalm 1–2 · Matthew 1–2"). No emoji, no urgency framing, no
+  streak references. Tapping it opens the app on today. It is dismissible and never repeats
+  that day.
+- **R-REM-4 — Skip when done.** If all three readings for today are already marked at the
+  scheduled time, no notification is shown. (Quietly skipped — not replaced by a
+  congratulation; see §13.0.)
+- **R-REM-5 — Skip Feb 29.** No scheduled readings → no reminder.
+- **R-REM-6 — No retroactive nagging.** No "you missed yesterday" notifications, ever. The
+  reminder is only ever about today, at the chosen time.
+- **R-REM-7 — Permission flow (API 33+).** Request `POST_NOTIFICATIONS` only at the moment
+  the user enables the toggle. If denied, the toggle does not silently pretend to be on: show
+  a brief explanation that reminders need notification permission, leave the setting off,
+  and offer the system-settings path. Never re-prompt unprompted.
+- **R-REM-8 — Reliability.** The reminder survives device reboot and fires at (or acceptably
+  near) the chosen time. AlarmManager is the recorded stack choice (SPEC/CLAUDE.md);
+  exact-vs-inexact alarms is **Diego's call** — product tolerance: arriving within a few
+  minutes of the chosen time is acceptable if it avoids the Play exact-alarm policy burden.
+- **R-REM-9 — Still no networking/analytics.** Reminders are entirely local. No change to
+  the V1 privacy posture or the Play data-safety form ("no data collected").
+
+**Adjacent win — midnight widget refresh (retires D9/R6).** The widget currently rolls over
+on an opportunistic refresh + a 30-minute `updatePeriodMillis` backstop because we had no
+alarm infrastructure. Sprint 11's alarm scheduling makes a **precise midnight widget
+refresh** nearly free. Product wants it (the widget showing yesterday's readings for up to
+30 minutes is a real, if small, correctness gap); whether it lands inside Sprint 11 is
+Morgan's sequencing call. The midnight refresh must not depend on the reminder toggle being
+on.
+
+**Functional requirements**
+
+- **FR-19 (U11)** Settings offers a daily-reminder toggle (default **off**) and a time
+  picker; the schedule persists and survives reboot (R-REM-1/2/8).
+- **FR-20 (U11)** At the chosen time, a notification shows the day's three readings per
+  R-REM-3 and opens the app on today when tapped.
+- **FR-21 (U12)** The reminder is suppressed when the day is already complete, and on Feb 29
+  (R-REM-4/5).
+- **FR-22** Notification permission is requested only on enable, with graceful denial
+  handling (R-REM-7).
+- **FR-23 (candidate, Morgan to scope)** The widget refreshes at local midnight via the same
+  alarm infrastructure, independent of the reminder setting.
+
+**V2 reminders non-goals:** multiple reminders per day; per-weekday schedules; missed-day or
+streak-risk notifications; notification actions that mark readings done (parked with
+toggle-from-widget); any server/push infrastructure.
+
+### 13.3 V2 success metrics
+
+- **M6 — Stats integrity:** every stats-screen number equals an independent recomputation
+  from stored marks across the pinned scenarios (year boundary, Feb 29, tracking start date,
+  reset-year) — test-gated, like M1.
+- **M7 — Reminder correctness:** notification fires at/near the set time, is suppressed on
+  complete days and Feb 29, and survives reboot (device-pass checklist items).
+- **M8 — Tone check (qualitative gate):** owner reviews the stats screen and notification
+  copy against §13.0 before release — explicit sign-off, since "respectful" is the owner's
+  bar to judge.
+- **M4 follow-up:** with no analytics (settled), learning comes from the owner's circle of
+  testers: do reminders get enabled? Do people look at stats? Worth asking directly.
+
+### 13.4 V2 open questions (need the owner or a teammate)
+
+1. **Owner:** confirm reminders **off by default** (R-REM-1 — recommended, adopted pending
+   your veto).
+2. **Owner:** does "longest streak: all-time, crossing year boundaries" (R-STREAK-4) match
+   your intuition, or should streaks reset each Jan 1?
+3. **Owner (M8):** review stats-screen + notification copy for tone before Sprint 10/11
+   release.
+4. **Diego:** exact vs. inexact alarms (R-REM-8), and whether streak computation over a
+   year+ of marks needs the V2 schema work anticipated in D-S9-4 or can stay derived-only
+   (R-STREAK-6 fixes the *behavior*, not the implementation).
+5. **Morgan:** does FR-23 (midnight widget refresh) ride in Sprint 11 or queue separately?
+6. **Dependency note:** the tracking-start-date feature
+   ([docs/features/tracking-start-date.md](features/tracking-start-date.md)) is "post-release,
+   after Sprint 9" and streaks consume its predicate (R-STREAK-5). Morgan should sequence it
+   **before or within Sprint 10**, or Sprint 10 must build the predicate itself per that spec.
