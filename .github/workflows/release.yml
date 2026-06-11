@@ -1,0 +1,75 @@
+name: Release to Play
+
+# Pushing a version tag (v1.2.0) publishes that build to the Play closed-testing track:
+#   git tag v1.2.0 && git push origin v1.2.0
+# The tag must match versionName in app/build.gradle.kts (guard below) so the repo stays
+# the single source of truth for versioning (D-S9-3). Secrets required (see
+# docs/RELEASING.md): DRP_UPLOAD_KEYSTORE_B64, DRP_UPLOAD_STORE_PASSWORD,
+# DRP_UPLOAD_KEY_ALIAS, DRP_UPLOAD_KEY_PASSWORD, PLAY_SERVICE_ACCOUNT_JSON.
+
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Test, build & upload to Play
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches versionName
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="$(grep -oE 'versionName = "[^"]+"' app/build.gradle.kts | cut -d'"' -f2)"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "Tag v$TAG does not match versionName $VERSION in app/build.gradle.kts." >&2
+            echo "Bump the version (and versionCode per D-S9-3) before tagging." >&2
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests (includes the plan-data verification gate)
+        run: ./gradlew testDebugUnitTest
+
+      - name: Decode upload keystore
+        run: echo "${{ secrets.DRP_UPLOAD_KEYSTORE_B64 }}" | base64 -d > upload-keystore.jks
+
+      - name: Build signed release bundle
+        env:
+          DRP_UPLOAD_KEYSTORE_FILE: ${{ github.workspace }}/upload-keystore.jks
+          DRP_UPLOAD_STORE_PASSWORD: ${{ secrets.DRP_UPLOAD_STORE_PASSWORD }}
+          DRP_UPLOAD_KEY_ALIAS: ${{ secrets.DRP_UPLOAD_KEY_ALIAS }}
+          DRP_UPLOAD_KEY_PASSWORD: ${{ secrets.DRP_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease
+
+      - name: Upload to Play (closed testing - Alpha)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.jpillion.dailyreadingplanner
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: alpha
+          status: completed
+          whatsNewDirectory: distribution/whatsnew
+
+      - name: Upload bundle artifact (backup)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-bundle-${{ github.ref_name }}
+          path: app/build/outputs/bundle/release/app-release.aab
