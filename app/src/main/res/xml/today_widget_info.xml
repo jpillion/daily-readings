@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Today widget metadata (ESpec §7, D9). updatePeriodMillis is the system periodic
+    backstop (30 min, the platform minimum) for date rollover; V1 deliberately has no
+    midnight alarm (risk R6 accepted).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

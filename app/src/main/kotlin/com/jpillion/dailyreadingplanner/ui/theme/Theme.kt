@@ -11,7 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 
-private val LightColorScheme =
+// Internal (not private): the Glance widget reuses the static schemes for its own
+// light/dark ColorProviders below API 31 (D-S7-3).
+internal val LightColorScheme =
     lightColorScheme(
         primary = GreenPrimary,
         onPrimary = GreenOnPrimary,
@@ -25,7 +27,7 @@ private val LightColorScheme =
         onTertiary = GreenOnTertiary,
     )
 
-private val DarkColorScheme =
+internal val DarkColorScheme =
     darkColorScheme(
         primary = GreenPrimaryDark,
         onPrimary = GreenOnPrimaryDark,

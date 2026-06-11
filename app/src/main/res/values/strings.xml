@@ -25,4 +25,8 @@
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_system">System default</string>
+    <string name="widget_description">Today\'s three Bible Companion readings at a glance</string>
+    <string name="widget_load_failed">Couldn\'t load readings — tap to open the app</string>
+    <string name="widget_reading_read">Read</string>
+    <string name="widget_reading_unread">Not read yet</string>
 </resources>

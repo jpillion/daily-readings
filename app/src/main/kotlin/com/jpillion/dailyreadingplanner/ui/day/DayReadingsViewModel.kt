@@ -9,6 +9,7 @@ import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
+import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -48,6 +49,7 @@ class DayReadingsViewModel
         private val toggleReading: ToggleReadingUseCase,
         private val markWholeDay: MarkWholeDayUseCase,
         private val openReference: OpenReferenceUseCase,
+        private val widgetRefresher: WidgetRefresher,
         clock: Clock,
     ) : ViewModel() {
         val today: LocalDate = LocalDate.now(clock)
@@ -84,6 +86,8 @@ class DayReadingsViewModel
         ) {
             viewModelScope.launch {
                 toggleReading(date, reading.portion.stream, markRead = !reading.isRead)
+                // Keep the home-screen widget's completion state consistent (ESpec §7).
+                widgetRefresher.refreshTodayWidget()
             }
         }
 
@@ -92,7 +96,10 @@ class DayReadingsViewModel
             date: LocalDate,
             dayComplete: Boolean,
         ) {
-            viewModelScope.launch { markWholeDay(date, markRead = !dayComplete) }
+            viewModelScope.launch {
+                markWholeDay(date, markRead = !dayComplete)
+                widgetRefresher.refreshTodayWidget()
+            }
         }
 
         fun onReadingTapped(portion: Portion) {

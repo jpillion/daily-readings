@@ -10,15 +10,29 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.jpillion.dailyreadingplanner.ui.navigation.AppNavHost
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import com.jpillion.dailyreadingplanner.ui.theme.ThemeViewModel
 import com.jpillion.dailyreadingplanner.ui.theme.resolveDarkTheme
+import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val themeViewModel: ThemeViewModel by viewModels()
+
+    @Inject
+    lateinit var widgetRefresher: WidgetRefresher
+
+    override fun onResume() {
+        super.onResume()
+        // Opportunistic widget refresh on resume (D9/ESpec §7): the dominant date-rollover
+        // case — opening the app after midnight snaps the widget to the new day.
+        lifecycleScope.launch { widgetRefresher.refreshTodayWidget() }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

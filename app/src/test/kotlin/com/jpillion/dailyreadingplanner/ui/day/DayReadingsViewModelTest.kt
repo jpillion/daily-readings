@@ -15,6 +15,7 @@ import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -28,6 +29,7 @@ class DayReadingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val progress = FakeProgressRepository()
+    private val widgetRefresher = FakeWidgetRefresher()
     private val today = LocalDate.of(2026, 6, 10)
 
     private fun clockAt(date: LocalDate): Clock =
@@ -43,6 +45,7 @@ class DayReadingsViewModelTest {
             toggleReading = ToggleReadingUseCase(progress),
             markWholeDay = MarkWholeDayUseCase(progress),
             openReference = OpenReferenceUseCase(BlbUrlBuilder()),
+            widgetRefresher = widgetRefresher,
             clock = clockAt(date),
         )
     }
@@ -219,6 +222,47 @@ class DayReadingsViewModelTest {
                     assertThat(awaitItem()).isEqualTo("https://www.blueletterbible.org/kjv/mat/1/")
                 }
             }
+        }
+
+    // --- Sprint 7: opportunistic widget refresh on progress change (D9, ESpec §7) ---
+
+    @Test
+    fun `toggling a reading refreshes the home-screen widget`() =
+        runTest {
+            val vm = viewModel()
+            vm.uiStateFor(today).test {
+                val initial = awaitScheduled()
+                vm.onToggleReading(today, initial.readings[0])
+                awaitScheduled()
+            }
+            assertThat(widgetRefresher.refreshCount).isEqualTo(1)
+        }
+
+    @Test
+    fun `marking the whole day refreshes the home-screen widget`() =
+        runTest {
+            val vm = viewModel()
+            vm.uiStateFor(today).test {
+                val initial = awaitScheduled()
+                vm.onMarkWholeDay(today, initial.dayComplete)
+                awaitScheduledWhere { it.dayComplete }
+            }
+            assertThat(widgetRefresher.refreshCount).isEqualTo(1)
+        }
+
+    @Test
+    fun `opening a reading on BLB does not refresh the widget`() =
+        runTest {
+            // Adversarial: only progress *mutations* refresh; a read-only tap must not.
+            val vm = viewModel()
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                vm.openUrlEvents.test {
+                    vm.onReadingTapped(state.readings[0].portion)
+                    awaitItem()
+                }
+            }
+            assertThat(widgetRefresher.refreshCount).isEqualTo(0)
         }
 
     private suspend fun app.cash.turbine.ReceiveTurbine<DayUiState>.awaitNonLoading(): DayUiState {

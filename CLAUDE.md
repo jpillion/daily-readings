@@ -99,10 +99,25 @@ Do not reference or depend on strikelog.
   Kover 93.9% on domain/data. Known debt: `SystemBarStyle`/nav-bar scrim on API 26–28 needs
   the Sprint 8 device pass (JVM-only pipeline); `AppNavHost` push/pop untested on JVM.
   Handoff: [docs/sprints/sprint-0006-settings-theme.md](docs/sprints/sprint-0006-settings-theme.md).
-- Next up: **Sprint 7 — Glance widget** (today's readings + completion at a glance; taps
-  deep-link to the `today` route per ESpec §7; opportunistic refresh only — no midnight
-  alarm in V1 per D9; Glance runs outside the activity so its theming is independent of
-  `ThemeViewModel`; see [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) §3).
+- ✅ **Sprint 7 (Glance widget) is DONE.** Today's readings live on the launcher (PRD FR-8,
+  ESpec §7): a resizable 3x2 widget (`widget/TodayWidget` + `TodayWidgetReceiver` +
+  stateless `WidgetContent` over sealed `TodayWidgetState`) shows date, three stream rows
+  (same `ReadingFormatter`), read/unread marks and an "All readings done" badge; Feb 29 and
+  load-failure states degrade gracefully; the whole surface is one tap into the app. The
+  widget reads the *same* `GetDayReadingsUseCase`/`Clock` via a Hilt `@EntryPoint` (snapshot
+  per update, D-S7-1). Freshness (D9, no midnight alarm): `WidgetRefresher` seam (D-S7-2)
+  fired from `MainActivity.onResume` and after progress mutations in `DayReadingsViewModel`,
+  plus the 30-min `updatePeriodMillis` backstop (`res/xml/today_widget_info.xml`). Widget
+  follows the *system* theme, not the in-app ThemeMode (D-S7-3); read-only — marking happens
+  in-app (D-S7-4). New deps: `glance-material3`, `glance-appwidget-testing` (test). 110/110
+  tests (11 new: 8 Glance unit-rig + 3 refresh-hook; 7-test Sprint 1 gate untouched),
+  mutation-verified; Kover 93.9% on domain/data. Known debt: no widget `previewImage`; no
+  on-device run yet (Sprint 8).
+  Handoff: [docs/sprints/sprint-0007-glance-widget.md](docs/sprints/sprint-0007-glance-widget.md).
+- Next up: **Sprint 8 — on-device verification pass** (everything JVM-only CI can't prove:
+  widget on a real launcher, API 26-30 static palette + edge-to-edge scrim, Custom Tabs
+  tap-through, StrictMode, TalkBack/a11y smoke, 66-book live BLB link check; see the
+  Sprint 7 handoff's carryover list).
 
 ## The reading plan
 
