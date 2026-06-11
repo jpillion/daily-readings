@@ -30,6 +30,10 @@ interface ReadingProgressDao {
         endEpochDay: Long,
     ): Flow<List<DayReadCount>>
 
+    /** True iff any mark exists at all — backs the one-time tracking-start default (S10). */
+    @Query("SELECT EXISTS(SELECT 1 FROM reading_progress LIMIT 1)")
+    suspend fun hasAnyRows(): Boolean
+
     /** Insert-or-replace; a multi-row call is a single transaction (whole-day mark atomicity). */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entities: List<ReadingProgressEntity>)

@@ -38,6 +38,15 @@
     <string name="text_size_slider">Text size</string>
     <string name="text_size_percent">%1$d%%</string>
     <string name="text_size_preview">The grass withereth, the flower fadeth: but the word of our God shall stand for ever.</string>
+    <string name="tracking_section_title">Tracking</string>
+    <string name="tracking_start_title">Start tracking from</string>
+    <string name="tracking_start_unset">Not set</string>
+    <string name="tracking_start_clear">Clear</string>
+    <string name="tracking_start_row_description">Start tracking from, %1$s</string>
+    <string name="tracking_start_clear_description">Clear tracking start date</string>
+    <string name="tracking_start_help">Days before this date are never counted as missed. You can still open and mark them.</string>
+    <string name="tracking_start_dialog_confirm">Set date</string>
+    <string name="tracking_start_dialog_cancel">Cancel</string>
     <string name="widget_description">Today\'s three Bible Companion readings at a glance</string>
     <string name="widget_load_failed">Couldn\'t load readings — tap to open the app</string>
     <string name="widget_reading_read">Read</string>

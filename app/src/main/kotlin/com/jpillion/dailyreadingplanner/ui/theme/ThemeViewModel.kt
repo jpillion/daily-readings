@@ -2,7 +2,7 @@ package com.jpillion.dailyreadingplanner.ui.theme
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jpillion.dailyreadingplanner.data.prefs.ThemeRepository
+import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +19,7 @@ import javax.inject.Inject
 class ThemeViewModel
     @Inject
     constructor(
-        themeRepository: ThemeRepository,
+        themeRepository: SettingsRepository,
     ) : ViewModel() {
         val themeMode: StateFlow<ThemeMode> =
             themeRepository.themeMode.stateIn(
@@ -33,6 +33,6 @@ class ThemeViewModel
             themeRepository.fontScale.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = ThemeRepository.DEFAULT_FONT_SCALE,
+                initialValue = SettingsRepository.DEFAULT_FONT_SCALE,
             )
     }

@@ -29,6 +29,8 @@ class ProgressRepositoryImpl
                 .map { rows -> rows.associate { LocalDate.ofEpochDay(it.dateEpochDay) to it.readCount } }
                 .distinctUntilChanged()
 
+        override suspend fun hasAnyMarks(): Boolean = dao.hasAnyRows()
+
         override suspend fun setRead(
             date: LocalDate,
             stream: Stream,

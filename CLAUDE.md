@@ -159,10 +159,32 @@ Do not reference or depend on strikelog.
   Kover 95.2% on domain/data.
   Handoff (incl. the owner's keystore/Play-listing/device-pass checklists):
   [docs/sprints/sprint-0009-hardening-release.md](docs/sprints/sprint-0009-hardening-release.md).
-- Next up: **Sprint 10 — V1 release support** (`sprint-0010-v1-release`): the owner runs
-  the final device pass + creates the upload key + Play listing (checklists in the Sprint 9
-  handoff); the team reacts to findings (abbrev overrides, 1x1 fit, API 26–28 scrim) and
-  ships 1.0.0. If clean, V2 planning (streaks, reminders, in-app KJV text) starts there.
+- ✅ **Sprint 10 (tracking start date) is DONE** (owner-redirected from the planned
+  `v1-release` sprint; V1 ship stays owner-blocked on the Sprint 9 checklists). The
+  mid-year-adopter fix (docs/features/tracking-start-date.md) is live: Settings → Tracking →
+  "Start tracking from" (row + stock M3 *full-calendar* year-navigable `DatePickerDialog` —
+  deliberately not the pinned-year `DayDatePickerDialog` — plus Clear + helper text; tags
+  `tracking-start-*`). Days strictly before the start date are neutral: never red/MISSED in
+  the picker grid, excluded from missed/streak classification, but still navigable/markable,
+  and a fully-read pre-start day keeps its green COMPLETE dot. THE missed-day predicate is
+  `GetMonthCompletionUseCase.classify` (order: Feb29 → COMPLETE → start-date gate → MISSED);
+  month flow is now a `combine`(readCounts, trackingStartDate) so an open picker updates
+  live — **V2 streaks MUST consume this seam (R-STREAK-5), never re-derive it.**
+  **D-S10-1:** default = first-run date, written only if never-initialized AND zero existing
+  marks (upgraders keep null = pre-S10 behavior; a deliberate clear is never re-defaulted —
+  separate `tracking_start_initialized` marker; `InitializeTrackingStartUseCase` fired from
+  `MainActivity.onCreate`). **D-S10-2:** `ThemeRepository` → `SettingsRepository` rename
+  (DataStore file + old keys unchanged; new keys `tracking_start_epoch_day`,
+  `tracking_start_initialized`). `ProgressRepository.hasAnyMarks()` added (query only — NO
+  Room schema change). Reset-progress and start date are independent (tested). 183/183 tests
+  (23 new; 7-test Sprint 1 gate untouched), 3 mutations killed (boundary, gate-vs-COMPLETE
+  ordering, initializer gate); Kover 95.4% on domain/data. Version stays 1.0.0/10000 (V2 WIP).
+  Handoff: [docs/sprints/sprint-0010-tracking-start-date.md](docs/sprints/sprint-0010-tracking-start-date.md).
+- Next up: **Sprint 11 — V2 streaks & stats** (`sprint-0011-streaks-stats`): PRD §13.1
+  (FR-15…18, R-STREAK-1…6) — Stats screen (current/longest streak, year %, per-stream %)
+  consuming the Sprint 10 predicate seam per R-STREAK-5; no guilt mechanics. V1 ship runs in
+  parallel on the owner's side (Sprint 9 checklists; add: fresh install defaults the
+  tracking start to today).
 
 ## The reading plan
 

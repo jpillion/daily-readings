@@ -6,7 +6,7 @@ import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
-import com.jpillion.dailyreadingplanner.testing.FakeThemeRepository
+import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
@@ -21,13 +21,13 @@ class SettingsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val repository = FakeThemeRepository()
+    private val repository = FakeSettingsRepository()
     private val progress = FakeProgressRepository()
     private val widgetRefresher = FakeWidgetRefresher()
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val viewModel by lazy {
         SettingsViewModel(
-            themeRepository = repository,
+            settingsRepository = repository,
             resetYearProgress = ResetYearProgressUseCase(progress, clock),
             widgetRefresher = widgetRefresher,
             clock = clock,
@@ -89,5 +89,48 @@ class SettingsViewModelTest {
             assertThat(progress.marksFor(LocalDate.of(2026, 6, 1))).isEmpty()
             assertThat(progress.marksFor(LocalDate.of(2025, 6, 1))).containsExactly(Stream.NEW_TESTAMENT)
             assertThat(widgetRefresher.refreshCount).isEqualTo(1)
+        }
+
+    // --- S10: tracking start date. ---
+
+    @Test
+    fun `tracking start defaults to null and reflects the persisted value`() =
+        runTest {
+            viewModel.trackingStartDate.test {
+                assertThat(awaitItem()).isNull()
+                repository.storedTrackingStartDate.value = LocalDate.of(2026, 6, 3)
+                assertThat(awaitItem()).isEqualTo(LocalDate.of(2026, 6, 3))
+            }
+        }
+
+    @Test
+    fun `changing the tracking start writes through, and clearing writes null`() =
+        runTest {
+            viewModel.trackingStartDate.test {
+                awaitItem() // null default
+                viewModel.onTrackingStartChanged(LocalDate.of(2026, 6, 3))
+                assertThat(awaitItem()).isEqualTo(LocalDate.of(2026, 6, 3))
+                viewModel.onTrackingStartChanged(null)
+                assertThat(awaitItem()).isNull()
+            }
+            assertThat(repository.trackingStartCalls)
+                .containsExactly(LocalDate.of(2026, 6, 3), null)
+                .inOrder()
+        }
+
+    @Test
+    fun `reset and tracking start are independent - neither touches the other`() =
+        runTest {
+            // Reset clears marks but never the tracking start date (spec §7).
+            repository.storedTrackingStartDate.value = LocalDate.of(2026, 6, 3)
+            viewModel.onResetProgressConfirmed()
+            assertThat(repository.trackingStartCalls).isEmpty()
+            assertThat(repository.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 6, 3))
+            // Changing the start date never clears marks.
+            progress.setWholeDay(LocalDate.of(2026, 5, 1), isRead = true)
+            val clearsBefore = progress.clearYearCalls.size
+            viewModel.onTrackingStartChanged(LocalDate.of(2026, 1, 1))
+            assertThat(progress.clearYearCalls).hasSize(clearsBefore)
+            assertThat(progress.marksFor(LocalDate.of(2026, 5, 1))).isNotEmpty()
         }
 }

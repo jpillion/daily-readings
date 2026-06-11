@@ -19,6 +19,13 @@ interface ProgressRepository {
         end: LocalDate,
     ): Flow<Map<LocalDate, Int>>
 
+    /**
+     * True iff any reading mark exists for any date. Used only by the one-time
+     * tracking-start first-run default (S10, D-S10-1): an install with existing history
+     * must not be retroactively defaulted.
+     */
+    suspend fun hasAnyMarks(): Boolean
+
     suspend fun setRead(
         date: LocalDate,
         stream: Stream,

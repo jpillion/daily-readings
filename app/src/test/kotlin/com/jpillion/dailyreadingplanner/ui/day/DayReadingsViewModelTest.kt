@@ -16,6 +16,7 @@ import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
@@ -44,7 +45,7 @@ class DayReadingsViewModelTest {
         val clock = clockAt(date)
         return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress),
-            getMonthCompletion = GetMonthCompletionUseCase(resolver, progress, clock),
+            getMonthCompletion = GetMonthCompletionUseCase(resolver, progress, FakeSettingsRepository(), clock),
             toggleReading = ToggleReadingUseCase(progress),
             markWholeDay = MarkWholeDayUseCase(progress),
             openReference = OpenReferenceUseCase(BlbUrlBuilder()),

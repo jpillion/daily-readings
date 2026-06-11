@@ -11,6 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.jpillion.dailyreadingplanner.domain.InitializeTrackingStartUseCase
 import com.jpillion.dailyreadingplanner.ui.navigation.AppNavHost
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import com.jpillion.dailyreadingplanner.ui.theme.ThemeViewModel
@@ -27,6 +28,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var widgetRefresher: WidgetRefresher
 
+    @Inject
+    lateinit var initializeTrackingStart: InitializeTrackingStartUseCase
+
     override fun onResume() {
         super.onResume()
         // Opportunistic widget refresh on resume (D9/ESpec §7): the dominant date-rollover
@@ -36,6 +40,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // One-time tracking-start default (S10, D-S10-1); idempotent via its marker pref.
+        lifecycleScope.launch { initializeTrackingStart() }
         enableEdgeToEdge()
         setContent {
             val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()

@@ -149,4 +149,14 @@ class ProgressRepositoryTest {
             repository.setWholeDay(date, isRead = true)
             assertThat(flow.first()).hasSize(3)
         }
+
+    @Test
+    fun `hasAnyMarks is false on an empty store, true with any mark, false again after unmark`() =
+        runTest {
+            assertThat(repository.hasAnyMarks()).isFalse()
+            repository.setRead(LocalDate.of(2026, 6, 1), Stream.NEW_TESTAMENT, isRead = true)
+            assertThat(repository.hasAnyMarks()).isTrue()
+            repository.setRead(LocalDate.of(2026, 6, 1), Stream.NEW_TESTAMENT, isRead = false)
+            assertThat(repository.hasAnyMarks()).isFalse()
+        }
 }

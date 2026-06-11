@@ -57,6 +57,8 @@ class FakeProgressRepository : ProgressRepository {
                     .mapValues { (_, streams) -> streams.size }
             }.distinctUntilChanged()
 
+    override suspend fun hasAnyMarks(): Boolean = marks.value.any { it.value.isNotEmpty() }
+
     override suspend fun setRead(
         date: LocalDate,
         stream: Stream,

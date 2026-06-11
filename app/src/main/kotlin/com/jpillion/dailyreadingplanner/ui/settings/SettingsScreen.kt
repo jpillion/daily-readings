@@ -13,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,6 +25,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,12 +36,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
-import com.jpillion.dailyreadingplanner.data.prefs.ThemeRepository
+import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 
 /** Stateful entry point for the pushed `settings` route (ESpec §7). */
@@ -49,12 +59,15 @@ fun SettingsRoute(
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
+    val trackingStartDate by viewModel.trackingStartDate.collectAsStateWithLifecycle()
     SettingsScreen(
         selectedMode = themeMode,
         fontScale = fontScale,
         currentYear = viewModel.currentYear,
+        trackingStartDate = trackingStartDate,
         onThemeModeSelected = viewModel::onThemeModeSelected,
         onFontScaleChanged = viewModel::onFontScaleChanged,
+        onTrackingStartChanged = viewModel::onTrackingStartChanged,
         onResetProgressConfirmed = viewModel::onResetProgressConfirmed,
         onBack = onBack,
     )
@@ -72,13 +85,16 @@ fun SettingsScreen(
     selectedMode: ThemeMode,
     fontScale: Float,
     currentYear: Int,
+    trackingStartDate: LocalDate?,
     onThemeModeSelected: (ThemeMode) -> Unit,
     onFontScaleChanged: (Float) -> Unit,
+    onTrackingStartChanged: (LocalDate?) -> Unit,
     onResetProgressConfirmed: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
+    var showTrackingStartDialog by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -134,6 +150,19 @@ fun SettingsScreen(
             SectionTitle(stringResource(R.string.text_size_section_title))
             TextSizeSlider(fontScale = fontScale, onFontScaleChanged = onFontScaleChanged)
 
+            SectionTitle(stringResource(R.string.tracking_section_title))
+            TrackingStartRow(
+                trackingStartDate = trackingStartDate,
+                onOpenPicker = { showTrackingStartDialog = true },
+                onClear = { onTrackingStartChanged(null) },
+            )
+            Text(
+                text = stringResource(R.string.tracking_start_help),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+            )
+
             SectionTitle(stringResource(R.string.progress_section_title))
             Row(
                 modifier =
@@ -179,6 +208,116 @@ fun SettingsScreen(
             },
         )
     }
+
+    if (showTrackingStartDialog) {
+        TrackingStartDatePickerDialog(
+            initialDate = trackingStartDate,
+            onConfirm = { picked ->
+                showTrackingStartDialog = false
+                onTrackingStartChanged(picked)
+            },
+            onDismiss = { showTrackingStartDialog = false },
+        )
+    }
+}
+
+/**
+ * The tracking-start row (S10): label + current value ("Not set" when null) + a Clear
+ * affordance when set. Tapping the row opens the full-date picker dialog.
+ */
+@Composable
+private fun TrackingStartRow(
+    trackingStartDate: LocalDate?,
+    onOpenPicker: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val valueText =
+        trackingStartDate?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+            ?: stringResource(R.string.tracking_start_unset)
+    val rowDescription = stringResource(R.string.tracking_start_row_description, valueText)
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .selectable(
+                    selected = false,
+                    role = Role.Button,
+                    onClick = onOpenPicker,
+                ).testTag("tracking-start-row")
+                .semantics { contentDescription = rowDescription }
+                .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.tracking_start_title),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = valueText,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("tracking-start-value"),
+        )
+        if (trackingStartDate != null) {
+            val clearDescription = stringResource(R.string.tracking_start_clear_description)
+            TextButton(
+                onClick = onClear,
+                modifier =
+                    Modifier
+                        .padding(start = 8.dp)
+                        .testTag("tracking-start-clear")
+                        .semantics { contentDescription = clearDescription },
+            ) { Text(text = stringResource(R.string.tracking_start_clear)) }
+        }
+    }
+}
+
+/**
+ * Stock M3 full-calendar-date picker (S10): unlike the schedule's pinned-year
+ * [DayDatePickerDialog][com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog],
+ * the tracking start is a real year-qualified date, so year navigation matters here.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TrackingStartDatePickerDialog(
+    initialDate: LocalDate?,
+    onConfirm: (LocalDate) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val state =
+        rememberDatePickerState(
+            initialSelectedDateMillis =
+                (initialDate ?: LocalDate.now())
+                    .atStartOfDay(ZoneOffset.UTC)
+                    .toInstant()
+                    .toEpochMilli(),
+        )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val millis = state.selectedDateMillis ?: return@TextButton
+                    onConfirm(
+                        Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
+                    )
+                },
+                enabled = state.selectedDateMillis != null,
+                modifier = Modifier.testTag("tracking-start-confirm"),
+            ) { Text(text = stringResource(R.string.tracking_start_dialog_confirm)) }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("tracking-start-cancel"),
+            ) { Text(text = stringResource(R.string.tracking_start_dialog_cancel)) }
+        },
+        modifier = Modifier.testTag("tracking-start-dialog"),
+    ) {
+        DatePicker(state = state)
+    }
 }
 
 @Composable
@@ -191,7 +330,7 @@ private fun TextSizeSlider(
             Slider(
                 value = fontScale,
                 onValueChange = onFontScaleChanged,
-                valueRange = ThemeRepository.MIN_FONT_SCALE..ThemeRepository.MAX_FONT_SCALE,
+                valueRange = SettingsRepository.MIN_FONT_SCALE..SettingsRepository.MAX_FONT_SCALE,
                 // 12 interior stops = 0.05 increments across 0.85..1.50.
                 steps = 12,
                 modifier = Modifier.weight(1f).testTag("text-size-slider"),

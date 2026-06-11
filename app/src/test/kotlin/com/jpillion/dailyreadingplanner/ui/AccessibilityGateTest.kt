@@ -88,8 +88,10 @@ class AccessibilityGateTest {
                     selectedMode = ThemeMode.SYSTEM,
                     fontScale = 1f,
                     currentYear = 2026,
+                    trackingStartDate = today,
                     onThemeModeSelected = {},
                     onFontScaleChanged = {},
+                    onTrackingStartChanged = {},
                     onResetProgressConfirmed = {},
                     onBack = {},
                 )
@@ -108,6 +110,18 @@ class AccessibilityGateTest {
             .assertTouchTargetAtLeast(44.dp)
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
         composeRule.onNodeWithTag("reset-progress").performScrollTo().assertTouchTargetAtLeast(48.dp)
+        // S10: the tracking-start row and its Clear control are authored controls -> 48dp,
+        // and both speak their purpose (label+value on the row; explicit label on Clear).
+        composeRule
+            .onNodeWithTag("tracking-start-row")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assertContentDescriptionContains("Start tracking from", substring = true)
+        composeRule
+            .onNodeWithTag("tracking-start-clear")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assert(hasAnyContentDescription())
     }
 
     @Test

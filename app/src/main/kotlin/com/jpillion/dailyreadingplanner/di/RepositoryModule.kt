@@ -2,8 +2,8 @@ package com.jpillion.dailyreadingplanner.di
 
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepositoryImpl
-import com.jpillion.dailyreadingplanner.data.prefs.ThemeRepository
-import com.jpillion.dailyreadingplanner.data.prefs.ThemeRepositoryImpl
+import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
+import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepositoryImpl
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepositoryImpl
 import dagger.Binds
@@ -26,5 +26,5 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindThemeRepository(impl: ThemeRepositoryImpl): ThemeRepository
+    abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
 }
