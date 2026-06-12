@@ -331,9 +331,40 @@ Do not reference or depend on strikelog.
   intended test, pipeline green; Kover 95.8% on domain/data. Device-pass add: confirm one-screen fit on the
   P7P at default font.
   Handoff: [docs/sprints/sprint-0016-main-screen-cleanup.md](docs/sprints/sprint-0016-main-screen-cleanup.md).
-- Next up: **Sprint 17 — V2.x release prep** (`sprint-0017-v2-release-prep`): version bump
+- ✅ **Sprint 17 (year-strip progress visualization — owner-approved design) is DONE**
+  (owner-redirected again from `v2-release-prep`; uncommitted in the working tree; version
+  untouched at 1.3.0/10300 — needs a bump to ship). The stats panel's plain progress bars
+  are now **year strips**: one single-Canvas strip per stream — 365 contiguous ~1dp
+  segments, one per calendar day — green = that stream marked that day, red = past
+  post-start unmarked, neutral = everything else (Feb 29, pre-start, today-in-grace,
+  future); the year section keeps its "% · n of 1,095" text but its bar is the **three
+  stream strips stacked** (3×6dp rows); a thin onSurface tick marks today on every strip.
+  **D-S17-1 (amends the S11 pin):** red is now ALLOWED on the stats surface — strips only,
+  information not commentary; the no-guilt **copy** ban stays absolute and was *extended*
+  to contentDescriptions (pinned in `StatsContentTest`). **D-S17-2:** per-(day,stream)
+  state goes THROUGH `DayCompletionClassifier` (R-STREAK-5, never re-derived): classify
+  with a synthetic count — `STREAM_COUNT` if that one stream is marked, else 0 — so the
+  truth-table order (Feb 29 → marked/green incl. pre-start earned green → start gate →
+  past red → neutral) is inherited verbatim; mutation-pinned against local re-derivation.
+  **D-S17-3:** strips are color-only, so each carries a spoken summary ("Law & History:
+  120 read, 3 not read, 242 upcoming"; stacked view speaks one combined line) — wording is
+  "not read", never "missed", even in speech. **D-S17-4:** segments = `lengthOfYear()`
+  (366 in leap years, Feb 29 renders neutral); colors reuse the picker-dot
+  `IndicatorGreen/Red` tokens via the **`StripColors` seam** (`defaultStripColors()` in
+  `ui/stats/YearStrip.kt`) — a future colorblind palette (owner-deferred, queued) is a
+  one-provider swap. New: `domain/model/YearStrips` + `StripDayState`,
+  `GetYearStripsUseCase`, DAO `marksInRange` → `ProgressRepository.streamMarks()` (query
+  only, NO schema change), strips ride the existing `StatsPanelUiState`. No touch
+  interaction on strips; streak toggle (D-S15-5) independent — strips always show.
+  321/321 tests (net +17; 7-test Sprint 1 gate untouched), **5 mutations killed**
+  (grace-day today, pre-start gate, resolver-bypassing re-derivation → Feb-29, day-365
+  truncation, day-1 shift), each restored in place; Kover 96.2% on domain/data; pipeline
+  green. Strip look (~1dp texture, tick visibility, dark mode) is NOT JVM-provable —
+  device-pass item. S17 strings need owner tone sign-off (table in the handoff).
+  Handoff: [docs/sprints/sprint-0017-year-strips.md](docs/sprints/sprint-0017-year-strips.md).
+- Next up: **Sprint 18 — V2.x release prep** (`sprint-0018-v2-release-prep`): version bump
   past 1.3.0/10300, the owner's consolidated device pass (S9/S12/S13/S14 lists + the S15
-  MySword 66-book on-device gate + stats-panel look + S16 one-screen fit), S12–S16 string
+  MySword 66-book on-device gate + S16 one-screen fit + S17 strip look), S12–S17 string
   tone sign-offs, closed-track rollout via the tag-to-Play pipeline.
 
 ## The reading plan

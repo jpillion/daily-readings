@@ -36,6 +36,16 @@ interface ProgressRepository {
     ): Flow<Map<Stream, Int>>
 
     /**
+     * Every marked (stream, day) in [start]..[end] (inclusive), as the set of marked dates
+     * per stream (S17): the year-strip input. Streams with zero marks are absent. Re-emits
+     * whenever marks change.
+     */
+    fun streamMarks(
+        start: LocalDate,
+        end: LocalDate,
+    ): Flow<Map<Stream, Set<LocalDate>>>
+
+    /**
      * True iff any reading mark exists for any date. Used only by the one-time
      * tracking-start first-run default (S10, D-S10-1): an install with existing history
      * must not be retroactively defaulted.

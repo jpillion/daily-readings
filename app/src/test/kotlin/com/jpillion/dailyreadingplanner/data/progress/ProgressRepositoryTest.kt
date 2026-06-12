@@ -189,6 +189,26 @@ class ProgressRepositoryTest {
         }
 
     @Test
+    fun `streamMarks returns per-stream date sets and respects inclusive range bounds`() =
+        runTest {
+            // S17 year-strip input: raw (day, stream) marks grouped per stream.
+            repository.setWholeDay(LocalDate.of(2026, 1, 1), isRead = true) // boundary in
+            repository.setRead(LocalDate.of(2026, 6, 10), Stream.NEW_TESTAMENT, isRead = true)
+            repository.setRead(LocalDate.of(2026, 12, 31), Stream.LAW_AND_HISTORY, isRead = true) // boundary in
+            repository.setRead(LocalDate.of(2025, 12, 31), Stream.NEW_TESTAMENT, isRead = true) // out of range
+            repository.setRead(LocalDate.of(2027, 1, 1), Stream.NEW_TESTAMENT, isRead = true) // out of range
+            val marks =
+                repository
+                    .streamMarks(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))
+                    .first()
+            assertThat(marks[Stream.LAW_AND_HISTORY])
+                .containsExactly(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))
+            assertThat(marks[Stream.PSALMS_AND_PROPHECY]).containsExactly(LocalDate.of(2026, 1, 1))
+            assertThat(marks[Stream.NEW_TESTAMENT])
+                .containsExactly(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 10))
+        }
+
+    @Test
     fun `streamCounts groups per stream and respects inclusive range bounds`() =
         runTest {
             // Inside 2026: two L&H days, one NT day.

@@ -44,6 +44,18 @@ class ProgressRepositoryImpl
                 .map { rows -> rows.associate { Stream.fromNumber(it.stream) to it.readCount } }
                 .distinctUntilChanged()
 
+        override fun streamMarks(
+            start: LocalDate,
+            end: LocalDate,
+        ): Flow<Map<Stream, Set<LocalDate>>> =
+            dao
+                .marksInRange(start.toEpochDay(), end.toEpochDay())
+                .map { rows ->
+                    rows
+                        .groupBy({ Stream.fromNumber(it.stream) }, { LocalDate.ofEpochDay(it.dateEpochDay) })
+                        .mapValues { (_, dates) -> dates.toSet() }
+                }.distinctUntilChanged()
+
         override suspend fun hasAnyMarks(): Boolean = dao.hasAnyRows()
 
         override suspend fun setRead(

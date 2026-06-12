@@ -14,6 +14,8 @@ import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.Stream
+import com.jpillion.dailyreadingplanner.domain.model.StripDayState
+import com.jpillion.dailyreadingplanner.domain.model.YearStrips
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
@@ -69,6 +71,17 @@ class DayReadingsPagerScreenTest {
                     Stream.PSALMS_AND_PROPHECY to 144,
                     Stream.NEW_TESTAMENT to 144,
                 ),
+        )
+
+    /** S17: neutral strips are enough for panel-level tests; StatsContentTest pins states. */
+    private fun sampleStrips(today: LocalDate) =
+        YearStrips(
+            year = today.year,
+            todayIndex = today.dayOfYear - 1,
+            dayStates =
+                Stream.entries.associateWith {
+                    List(today.lengthOfYear()) { StripDayState.NEUTRAL }
+                },
         )
 
     private fun setScreen(
@@ -184,7 +197,7 @@ class DayReadingsPagerScreenTest {
     @Test
     fun statsPanel_rendersBelowTheReadings_onceNotPerPage() {
         val today = LocalDate.of(2026, 6, 10)
-        setScreen(today, statsPanel = StatsPanelUiState(sampleStats, showStreaks = true))
+        setScreen(today, statsPanel = StatsPanelUiState(sampleStats, showStreaks = true, strips = sampleStrips(today)))
         composeRule.onNodeWithTag("stats-panel").assertExists()
         composeRule.onNodeWithText("Current streak").assertExists()
         composeRule.onNodeWithText("This year").assertExists()
@@ -209,7 +222,12 @@ class DayReadingsPagerScreenTest {
         // D-S15-5: streaks off hides ONLY the two streak rows; year + stream remain.
         setScreen(
             LocalDate.of(2026, 6, 10),
-            statsPanel = StatsPanelUiState(sampleStats, showStreaks = false),
+            statsPanel =
+                StatsPanelUiState(
+                    sampleStats,
+                    showStreaks = false,
+                    strips = sampleStrips(LocalDate.of(2026, 6, 10)),
+                ),
         )
         composeRule.onNodeWithText("Current streak").assertDoesNotExist()
         composeRule.onNodeWithText("Longest streak").assertDoesNotExist()

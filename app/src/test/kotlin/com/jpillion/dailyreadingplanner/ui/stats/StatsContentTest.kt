@@ -5,10 +5,13 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.Stream
+import com.jpillion.dailyreadingplanner.domain.model.StripDayState
+import com.jpillion.dailyreadingplanner.domain.model.YearStrips
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
 import org.junit.Test
@@ -18,8 +21,10 @@ import org.robolectric.annotation.Config
 
 /**
  * S11 sober stat groups (PRD §13.1, FR-15/FR-16), rendered inline since S15 (D-S15-4).
- * The "no guilt mechanics" contract is pinned here: no copy ever mentions missing/failure,
- * whatever the numbers say — and it must keep holding wherever the stats render.
+ * The "no guilt mechanics" contract is pinned here, deliberately AMENDED by D-S17-1: the
+ * year strips may paint red segments (information, not commentary), but no COPY ever
+ * mentions missing/failure — and since S17 that ban extends to contentDescriptions too
+ * (the spoken summaries say "not read", D-S17-3).
  * D-S15-5: the streak rows are gated by showStreaks; year + stream always show.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -41,13 +46,31 @@ class StatsContentTest {
                 ),
         )
 
+    /** Per stream: 120 READ, 3 MISSED, 242 NEUTRAL — exact spoken-summary fixture. */
+    private val sampleStrips =
+        YearStrips(
+            year = 2026,
+            todayIndex = 160,
+            dayStates =
+                Stream.entries.associateWith {
+                    List(365) { index ->
+                        when {
+                            index < 120 -> StripDayState.READ
+                            index < 123 -> StripDayState.MISSED
+                            else -> StripDayState.NEUTRAL
+                        }
+                    }
+                },
+        )
+
     private fun setContent(
         stats: ReadingStats = sampleStats,
+        strips: YearStrips = sampleStrips,
         showStreaks: Boolean = true,
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
-                StatsContent(stats = stats, showStreaks = showStreaks)
+                StatsContent(stats = stats, strips = strips, showStreaks = showStreaks)
             }
         }
     }
@@ -124,15 +147,66 @@ class StatsContentTest {
         assertNoGuiltCopy()
     }
 
-    /** FR-16 / §13.0: missed days are never called out — no shame copy anywhere. */
+    // --- S17: year strips replace the progress bars (D-S17-1/2/3) ---
+
+    @Test
+    fun stripsReplaceTheBars_perStreamAndStackedYear() {
+        setContent()
+        // One strip per stream plus the stacked year heat-strip; the old bars are gone.
+        Stream.entries.forEach { stream ->
+            composeRule
+                .onNodeWithTag("strip-stream-${stream.number}", useUnmergedTree = true)
+                .assertExists()
+        }
+        composeRule.onNodeWithTag("strip-year", useUnmergedTree = true).assertExists()
+        composeRule.onAllNodes(hasProgressBarSemantics()).assertCountEquals(0)
+        // The numeric copy the strips sit beside is unchanged.
+        composeRule.onNodeWithText("438 of 1,095 readings").assertExists()
+        composeRule.onNodeWithText("150 of 365").assertExists()
+    }
+
+    @Test
+    fun stripSummaries_speakExactCounts_sayingNotReadNeverMissed() {
+        // D-S17-3: color-only strips carry spoken summaries; "not read", never "missed".
+        setContent()
+        composeRule
+            .onNodeWithContentDescription("Law & History: 120 read, 3 not read, 242 upcoming")
+            .assertExists()
+        composeRule
+            .onNodeWithContentDescription("New Testament: 120 read, 3 not read, 242 upcoming")
+            .assertExists()
+        // The stacked year view speaks ONE combined summary across all three streams.
+        composeRule
+            .onNodeWithContentDescription("All streams: 360 read, 9 not read, 726 upcoming")
+            .assertExists()
+        assertNoGuiltCopy()
+    }
+
+    /**
+     * FR-16 / §13.0 as amended by D-S17-1: red strip *segments* are allowed; missed-day
+     * COPY is not — in text or in speech (contentDescriptions included since S17).
+     */
     private fun assertNoGuiltCopy() {
         for (banned in listOf("miss", "Miss", "broke", "Broke", "fail", "Fail", "behind", "Behind")) {
             composeRule.onAllNodes(textContains(banned)).assertCountEquals(0)
+            composeRule
+                .onAllNodes(contentDescriptionContains(banned), useUnmergedTree = true)
+                .assertCountEquals(0)
         }
     }
 
     private fun textContains(substring: String): SemanticsMatcher =
         SemanticsMatcher("text contains '$substring'") { node ->
             node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.contains(substring) } == true
+        }
+
+    private fun contentDescriptionContains(substring: String): SemanticsMatcher =
+        SemanticsMatcher("contentDescription contains '$substring'") { node ->
+            node.config.getOrNull(SemanticsProperties.ContentDescription)?.any { it.contains(substring) } == true
+        }
+
+    private fun hasProgressBarSemantics(): SemanticsMatcher =
+        SemanticsMatcher("has ProgressBarRangeInfo") { node ->
+            node.config.getOrNull(SemanticsProperties.ProgressBarRangeInfo) != null
         }
 }

@@ -77,6 +77,21 @@ class FakeProgressRepository : ProgressRepository {
                     }.filterValues { it > 0 }
             }.distinctUntilChanged()
 
+    override fun streamMarks(
+        start: LocalDate,
+        end: LocalDate,
+    ): Flow<Map<Stream, Set<LocalDate>>> =
+        marks
+            .map { all ->
+                Stream.entries
+                    .associateWith { stream ->
+                        all
+                            .filterKeys { !it.isBefore(start) && !it.isAfter(end) }
+                            .filterValues { stream in it }
+                            .keys
+                    }.filterValues { it.isNotEmpty() }
+            }.distinctUntilChanged()
+
     override suspend fun hasAnyMarks(): Boolean = marks.value.any { it.value.isNotEmpty() }
 
     override suspend fun setRead(

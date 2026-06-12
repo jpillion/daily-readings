@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,26 +13,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.Stream
+import com.jpillion.dailyreadingplanner.domain.model.StripDayState
+import com.jpillion.dailyreadingplanner.domain.model.YearStrips
 import com.jpillion.dailyreadingplanner.ui.day.ReadingFormatter
 import java.text.NumberFormat
 
-/** What the main-screen stats panel renders (S15, D-S15-4): the live stats + the streak gate. */
+/**
+ * What the main-screen stats panel renders (S15, D-S15-4): the live stats + the streak gate,
+ * plus the year-strip day states (S17).
+ */
 data class StatsPanelUiState(
     val stats: ReadingStats,
     val showStreaks: Boolean,
+    val strips: YearStrips,
 )
 
 /**
  * The stats content (PRD §13.1), S15 (D-S15-4): rendered inline below the day pager instead
  * of behind a pushed route — the stats are year-level, identical whichever day is displayed,
  * so they render once under the pager, not per page. Sober by contract (§13.0/FR-16, pinned
- * in StatsContentTest): no celebration, no missed-day callouts, no red; missed days exist
- * only as the gap between n and the denominator.
+ * in StatsContentTest), amended by D-S17-1: the year strips may show red segments — red is
+ * information, not commentary — but no COPY ever calls out missing/failure, on screen or in
+ * speech ("not read", never "missed").
  *
  * D-S15-5: [showStreaks] off hides the two streak rows (display only — the underlying
  * derivation is untouched); year and per-stream progress always show.
@@ -41,6 +49,7 @@ data class StatsPanelUiState(
 @Composable
 fun StatsContent(
     stats: ReadingStats,
+    strips: YearStrips,
     showStreaks: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -60,8 +69,8 @@ fun StatsContent(
                 tag = "stats-longest-streak",
             )
         }
-        YearGroup(stats = stats)
-        StreamGroup(stats = stats)
+        YearGroup(stats = stats, strips = strips)
+        StreamGroup(stats = stats, strips = strips)
     }
 }
 
@@ -92,9 +101,16 @@ private fun StreakRow(
     }
 }
 
-/** Group 3: % of the year's 1,095 readings — full-year denominator, floor rounding (D-S11-4). */
+/**
+ * Group 3: % of the year's 1,095 readings — full-year denominator, floor rounding (D-S11-4).
+ * The bar is gone (S17): the three stream strips stack into a compact year heat-strip, one
+ * combined spoken summary (color-only pixels, D-S17-3 wording).
+ */
 @Composable
-private fun YearGroup(stats: ReadingStats) {
+private fun YearGroup(
+    stats: ReadingStats,
+    strips: YearStrips,
+) {
     val numberFormat = NumberFormat.getIntegerInstance()
     val percent = stats.yearReadCount * 100 / ReadingStats.YEAR_TOTAL_READINGS
     Column(
@@ -126,16 +142,42 @@ private fun YearGroup(stats: ReadingStats) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        LinearProgressIndicator(
-            progress = { stats.yearReadCount.toFloat() / ReadingStats.YEAR_TOTAL_READINGS },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        val allStates = Stream.entries.flatMap { strips.dayStates[it].orEmpty() }
+        val yearSummary =
+            stringResource(
+                R.string.strip_year_summary,
+                allStates.count { it == StripDayState.READ },
+                allStates.count { it == StripDayState.MISSED },
+                allStates.count { it == StripDayState.NEUTRAL },
+            )
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag("strip-year")
+                    .clearAndSetSemantics { contentDescription = yearSummary },
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            val colors = defaultStripColors()
+            Stream.entries.forEach { stream ->
+                YearStrip(
+                    states = strips.dayStates[stream].orEmpty(),
+                    todayIndex = strips.todayIndex,
+                    colors = colors,
+                    height = 6.dp,
+                )
+            }
+        }
     }
 }
 
-/** Group 4: one quiet bar per stream, "n of 365" each. */
+/** Group 4: one year strip per stream (S17, was a quiet bar), "n of 365" each. */
 @Composable
-private fun StreamGroup(stats: ReadingStats) {
+private fun StreamGroup(
+    stats: ReadingStats,
+    strips: YearStrips,
+) {
+    val colors = defaultStripColors()
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -171,9 +213,24 @@ private fun StreamGroup(stats: ReadingStats) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                LinearProgressIndicator(
-                    progress = { count.toFloat() / ReadingStats.STREAM_TOTAL_DAYS },
-                    modifier = Modifier.fillMaxWidth(),
+                val states = strips.dayStates[stream].orEmpty()
+                val summary =
+                    stringResource(
+                        R.string.strip_stream_summary,
+                        ReadingFormatter.streamTitle(stream),
+                        states.count { it == StripDayState.READ },
+                        states.count { it == StripDayState.MISSED },
+                        states.count { it == StripDayState.NEUTRAL },
+                    )
+                YearStrip(
+                    states = states,
+                    todayIndex = strips.todayIndex,
+                    colors = colors,
+                    height = 10.dp,
+                    modifier =
+                        Modifier
+                            .testTag("strip-stream-${stream.number}")
+                            .clearAndSetSemantics { contentDescription = summary },
                 )
             }
         }

@@ -94,4 +94,9 @@
     <string name="request_app_title">Request another app or site</string>
     <string name="request_app_subject">Daily Reading Planner — Bible app request</string>
     <string name="request_app_body">I would like my readings to open in: </string>
+
+    <!-- S17 year strips: spoken summaries for the color-only strips (D-S17-3: "not read",
+         never "missed" — the no-guilt copy ban stays absolute, including in speech). -->
+    <string name="strip_stream_summary">%1$s: %2$d read, %3$d not read, %4$d upcoming</string>
+    <string name="strip_year_summary">All streams: %1$d read, %2$d not read, %3$d upcoming</string>
 </resources>

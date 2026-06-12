@@ -17,7 +17,9 @@ import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.Stream
+import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.domain.model.YearStrips
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.day.DayContent
@@ -243,6 +245,15 @@ class AccessibilityGateTest {
                                     Stream.PSALMS_AND_PROPHECY to 144,
                                     Stream.NEW_TESTAMENT to 144,
                                 ),
+                        ),
+                    strips =
+                        YearStrips(
+                            year = 2026,
+                            todayIndex = 160,
+                            dayStates =
+                                Stream.entries.associateWith {
+                                    List(365) { StripDayState.NEUTRAL }
+                                },
                         ),
                     showStreaks = true,
                 )

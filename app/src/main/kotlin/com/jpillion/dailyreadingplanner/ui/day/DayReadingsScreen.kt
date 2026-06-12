@@ -206,6 +206,7 @@ fun DayReadingsPagerScreen(
                     HorizontalDivider()
                     StatsContent(
                         stats = statsPanel.stats,
+                        strips = statsPanel.strips,
                         showStreaks = statsPanel.showStreaks,
                         modifier =
                             Modifier

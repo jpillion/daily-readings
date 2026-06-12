@@ -12,6 +12,7 @@ import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
+import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
@@ -59,6 +60,7 @@ class DayReadingsViewModelTest {
             openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = widgetRefresher,
             getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, clock),
+            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, clock),
             settingsRepository = settings,
             clock = clock,
         )
@@ -276,6 +278,26 @@ class DayReadingsViewModelTest {
             assertThat(panel.showStreaks).isTrue()
             assertThat(panel.stats.currentStreakDays).isEqualTo(2)
             assertThat(panel.stats.yearReadCount).isEqualTo(6)
+        }
+
+    @Test
+    fun `stats panel carries the year strips - marked yesterday is READ on every stream`() =
+        runTest {
+            // S17: the same panel emission carries the strip day-states, live from marks.
+            progress.setWholeDay(today.minusDays(1), true)
+            val vm = viewModel()
+            val strips =
+                vm.statsPanel
+                    .filterNotNull()
+                    .first()
+                    .strips
+            assertThat(strips.year).isEqualTo(today.year)
+            assertThat(strips.todayIndex).isEqualTo(today.dayOfYear - 1)
+            val yesterdayIndex = today.dayOfYear - 2
+            com.jpillion.dailyreadingplanner.domain.model.Stream.entries.forEach { stream ->
+                assertThat(strips.dayStates.getValue(stream)[yesterdayIndex])
+                    .isEqualTo(com.jpillion.dailyreadingplanner.domain.model.StripDayState.READ)
+            }
         }
 
     @Test

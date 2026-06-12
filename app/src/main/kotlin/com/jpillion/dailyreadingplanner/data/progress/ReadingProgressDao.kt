@@ -12,6 +12,12 @@ data class DayReadCount(
     val readCount: Int,
 )
 
+/** One row of the raw marks-in-range query (S17): a single (day, stream) mark. */
+data class DayStreamMark(
+    val dateEpochDay: Long,
+    val stream: Int,
+)
+
 /** One row of the per-stream grouped query: a stream and how many of its days are marked. */
 data class StreamReadCount(
     val stream: Int,
@@ -56,6 +62,19 @@ interface ReadingProgressDao {
         startEpochDay: Long,
         endEpochDay: Long,
     ): Flow<List<StreamReadCount>>
+
+    /**
+     * Every individual (day, stream) mark in an inclusive range, in one query — the year-strip
+     * input (S17): at most ~1,098 rows for a fully-read year, trivially cheap.
+     */
+    @Query(
+        "SELECT dateEpochDay, stream FROM reading_progress " +
+            "WHERE dateEpochDay BETWEEN :startEpochDay AND :endEpochDay",
+    )
+    fun marksInRange(
+        startEpochDay: Long,
+        endEpochDay: Long,
+    ): Flow<List<DayStreamMark>>
 
     /** True iff any mark exists at all — backs the one-time tracking-start default (S10). */
     @Query("SELECT EXISTS(SELECT 1 FROM reading_progress LIMIT 1)")

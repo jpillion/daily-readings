@@ -6,6 +6,7 @@ import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
+import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
@@ -60,6 +61,7 @@ class DayReadingsViewModel
         private val openReference: OpenReferenceUseCase,
         private val widgetRefresher: WidgetRefresher,
         getReadingStats: GetReadingStatsUseCase,
+        getYearStrips: GetYearStripsUseCase,
         settingsRepository: SettingsRepository,
         clock: Clock,
     ) : ViewModel() {
@@ -105,8 +107,13 @@ class DayReadingsViewModel
          * never a crash.
          */
         val statsPanel: StateFlow<StatsPanelUiState?> =
-            combine(getReadingStats(), settingsRepository.showStreaks) { stats, showStreaks ->
-                StatsPanelUiState(stats = stats, showStreaks = showStreaks) as StatsPanelUiState?
+            combine(
+                getReadingStats(),
+                getYearStrips(),
+                settingsRepository.showStreaks,
+            ) { stats, strips, showStreaks ->
+                StatsPanelUiState(stats = stats, showStreaks = showStreaks, strips = strips)
+                    as StatsPanelUiState?
             }.catch { emit(null) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
