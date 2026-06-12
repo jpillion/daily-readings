@@ -24,8 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,10 +61,8 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlin.math.roundToInt
@@ -556,52 +551,6 @@ private fun TrackingStartRow(
                         .semantics { contentDescription = clearDescription },
             ) { Text(text = stringResource(R.string.tracking_start_clear)) }
         }
-    }
-}
-
-/**
- * Stock M3 full-calendar-date picker (S10): unlike the schedule's pinned-year
- * [DayDatePickerDialog][com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog],
- * the tracking start is a real year-qualified date, so year navigation matters here.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TrackingStartDatePickerDialog(
-    initialDate: LocalDate?,
-    onConfirm: (LocalDate) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val state =
-        rememberDatePickerState(
-            initialSelectedDateMillis =
-                (initialDate ?: LocalDate.now())
-                    .atStartOfDay(ZoneOffset.UTC)
-                    .toInstant()
-                    .toEpochMilli(),
-        )
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val millis = state.selectedDateMillis ?: return@TextButton
-                    onConfirm(
-                        Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
-                    )
-                },
-                enabled = state.selectedDateMillis != null,
-                modifier = Modifier.testTag("tracking-start-confirm"),
-            ) { Text(text = stringResource(R.string.tracking_start_dialog_confirm)) }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.testTag("tracking-start-cancel"),
-            ) { Text(text = stringResource(R.string.tracking_start_dialog_cancel)) }
-        },
-        modifier = Modifier.testTag("tracking-start-dialog"),
-    ) {
-        DatePicker(state = state)
     }
 }
 

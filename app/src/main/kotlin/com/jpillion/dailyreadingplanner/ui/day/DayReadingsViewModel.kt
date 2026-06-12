@@ -3,12 +3,14 @@ package com.jpillion.dailyreadingplanner.ui.day
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
+import com.jpillion.dailyreadingplanner.domain.CompleteTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
+import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
@@ -60,12 +62,44 @@ class DayReadingsViewModel
         private val markWholeDay: MarkWholeDayUseCase,
         private val openReference: OpenReferenceUseCase,
         private val widgetRefresher: WidgetRefresher,
+        private val completeTrackingStartPrompt: CompleteTrackingStartPromptUseCase,
+        resolveTrackingStartPrompt: ResolveTrackingStartPromptUseCase,
         getReadingStats: GetReadingStatsUseCase,
         getYearStrips: GetYearStripsUseCase,
         settingsRepository: SettingsRepository,
         clock: Clock,
     ) : ViewModel() {
         val today: LocalDate = LocalDate.now(clock)
+
+        private val showTrackingStartPromptState = MutableStateFlow(false)
+
+        /**
+         * Whether the one-time first-run tracking-start prompt is showing (S19, D-S19-1/2).
+         * Resolved once at creation; flips false the moment an answer (or a dismiss) is
+         * persisted and, because the marker is then set, never resolves true again.
+         */
+        val showTrackingStartPrompt: StateFlow<Boolean> = showTrackingStartPromptState
+
+        init {
+            viewModelScope.launch {
+                showTrackingStartPromptState.value = resolveTrackingStartPrompt()
+            }
+        }
+
+        /** The user picked a start date (Jan 1 / today / custom) — persist it, never ask again. */
+        fun onTrackingStartChosen(date: LocalDate) {
+            showTrackingStartPromptState.value = false
+            viewModelScope.launch { completeTrackingStartPrompt(date) }
+        }
+
+        /**
+         * Dismissed without choosing (back/scrim): apply the Jan-1 fallback silently and never
+         * re-show (D-S19-1 — the least-nagging option; identical to the superseded D-S14-1
+         * default, so a dismissive user gets exactly the old behavior).
+         */
+        fun onTrackingStartPromptDismissed() {
+            onTrackingStartChosen(LocalDate.of(today.year, 1, 1))
+        }
 
         private val loadAttempt = MutableStateFlow(0)
 

@@ -388,12 +388,30 @@ Do not reference or depend on strikelog.
   restored in place; Kover 96.1% on domain/data. On-glass continuity + density feel =
   device-pass items.
   Handoff: [docs/sprints/sprint-0018-stats-tightening.md](docs/sprints/sprint-0018-stats-tightening.md).
-- Next up: **Sprint 19 — V2.x release prep** (`sprint-0019-v2x-release-prep`): version
-  bump past 1.3.2/10302, the owner's consolidated device pass (S9/S12/S13/S14 lists +
-  S15 MySword gate + S16 one-screen fit + S17 strip look + S18 strip continuity/density/
-  fresh-install streaks-off), S12–S18 string tone sign-offs, closed-track rollout via
-  the tag-to-Play pipeline.
-
+- ✅ **Sprint 19 (first-run tracking-start prompt — owner request) is DONE** (uncommitted
+  in the working tree by request; version untouched at 1.3.3/10303 — ships with the next
+  bump). **D-S19-1** (supersedes the auto-write half of D-S14-1; Jan-1 stays as fallback):
+  a fresh install gets ONE M3 dialog over the day screen (`ui/day/TrackingStartPromptDialog`,
+  tags `tracking-start-prompt`, `tracking-prompt-jan1/-today/-custom`) — "Start from
+  January 1, <year>" / "Start from today (<date>)" / "Pick a date…" (the shared S10
+  full-calendar picker, extracted to `ui/settings/TrackingStartDatePickerDialog.kt`,
+  tags unchanged; canceling it returns to the prompt — not an answer). One sentence of
+  copy + "change anytime in Settings" (literally pinned). Dismiss = Jan-1 fallback applied
+  silently + never re-shown; an unanswered prompt (process death) re-asks. NEVER shown to
+  already-initialized devices or upgraders with marks (marked initialized, date left null).
+  **D-S19-2:** gate lives in `DayReadingsViewModel` (`showTrackingStartPrompt` +
+  chosen/dismissed handlers) — `InitializeTrackingStartUseCase` and its MainActivity hook
+  are DELETED, replaced by `domain/ResolveTrackingStartPromptUseCase` (writes nothing on
+  a fresh resolve) + `CompleteTrackingStartPromptUseCase` (date + marker). No widget,
+  DataStore-key, Room, or manifest changes. 340/340 tests (net +12; 7-test Sprint 1 gate
+  untouched), 4 mutations killed (initialized guard, marks guard, choice-writes-marker,
+  dismiss-is-Jan-1), each by exactly its intended test; Kover 96.2% on domain/data.
+  Prompt strings need owner tone sign-off (table in the handoff).
+  Handoff: [docs/sprints/sprint-0019-first-run-prompt.md](docs/sprints/sprint-0019-first-run-prompt.md).
+- Next up: **Sprint 20 — V2.x release prep** (`sprint-0020-v2x-release-prep`): version bump
+  past 1.3.3/10303, consolidated device pass (S9 + S12–S18 items + S19 fresh-install/
+  upgrade prompt behavior), S12–S19 string tone sign-offs, closed-track rollout via the
+  tag-to-Play pipeline.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

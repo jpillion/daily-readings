@@ -260,4 +260,40 @@ class DayReadingsPagerScreenTest {
         composeRule.onNodeWithText("Today \u2013 December 31").assertIsDisplayed()
         composeRule.onNodeWithTag("jump-to-today").assertDoesNotExist()
     }
+
+    // --- S19 (D-S19-2): the first-run tracking-start prompt renders over the day screen. ---
+
+    @Test
+    fun `tracking-start prompt renders over the pager only when flagged`() {
+        val today = LocalDate.of(2026, 6, 10)
+        var dismissCalls = 0
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                DayReadingsPagerScreen(
+                    today = today,
+                    uiStateFor = ::stateFor,
+                    monthCompletionFor = { MutableStateFlow(emptyMap()) },
+                    statsPanel = null,
+                    onToggleReading = { _, _ -> },
+                    onMarkWholeDay = { _, _ -> },
+                    onReadingTapped = {},
+                    onRetry = {},
+                    onOpenSettings = {},
+                    showTrackingStartPrompt = true,
+                    onTrackingStartChosen = {},
+                    onTrackingStartPromptDismissed = { dismissCalls++ },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("tracking-start-prompt").assertIsDisplayed()
+        // The day screen itself still renders underneath (same-day pager intact).
+        composeRule.onNodeWithTag("day-pager").assertIsDisplayed()
+        assertThat(dismissCalls).isEqualTo(0)
+    }
+
+    @Test
+    fun `tracking-start prompt is absent by default`() {
+        setScreen(today = LocalDate.of(2026, 6, 10))
+        composeRule.onNodeWithTag("tracking-start-prompt").assertDoesNotExist()
+    }
 }

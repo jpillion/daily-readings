@@ -24,6 +24,7 @@ import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.day.DayContent
 import com.jpillion.dailyreadingplanner.ui.day.DayUiState
+import com.jpillion.dailyreadingplanner.ui.day.TrackingStartPromptDialog
 import com.jpillion.dailyreadingplanner.ui.settings.SettingsScreen
 import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
@@ -192,6 +193,21 @@ class AccessibilityGateTest {
             .performScrollTo()
             .assertTouchTargetAtLeast(48.dp)
             .assertContentDescriptionContains("Reminder time", substring = true)
+    }
+
+    @Test
+    fun `tracking-start prompt options meet 48dp touch targets and speak their full labels`() {
+        // S19: the first-run prompt's three option rows are authored controls -> 48dp; each
+        // row's full label (including the concrete date) is its text, so TalkBack speaks the
+        // actual choice, never a bare icon or color.
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                TrackingStartPromptDialog(today = today, onChoose = {}, onDismiss = {})
+            }
+        }
+        for (tag in listOf("tracking-prompt-jan1", "tracking-prompt-today", "tracking-prompt-custom")) {
+            composeRule.onNodeWithTag(tag).assertTouchTargetAtLeast(48.dp)
+        }
     }
 
     @Test

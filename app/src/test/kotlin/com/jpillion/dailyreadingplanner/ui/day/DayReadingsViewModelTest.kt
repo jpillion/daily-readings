@@ -6,6 +6,7 @@ import com.jpillion.dailyreadingplanner.core.date.ReadingDate
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
+import com.jpillion.dailyreadingplanner.domain.CompleteTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.DayCompletionClassifier
 import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
@@ -15,6 +16,7 @@ import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
+import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.Portion
@@ -59,6 +61,8 @@ class DayReadingsViewModelTest {
             markWholeDay = MarkWholeDayUseCase(progress),
             openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = widgetRefresher,
+            completeTrackingStartPrompt = CompleteTrackingStartPromptUseCase(settings),
+            resolveTrackingStartPrompt = ResolveTrackingStartPromptUseCase(settings, progress),
             getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, clock),
             getYearStrips = GetYearStripsUseCase(classifier, progress, settings, clock),
             settingsRepository = settings,
@@ -381,6 +385,60 @@ class DayReadingsViewModelTest {
         while (!predicate(state)) state = awaitScheduled()
         return state
     }
+
+    // --- S19: first-run tracking-start prompt (D-S19-1/2). ---
+
+    @Test
+    fun `fresh install shows the tracking-start prompt`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            val vm = viewModel(settings = settings)
+            vm.showTrackingStartPrompt.test {
+                assertThat(awaitItem()).isTrue()
+            }
+            // Resolution alone persists nothing — an unanswered prompt re-asks next launch.
+            assertThat(settings.storedTrackingStartInitialized.value).isFalse()
+        }
+
+    @Test
+    fun `already-initialized device never sees the prompt`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            settings.markTrackingStartInitialized()
+            val vm = viewModel(settings = settings)
+            vm.showTrackingStartPrompt.test {
+                assertThat(awaitItem()).isFalse()
+            }
+        }
+
+    @Test
+    fun `choosing a date persists it, sets the marker, and hides the prompt`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            val vm = viewModel(settings = settings)
+            vm.showTrackingStartPrompt.test {
+                assertThat(awaitItem()).isTrue()
+                vm.onTrackingStartChosen(LocalDate.of(2026, 6, 10))
+                assertThat(awaitItem()).isFalse()
+            }
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 6, 10))
+            assertThat(settings.storedTrackingStartInitialized.value).isTrue()
+        }
+
+    @Test
+    fun `dismissing without choosing applies the Jan-1 fallback and never re-shows`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            val vm = viewModel(settings = settings)
+            vm.showTrackingStartPrompt.test {
+                assertThat(awaitItem()).isTrue()
+                vm.onTrackingStartPromptDismissed()
+                assertThat(awaitItem()).isFalse()
+            }
+            // D-S19-1: dismiss == the superseded D-S14-1 default, marker set => never again.
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 1, 1))
+            assertThat(settings.storedTrackingStartInitialized.value).isTrue()
+        }
 }
 
 /** A plan repository whose asset read can be flipped between failing and healthy. */

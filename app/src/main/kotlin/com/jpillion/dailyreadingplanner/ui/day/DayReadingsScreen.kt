@@ -81,6 +81,7 @@ fun DayReadingsRoute(
         }
     }
     val statsPanel by viewModel.statsPanel.collectAsStateWithLifecycle()
+    val showTrackingStartPrompt by viewModel.showTrackingStartPrompt.collectAsStateWithLifecycle()
     DayReadingsPagerScreen(
         today = viewModel.today,
         uiStateFor = viewModel::uiStateFor,
@@ -91,6 +92,9 @@ fun DayReadingsRoute(
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
         onOpenSettings = onOpenSettings,
+        showTrackingStartPrompt = showTrackingStartPrompt,
+        onTrackingStartChosen = viewModel::onTrackingStartChosen,
+        onTrackingStartPromptDismissed = viewModel::onTrackingStartPromptDismissed,
     )
 }
 
@@ -115,6 +119,11 @@ fun DayReadingsPagerScreen(
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    // S19: the one-time first-run tracking-start prompt (default off so existing callers
+    // and the dominant render path are unchanged).
+    showTrackingStartPrompt: Boolean = false,
+    onTrackingStartChosen: (LocalDate) -> Unit = {},
+    onTrackingStartPromptDismissed: () -> Unit = {},
 ) {
     val pagerState = rememberPagerState(initialPage = TODAY_PAGE) { PAGE_COUNT }
     val scope = rememberCoroutineScope()
@@ -217,6 +226,14 @@ fun DayReadingsPagerScreen(
                 }
             }
         }
+    }
+
+    if (showTrackingStartPrompt) {
+        TrackingStartPromptDialog(
+            today = today,
+            onChoose = onTrackingStartChosen,
+            onDismiss = onTrackingStartPromptDismissed,
+        )
     }
 
     if (showDatePicker) {

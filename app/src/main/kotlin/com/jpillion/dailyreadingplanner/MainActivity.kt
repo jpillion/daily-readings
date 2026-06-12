@@ -11,7 +11,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.jpillion.dailyreadingplanner.domain.InitializeTrackingStartUseCase
 import com.jpillion.dailyreadingplanner.domain.RescheduleAlarmsUseCase
 import com.jpillion.dailyreadingplanner.ui.navigation.AppNavHost
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
@@ -30,9 +29,6 @@ class MainActivity : ComponentActivity() {
     lateinit var widgetRefresher: WidgetRefresher
 
     @Inject
-    lateinit var initializeTrackingStart: InitializeTrackingStartUseCase
-
-    @Inject
     lateinit var rescheduleAlarms: RescheduleAlarmsUseCase
 
     override fun onResume() {
@@ -44,8 +40,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // One-time tracking-start default (S10, D-S10-1); idempotent via its marker pref.
-        lifecycleScope.launch { initializeTrackingStart() }
+        // S19 (D-S19-2): the first-run tracking-start prompt is resolved and rendered by the
+        // day screen's ViewModel/UI — no MainActivity hook (one less JVM-untested launch here).
         // S12 (R-REM-8 + D-S12-2): re-arm the standing alarms from persisted settings on
         // every launch — idempotent, covers app update and relaunch after a force-stop.
         lifecycleScope.launch { rescheduleAlarms() }
