@@ -1,20 +1,27 @@
 package com.jpillion.dailyreadingplanner.ui.stats
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
@@ -41,7 +48,8 @@ data class StatsPanelUiState(
  * so they render once under the pager, not per page. Sober by contract (§13.0/FR-16, pinned
  * in StatsContentTest), amended by D-S17-1: the year strips may show red segments — red is
  * information, not commentary — but no COPY ever calls out missing/failure, on screen or in
- * speech ("not read", never "missed").
+ * speech ("not read", never "missed"). Further amended by D-S20-1 (owner): the strip legend's
+ * two labels — "Missed" / "Completed", the owner's own wording — are the SOLE exemption.
  *
  * D-S15-5: [showStreaks] off hides the two streak rows (display only — the underlying
  * derivation is untouched); year and per-stream progress always show.
@@ -60,6 +68,17 @@ fun StatsContent(
         modifier = modifier.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // S20 (owner): a compact heading names what the panel shows — labelLarge, one line,
+        // ~20dp of the S18 budget (updated table in the S20 handoff).
+        Text(
+            text = stringResource(R.string.stats_panel_heading),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier =
+                Modifier
+                    .testTag("stats-heading")
+                    .semantics { heading() },
+        )
         if (showStreaks) {
             StreakRow(
                 label = stringResource(R.string.stats_current_streak),
@@ -74,6 +93,57 @@ fun StatsContent(
         }
         YearGroup(stats = stats, strips = strips)
         StreamGroup(stats = stats, strips = strips)
+        StripLegend()
+    }
+}
+
+/**
+ * S20 (owner): the strip color key — red = Missed, green = Completed, the owner's own words
+ * (D-S20-1, a deliberate owner amendment narrowing the D-S17-1/D-S17-3 copy ban to permit
+ * exactly these two legend labels; all other guilt copy stays banned, on screen and in
+ * speech). Swatches come from the same [StripColors] seam the strips paint with, so the
+ * legend can never disagree with the strips. One merged-semantics row: TalkBack reads
+ * "Missed, Completed" after the strip summaries; the swatches themselves announce nothing.
+ */
+@Composable
+private fun StripLegend() {
+    val colors = defaultStripColors()
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .testTag("stats-legend")
+                .semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LegendEntry(swatch = colors.missed, label = stringResource(R.string.stats_legend_missed))
+        LegendEntry(swatch = colors.read, label = stringResource(R.string.stats_legend_completed))
+    }
+}
+
+/** One legend entry: a 10dp color swatch (purely decorative — no semantics) + its label. */
+@Composable
+private fun LegendEntry(
+    swatch: Color,
+    label: String,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(10.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(swatch),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -24,7 +25,8 @@ import org.robolectric.annotation.Config
  * The "no guilt mechanics" contract is pinned here, deliberately AMENDED by D-S17-1: the
  * year strips may paint red segments (information, not commentary), but no COPY ever
  * mentions missing/failure — and since S17 that ban extends to contentDescriptions too
- * (the spoken summaries say "not read", D-S17-3).
+ * (the spoken summaries say "not read", D-S17-3) — and narrowed by D-S20-1 (owner): the
+ * legend's two literal labels, "Missed" / "Completed", are the only permitted exception.
  * D-S15-5: the streak rows are gated by showStreaks; year + stream always show.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -78,6 +80,9 @@ class StatsContentTest {
     @Test
     fun rendersAllFourStatGroups() {
         setContent()
+        // S20: the panel heading — literal pin, owner's pick of "Year at a glance".
+        composeRule.onNodeWithTag("stats-heading").assertExists()
+        composeRule.onNodeWithText("Year at a glance").assertExists()
         composeRule.onNodeWithText("Current streak").assertExists()
         composeRule.onNodeWithText("4 days").assertExists()
         composeRule.onNodeWithText("Longest streak").assertExists()
@@ -184,9 +189,41 @@ class StatsContentTest {
         assertNoGuiltCopy()
     }
 
+    // --- S20: heading + legend (D-S20-1) ---
+
+    @Test
+    fun legend_showsExactlyTheTwoOwnerLabels_atTheBottom() {
+        // D-S20-1: the owner's own words — "Missed" / "Completed" — literal pins, exactly
+        // these two entries (no neutral entry; the owner listed only red and green).
+        setContent()
+        composeRule.onNodeWithTag("stats-legend").assertExists()
+        composeRule.onNodeWithText("Missed").assertExists()
+        composeRule.onNodeWithText("Completed").assertExists()
+        // The exemption is exact: the labels appear ONCE each, and no other node carries
+        // guilt vocabulary (textContains exempts only the exact label strings).
+        composeRule.onAllNodesWithText("Missed").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Completed").assertCountEquals(1)
+        assertNoGuiltCopy()
+    }
+
+    @Test
+    fun legendSwatches_announceNothing_summariesStillSpeak() {
+        // The swatches are decorative; the strips' spoken summaries remain the a11y source.
+        setContent()
+        composeRule
+            .onNodeWithContentDescription("All streams: 360 read, 9 not read, 726 upcoming")
+            .assertExists()
+        // No contentDescription anywhere says "Missed"-as-speech beyond merged legend text.
+        composeRule
+            .onAllNodes(contentDescriptionContains("Missed"), useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
     /**
      * FR-16 / §13.0 as amended by D-S17-1: red strip *segments* are allowed; missed-day
      * COPY is not — in text or in speech (contentDescriptions included since S17).
+     * D-S20-1 narrows the ban by exactly two literal strings: the legend labels
+     * "Missed" and "Completed" (owner's wording). Nothing else is exempt.
      */
     private fun assertNoGuiltCopy() {
         for (banned in listOf("miss", "Miss", "broke", "Broke", "fail", "Fail", "behind", "Behind")) {
@@ -197,9 +234,13 @@ class StatsContentTest {
         }
     }
 
+    private val legendExemptions = setOf("Missed", "Completed")
+
     private fun textContains(substring: String): SemanticsMatcher =
-        SemanticsMatcher("text contains '$substring'") { node ->
-            node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.contains(substring) } == true
+        SemanticsMatcher("text contains '$substring' (legend labels exempt, D-S20-1)") { node ->
+            node.config.getOrNull(SemanticsProperties.Text)?.any {
+                it.text.contains(substring) && it.text !in legendExemptions
+            } == true
         }
 
     private fun contentDescriptionContains(substring: String): SemanticsMatcher =

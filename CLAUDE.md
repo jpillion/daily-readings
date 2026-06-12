@@ -408,9 +408,29 @@ Do not reference or depend on strikelog.
   dismiss-is-Jan-1), each by exactly its intended test; Kover 96.2% on domain/data.
   Prompt strings need owner tone sign-off (table in the handoff).
   Handoff: [docs/sprints/sprint-0019-first-run-prompt.md](docs/sprints/sprint-0019-first-run-prompt.md).
-- Next up: **Sprint 20 — V2.x release prep** (`sprint-0020-v2x-release-prep`): version bump
-  past 1.3.3/10303, consolidated device pass (S9 + S12–S18 items + S19 fresh-install/
-  upgrade prompt behavior), S12–S19 string tone sign-offs, closed-track rollout via the
+- ✅ **Sprint 20 (stats heading + strip legend — owner request) is DONE** (uncommitted in
+  the working tree; version untouched at 1.3.4/10304 — the main session handles the
+  release). The stats panel is self-explanatory: a compact **"Year at a glance"** heading
+  (labelLarge, `heading()` semantics, tag `stats-heading`) tops the panel, and a legend
+  row at the bottom (tag `stats-legend`) keys the strips — 10dp rounded swatches from the
+  SAME `StripColors` seam (legend and strips can never disagree; the queued colorblind
+  palette re-keys both), red = "Missed", green = "Completed", exactly two entries.
+  **D-S20-1 (owner amendment, narrows D-S17-1/D-S17-3):** the owner explicitly chose
+  "missed" for the legend — the exemption is EXACTLY the two literal labels
+  "Missed"/"Completed" in the legend; all other guilt copy stays banned on screen and in
+  speech (ban-scan exempts whole-node exact strings only; strip summaries keep "not
+  read"; "Not read" flagged as the alternative at tone sign-off). A11y: legend is one
+  merged row spoken after the strip summaries; swatches announce nothing (pinned).
+  Budget: panel 290→346dp streaks-on (< ~360 cap), 222→278 off; whole screen ~671 of
+  ~828dp — S18 one-screen fit holds. 342/342 tests (net +2; 7-test Sprint 1 gate
+  untouched), 4 mutations killed (heading blanked, label reworded, guilt copy outside
+  the legend, swatch given speech), each by its intended test; Kover 96.2% on
+  domain/data; pipeline green. Heading/legend look = device-pass item; S20 strings need
+  owner tone sign-off.
+  Handoff: [docs/sprints/sprint-0020-stats-heading-legend.md](docs/sprints/sprint-0020-stats-heading-legend.md).
+- Next up: **Sprint 21 — V2.x release prep** (`sprint-0021-v2x-release-prep`): version bump
+  past 1.3.4/10304, consolidated device pass (S9 + S12–S20 items), S12–S20 string tone
+  sign-offs (incl. the D-S20-1 "Missed"-vs-"Not read" flag), closed-track rollout via the
   tag-to-Play pipeline.
 ## The reading plan
 

@@ -62,6 +62,11 @@
     <string name="stats_year_count">%1$s of %2$s readings</string>
     <string name="stats_stream_count">%1$d of %2$d</string>
 
+    <!-- S20: stats panel heading + strip legend (D-S20-1: owner wording "Missed"/"Completed"). -->
+    <string name="stats_panel_heading">Year at a glance</string>
+    <string name="stats_legend_missed">Missed</string>
+    <string name="stats_legend_completed">Completed</string>
+
     <!-- S15: stats settings (D-S15-5). -->
     <string name="stats_settings_section_title">Stats</string>
     <string name="show_streaks_title">Show streaks</string>
