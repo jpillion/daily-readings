@@ -55,13 +55,12 @@
     <string name="stats_year_section">This year</string>
     <string name="stats_percent">%1$d%%</string>
     <string name="stats_year_count">%1$s of %2$s readings</string>
-    <string name="stats_stream_section">By stream</string>
     <string name="stats_stream_count">%1$d of %2$d</string>
 
     <!-- S15: stats settings (D-S15-5). -->
     <string name="stats_settings_section_title">Stats</string>
     <string name="show_streaks_title">Show streaks</string>
-    <string name="show_streaks_help">When off, the current and longest streak are hidden. Year and per-stream progress still show.</string>
+    <string name="show_streaks_help">A streak counts consecutive days with all three readings done. Today doesn\u2019t end a streak until the day is over, and days before your tracking start date don\u2019t count against you. When this is off, streaks stay hidden\u2014year and stream progress still show.</string>
     <string name="reminders_section_title">Reminders</string>
     <string name="reminder_toggle_title">Daily reminder</string>
     <string name="reminder_help">One notification a day with that day\'s readings. It isn\'t sent if the readings are already done.</string>

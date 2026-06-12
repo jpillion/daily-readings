@@ -232,7 +232,9 @@ class DayReadingsPagerScreenTest {
         composeRule.onNodeWithText("Current streak").assertDoesNotExist()
         composeRule.onNodeWithText("Longest streak").assertDoesNotExist()
         composeRule.onNodeWithText("This year").assertExists()
-        composeRule.onNodeWithText("By stream").assertExists()
+        // ("Law & History" also appears on the reading card, so the panel's stream rows
+        // are asserted by tag.)
+        composeRule.onNodeWithTag("stats-stream-1").assertExists()
     }
 
     @Test

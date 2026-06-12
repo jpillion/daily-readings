@@ -386,6 +386,20 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun showStreaksHelp_explainsTheStreakRule_exactCopy() {
+        // S18 (owner): the helper text under the toggle states the D-S11-2 rule in plain
+        // language. Pinned LITERALLY for owner tone sign-off (PRD M8).
+        setScreen(ThemeMode.SYSTEM)
+        composeRule
+            .onNodeWithText(
+                "A streak counts consecutive days with all three readings done. " +
+                    "Today doesn\u2019t end a streak until the day is over, and days before your " +
+                    "tracking start date don\u2019t count against you. When this is off, " +
+                    "streaks stay hidden\u2014year and stream progress still show.",
+            ).assertExists()
+    }
+
+    @Test
     fun showStreaksToggle_reflectsTheOffState() {
         setScreen(ThemeMode.SYSTEM, showStreaks = false)
         composeRule.onNodeWithTag("show-streaks-toggle").performScrollTo().assertIsOff()

@@ -74,7 +74,8 @@ interface SettingsRepository {
     suspend fun setBibleProvider(provider: BibleProvider)
 
     /**
-     * Whether the streak stats are shown (S15, D-S15-5): on by default; off hides the
+     * Whether the streak stats are shown (S15, D-S15-5; default flipped OFF in S18 —
+     * streaks are opt-in, owner decision). Off hides the
      * current/longest streak rows in the main-screen stats panel — year and per-stream
      * progress always remain. Display-only: streak *data* is derived live either way.
      */

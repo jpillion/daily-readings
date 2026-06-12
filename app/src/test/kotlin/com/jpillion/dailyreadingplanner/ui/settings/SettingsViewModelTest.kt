@@ -255,15 +255,16 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `show streaks defaults on and toggling persists the new value`() =
+    fun `show streaks defaults off and toggling persists the new value`() =
         runTest {
+            // S18 (owner): streaks are opt-in — the default is off.
             viewModel.showStreaks.test {
-                assertThat(awaitItem()).isTrue()
-                viewModel.onShowStreaksToggled(false)
                 assertThat(awaitItem()).isFalse()
                 viewModel.onShowStreaksToggled(true)
                 assertThat(awaitItem()).isTrue()
+                viewModel.onShowStreaksToggled(false)
+                assertThat(awaitItem()).isFalse()
             }
-            assertThat(repository.showStreaksCalls).containsExactly(false, true).inOrder()
+            assertThat(repository.showStreaksCalls).containsExactly(true, false).inOrder()
         }
 }

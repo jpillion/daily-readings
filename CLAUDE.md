@@ -362,10 +362,37 @@ Do not reference or depend on strikelog.
   green. Strip look (~1dp texture, tick visibility, dark mode) is NOT JVM-provable —
   device-pass item. S17 strings need owner tone sign-off (table in the handoff).
   Handoff: [docs/sprints/sprint-0017-year-strips.md](docs/sprints/sprint-0017-year-strips.md).
-- Next up: **Sprint 18 — V2.x release prep** (`sprint-0018-v2-release-prep`): version bump
-  past 1.3.0/10300, the owner's consolidated device pass (S9/S12/S13/S14 lists + the S15
-  MySword 66-book on-device gate + S16 one-screen fit + S17 strip look), S12–S17 string
-  tone sign-offs, closed-track rollout via the tag-to-Play pipeline.
+- ✅ **Sprint 18 (stats tightening + streak clarity — owner feedback on v1.3.2) is DONE**
+  (owner-redirected again from `v2-release-prep`; uncommitted in the working tree by
+  request; version stays 1.3.2/10302, no tags touched — needs a bump to ship).
+  (1) **One-screen stats (owner: "unused real estate… stats still have to scroll"):**
+  the stats panel's intrinsic height dropped ~400dp → ~290dp with streaks shown
+  (~222dp streaks off) — under the S15 45% cap (~360dp on a P7P), so the panel no longer
+  scrolls at default font and readings + full stats fit one screen. How (D-S18-2 —
+  density, not restructure; the cap stays as the large-font safety net): "This year"
+  label + percent + count merged into ONE row (old label row + headlineMedium row ≈
+  40dp saved); "By stream" header removed (names self-describe; absence pinned; string
+  deleted); outer insets 12→10dp v / 24→16dp h (now matching the readings column); gaps
+  12→10dp; streak values titleLarge→titleMedium. Budget table in the handoff.
+  (2) **Streaks opt-in (D-S18-1, supersedes the D-S15-5 default):** `show_streaks`
+  absent-key default flipped true→false; explicitly stored choices survive (pinned by a
+  stored-true-survives test). (3) **Streak explainer:** `show_streaks_help` now states
+  the D-S11-2 rule (all three readings; today-grace; pre-start/Feb-29 days skip, never
+  break) — copy verified against the code first, pinned LITERALLY, awaiting owner tone
+  sign-off. (4) **Continuous strips (D-S18-3):** `YearStrip` now coalesces consecutive
+  same-state days into single rects (`coalesceRuns`, pure + fully pinned: partition,
+  shared edges, maximality) — no per-day hairline seams, ~10x fewer draw calls; first
+  run starts at exactly 0, last ends at exactly `size.width`. 328/328 tests (net +7;
+  7-test Sprint 1 gate untouched), 4 mutations killed (default re-flip, non-maximal
+  coalescing, header reintroduced, explainer corrupted), each by its intended test,
+  restored in place; Kover 96.1% on domain/data. On-glass continuity + density feel =
+  device-pass items.
+  Handoff: [docs/sprints/sprint-0018-stats-tightening.md](docs/sprints/sprint-0018-stats-tightening.md).
+- Next up: **Sprint 19 — V2.x release prep** (`sprint-0019-v2x-release-prep`): version
+  bump past 1.3.2/10302, the owner's consolidated device pass (S9/S12/S13/S14 lists +
+  S15 MySword gate + S16 one-screen fit + S17 strip look + S18 strip continuity/density/
+  fresh-install streaks-off), S12–S18 string tone sign-offs, closed-track rollout via
+  the tag-to-Play pipeline.
 
 ## The reading plan
 

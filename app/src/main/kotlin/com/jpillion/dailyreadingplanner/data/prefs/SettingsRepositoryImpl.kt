@@ -104,10 +104,14 @@ class SettingsRepositoryImpl
             dataStore.edit { preferences -> preferences[BIBLE_PROVIDER_KEY] = provider.name }
         }
 
-        /** S15 (D-S15-5): absent key = true — streaks show until the user turns them off. */
+        /**
+         * S18 (owner, supersedes the S15 default): absent key = false — streaks are opt-in.
+         * A user who ever toggled the switch keeps their stored value (normal DataStore
+         * behavior); only never-touched installs see the new default.
+         */
         override val showStreaks: Flow<Boolean> =
             dataStore.data.map { preferences ->
-                preferences[SHOW_STREAKS_KEY] ?: true
+                preferences[SHOW_STREAKS_KEY] ?: false
             }
 
         override suspend fun setShowStreaks(show: Boolean) {

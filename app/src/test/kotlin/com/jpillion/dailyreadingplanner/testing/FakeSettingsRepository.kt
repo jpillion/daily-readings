@@ -83,7 +83,7 @@ class FakeSettingsRepository(
 
     // --- S15: streak visibility. ---
 
-    val storedShowStreaks = MutableStateFlow(true)
+    val storedShowStreaks = MutableStateFlow(false)
     val showStreaksCalls = mutableListOf<Boolean>()
 
     override val showStreaks: Flow<Boolean> = storedShowStreaks

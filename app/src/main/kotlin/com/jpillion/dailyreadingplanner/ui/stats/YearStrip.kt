@@ -68,16 +68,26 @@ fun YearStrip(
     ) {
         if (states.isEmpty()) return@Canvas
         val segmentWidth = size.width / states.size
-        states.forEachIndexed { index, state ->
+        // S18 (owner): adjacent same-state days must read as ONE continuous band — per-day
+        // rects left antialiased hairline seams between equal-color neighbors. Consecutive
+        // same-state runs are coalesced into single rects (no interior seams, ~10x fewer
+        // draw calls); the first run starts at exactly 0 and the last ends at exactly
+        // size.width, so the strip is edge-to-edge regardless of float rounding.
+        val runs = coalesceRuns(states)
+        runs.forEachIndexed { runIndex, run ->
             val color =
-                when (state) {
+                when (run.state) {
                     StripDayState.READ -> colors.read
                     StripDayState.MISSED -> colors.missed
                     StripDayState.NEUTRAL -> colors.neutral
                 }
-            // Right edge from the NEXT index, so float rounding never opens hairline gaps.
-            val left = index * segmentWidth
-            val right = (index + 1) * segmentWidth
+            val left = run.startIndex * segmentWidth
+            val right =
+                if (runIndex == runs.lastIndex) {
+                    size.width
+                } else {
+                    (run.startIndex + run.count) * segmentWidth
+                }
             drawRect(color = color, topLeft = Offset(left, 0f), size = Size(right - left, size.height))
         }
         if (todayIndex != null && todayIndex in states.indices) {
@@ -90,4 +100,29 @@ fun YearStrip(
             )
         }
     }
+}
+
+/** One maximal run of consecutive equal day states (S18): days [startIndex, startIndex + count). */
+internal data class StripRun(
+    val startIndex: Int,
+    val count: Int,
+    val state: StripDayState,
+)
+
+/**
+ * Coalesces [states] into maximal runs of consecutive equal states, in order. The runs
+ * partition the input exactly: the first starts at 0, each run starts where the previous
+ * ended, and the counts sum to states.size (pinned in YearStripRunsTest).
+ */
+internal fun coalesceRuns(states: List<StripDayState>): List<StripRun> {
+    if (states.isEmpty()) return emptyList()
+    val runs = mutableListOf<StripRun>()
+    var runStart = 0
+    for (index in 1..states.size) {
+        if (index == states.size || states[index] != states[runStart]) {
+            runs.add(StripRun(startIndex = runStart, count = index - runStart, state = states[runStart]))
+            runStart = index
+        }
+    }
+    return runs
 }

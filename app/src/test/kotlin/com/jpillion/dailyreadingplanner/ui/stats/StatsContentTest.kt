@@ -85,7 +85,9 @@ class StatsContentTest {
         composeRule.onNodeWithText("This year").assertExists()
         composeRule.onNodeWithText("40%").assertExists() // 438 * 100 / 1095 = 40
         composeRule.onNodeWithText("438 of 1,095 readings").assertExists()
-        composeRule.onNodeWithText("By stream").assertExists()
+        // S18: the "By stream" section header was deliberately removed (vertical budget);
+        // the stream rows themselves are the group.
+        composeRule.onNodeWithText("By stream").assertDoesNotExist()
         composeRule.onNodeWithText("Law & History").assertExists()
         composeRule.onNodeWithText("Psalms & Prophecy").assertExists()
         composeRule.onNodeWithText("New Testament").assertExists()
@@ -101,7 +103,7 @@ class StatsContentTest {
         composeRule.onNodeWithText("Current streak").assertDoesNotExist()
         composeRule.onNodeWithText("Longest streak").assertDoesNotExist()
         composeRule.onNodeWithText("This year").assertExists()
-        composeRule.onNodeWithText("By stream").assertExists()
+        composeRule.onNodeWithText("Law & History").assertExists()
     }
 
     @Test

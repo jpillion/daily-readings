@@ -268,14 +268,15 @@ class DayReadingsViewModelTest {
     // --- Sprint 15: the inline stats panel (D-S15-4/5) ---
 
     @Test
-    fun `stats panel starts null then exposes the live derivation with streaks shown by default`() =
+    fun `stats panel starts null then exposes the live derivation with streaks hidden by default`() =
         runTest {
+            // S18: streaks are opt-in — the default panel ships with showStreaks = false.
             progress.setWholeDay(today.minusDays(1), true)
             progress.setWholeDay(today, true)
             val vm = viewModel()
             assertThat(vm.statsPanel.value).isNull()
             val panel = vm.statsPanel.filterNotNull().first()
-            assertThat(panel.showStreaks).isTrue()
+            assertThat(panel.showStreaks).isFalse()
             assertThat(panel.stats.currentStreakDays).isEqualTo(2)
             assertThat(panel.stats.yearReadCount).isEqualTo(6)
         }
@@ -310,14 +311,14 @@ class DayReadingsViewModelTest {
                     .filterNotNull()
                     .first()
                     .showStreaks,
-            ).isTrue()
-            settings.setShowStreaks(false)
+            ).isFalse()
+            settings.setShowStreaks(true)
             assertThat(
                 vm.statsPanel
                     .filterNotNull()
-                    .first { !it.showStreaks }
+                    .first { it.showStreaks }
                     .showStreaks,
-            ).isFalse()
+            ).isTrue()
         }
 
     // --- Sprint 7: opportunistic widget refresh on progress change (D9, ESpec §7) ---

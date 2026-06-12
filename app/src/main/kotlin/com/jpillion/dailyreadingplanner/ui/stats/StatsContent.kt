@@ -53,9 +53,12 @@ fun StatsContent(
     showStreaks: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // S18 (owner): deliberate density — readings + this whole panel must fit one screen on
+    // a ~411x915dp device at default font. Section labels merged into value rows, gaps and
+    // insets one step tighter; the vertical budget table lives in the S18 handoff.
     Column(
-        modifier = modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (showStreaks) {
             StreakRow(
@@ -96,7 +99,7 @@ private fun StreakRow(
         )
         Text(
             text = pluralStringResource(R.plurals.stats_streak_days, days, days),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
         )
     }
 }
@@ -104,7 +107,8 @@ private fun StreakRow(
 /**
  * Group 3: % of the year's 1,095 readings — full-year denominator, floor rounding (D-S11-4).
  * The bar is gone (S17): the three stream strips stack into a compact year heat-strip, one
- * combined spoken summary (color-only pixels, D-S17-3 wording).
+ * combined spoken summary (color-only pixels, D-S17-3 wording). S18: the "This year" label,
+ * the percent, and the count share ONE row (the old label row + headline row cost ~40dp).
  */
 @Composable
 private fun YearGroup(
@@ -121,15 +125,15 @@ private fun YearGroup(
                 .semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = stringResource(R.string.stats_year_section),
-            style = MaterialTheme.typography.titleMedium,
-        )
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
-                text = stringResource(R.string.stats_percent, percent),
-                style = MaterialTheme.typography.headlineMedium,
+                text = stringResource(R.string.stats_year_section),
+                style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = stringResource(R.string.stats_percent, percent),
+                style = MaterialTheme.typography.titleLarge,
             )
             Text(
                 text =
@@ -140,6 +144,7 @@ private fun YearGroup(
                     ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
             )
         }
         val allStates = Stream.entries.flatMap { strips.dayStates[it].orEmpty() }
@@ -178,14 +183,12 @@ private fun StreamGroup(
     strips: YearStrips,
 ) {
     val colors = defaultStripColors()
+    // S18: no "By stream" section header — the stream names are self-describing and the
+    // header row cost ~36dp (deliberate removal, pinned by absence in StatsContentTest).
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            text = stringResource(R.string.stats_stream_section),
-            style = MaterialTheme.typography.titleMedium,
-        )
         Stream.entries.forEach { stream ->
             val count = stats.streamReadCounts[stream] ?: 0
             Column(

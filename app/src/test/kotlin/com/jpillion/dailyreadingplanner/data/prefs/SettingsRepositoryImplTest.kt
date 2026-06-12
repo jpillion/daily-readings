@@ -3,6 +3,7 @@ package com.jpillion.dailyreadingplanner.data.prefs
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -187,11 +188,19 @@ class SettingsRepositoryImplTest {
             assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BLB)
         }
 
-    // --- S15: streak visibility (D-S15-5). ---
+    // --- S15: streak visibility (D-S15-5); default flipped off in S18 (owner). ---
 
     @Test
-    fun `show streaks defaults to true when nothing is stored`() =
+    fun `show streaks defaults to false when nothing is stored - streaks are opt-in`() =
         themeTest { repository, _ ->
+            assertThat(repository.showStreaks.first()).isFalse()
+        }
+
+    @Test
+    fun `an explicitly stored true survives the S18 default flip`() =
+        themeTest { repository, dataStore ->
+            // A user who toggled streaks on before S18 keeps them on.
+            dataStore.edit { it[booleanPreferencesKey("show_streaks")] = true }
             assertThat(repository.showStreaks.first()).isTrue()
         }
 
