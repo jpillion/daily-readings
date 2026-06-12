@@ -68,7 +68,9 @@ class DayContentTest {
         composeRule.onNodeWithText("Genesis 1–2").assertIsDisplayed()
         composeRule.onNodeWithText("Psalms 1–2").assertIsDisplayed()
         composeRule.onNodeWithText("Matthew 1–2").assertIsDisplayed()
-        composeRule.onNodeWithText("0 of 3 readings done").performScrollTo().assertIsDisplayed()
+        // S16: the progress count line is gone — readings + button only.
+        composeRule.onNodeWithText("0 of 3 readings done").assertDoesNotExist()
+        composeRule.onNodeWithTag("whole-day-button").assertExists()
     }
 
     @Test
@@ -105,9 +107,13 @@ class DayContentTest {
     }
 
     @Test
-    fun partialDay_showsProgressCount() {
+    fun partialDay_showsNoProgressLineAndNoCompleteBadge() {
+        // S16 (D-S16-2): no count line at any partial state; the complete badge only
+        // appears when all three are read.
         setContent(scheduled(read = setOf(Stream.LAW_AND_HISTORY, Stream.NEW_TESTAMENT)))
-        composeRule.onNodeWithText("2 of 3 readings done").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("2 of 3 readings done").assertDoesNotExist()
+        composeRule.onNodeWithText("All readings done").assertDoesNotExist()
+        composeRule.onNodeWithText("Mark whole day done").performScrollTo().assertIsDisplayed()
     }
 
     @Test

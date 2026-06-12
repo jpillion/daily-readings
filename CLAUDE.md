@@ -308,10 +308,33 @@ Do not reference or depend on strikelog.
   killed each by its intended test; Kover 95.8% on domain/data. S15 strings need owner
   tone sign-off (table in the handoff).
   Handoff: [docs/sprints/sprint-0015-mysword-inline-stats.md](docs/sprints/sprint-0015-mysword-inline-stats.md).
-- Next up: **Sprint 16 — V2.x release prep** (`sprint-0016-v2-release-prep`): version bump
-  past 1.2.0/10200, the owner's consolidated device pass (S9/S12/S13/S14 lists + the S15
-  MySword 66-book on-device gate + stats-panel look), S12–S15 string tone sign-offs,
-  closed-track rollout via the tag-to-Play pipeline.
+- ✅ **Sprint 16 (main-screen space cleanup — owner feedback) is DONE** (uncommitted in
+  the working tree; version untouched at 1.3.0/10300 — needs a bump to ship). Goal: the
+  whole main screen fits one screen at default font (the S15 stats panel had pushed it
+  into a slight scroll). (1) **D-S16-1 — single-line title** replaces the two-line
+  heading+date top bar: today = "Today – June 10" (`title_today_date`, en dash, no year);
+  any other day = just the date, "Friday, June 13" — the year is appended ONLY when it
+  differs from today's (Dec 31 → Jan 1 swipe, pinned), `maxLines = 1` + ellipsis
+  guarantees one line. `today_title`/`readings_title` ("Today"/"Readings" headings) are
+  REMOVED; formatting helpers `formatMonthDay`/`formatDayDate` in `DayReadingsScreen.kt`
+  are test-pinned. (2) **D-S16-2 — progress line removed**: the "n of 3 readings done"
+  count (`day_progress`) is gone at every state; "All readings done" (`day_complete`)
+  stays — it costs no space in the not-done state and now renders *below* the whole-day
+  button as a completion badge. (3) The whole-day button sits directly under the third
+  card (dead Spacer removed, uniform 12dp rhythm); 48dp bounds still pinned by
+  `AccessibilityGateTest`. **Priya's design review (required by owner): APPROVED** —
+  hierarchy (readings first), uniform spacing, TalkBack still meaningful (title speaks
+  the full date; checkbox states carry progress); noted ellipsis-at-extreme-font-scale
+  as acceptable degradation per owner. 304/304 tests (count unchanged: progress pins
+  rewritten as absence-pins, title pins are LITERAL strings — never computed via the
+  prod formatter; 7-test Sprint 1 gate untouched), 3 mutations killed each by its
+  intended test, pipeline green; Kover 95.8% on domain/data. Device-pass add: confirm one-screen fit on the
+  P7P at default font.
+  Handoff: [docs/sprints/sprint-0016-main-screen-cleanup.md](docs/sprints/sprint-0016-main-screen-cleanup.md).
+- Next up: **Sprint 17 — V2.x release prep** (`sprint-0017-v2-release-prep`): version bump
+  past 1.3.0/10300, the owner's consolidated device pass (S9/S12/S13/S14 lists + the S15
+  MySword 66-book on-device gate + stats-panel look + S16 one-screen fit), S12–S16 string
+  tone sign-offs, closed-track rollout via the tag-to-Play pipeline.
 
 ## The reading plan
 

@@ -17,7 +17,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
@@ -48,7 +48,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Pager geometry (D-S5-4): a bounded window of [PAGE_COUNT] real calendar days with "today"
@@ -127,21 +126,19 @@ fun DayReadingsPagerScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text =
-                                if (currentDate == today) {
-                                    stringResource(R.string.today_title)
-                                } else {
-                                    stringResource(R.string.readings_title)
-                                },
-                        )
-                        Text(
-                            text = formatDate(currentDate),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    // D-S16-1: a single-line title — "Today – June 12" on today, otherwise just
+                    // the date (year shown only when it differs from today's, i.e. after
+                    // swiping across Dec 31 → Jan 1). maxLines = 1 guarantees one line.
+                    Text(
+                        text =
+                            if (currentDate == today) {
+                                stringResource(R.string.title_today_date, formatMonthDay(currentDate))
+                            } else {
+                                formatDayDate(currentDate, today.year)
+                            },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 },
                 actions = {
                     if (currentDate != today) {
@@ -236,4 +233,17 @@ fun DayReadingsPagerScreen(
     }
 }
 
-private fun formatDate(date: LocalDate): String = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+/** D-S16-1: "June 12" — the month-day half of the "Today – …" title. */
+internal fun formatMonthDay(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("MMMM d"))
+
+/**
+ * D-S16-1: the title for a non-today page — "Friday, June 13", with the year appended only
+ * when it differs from [todayYear] (the pager crosses Dec 31 → Jan 1, D-S5-3).
+ */
+internal fun formatDayDate(
+    date: LocalDate,
+    todayYear: Int,
+): String {
+    val base = date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
+    return if (date.year == todayYear) base else "$base, ${date.year}"
+}

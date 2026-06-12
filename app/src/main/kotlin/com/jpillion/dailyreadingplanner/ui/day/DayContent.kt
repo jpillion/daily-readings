@@ -89,9 +89,12 @@ private fun ScheduledContent(
                 onReadingTapped = onReadingTapped,
             )
         }
-        Spacer(modifier = Modifier.padding(top = 4.dp))
-        CompletionIndicator(state = state)
+        // D-S16-2: the whole-day button sits directly under the cards (owner: space
+        // efficiency); the count line is gone and the complete badge follows the button.
         WholeDayButton(dayComplete = state.dayComplete, onMarkWholeDay = onMarkWholeDay)
+        if (state.dayComplete) {
+            DayCompleteBadge()
+        }
     }
 }
 
@@ -156,26 +159,17 @@ private fun ReadingCard(
 }
 
 @Composable
-private fun CompletionIndicator(state: DayUiState.Scheduled) {
-    val readCount = state.readings.count { it.isRead }
+private fun DayCompleteBadge() {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (state.dayComplete) {
-            Text(
-                text = stringResource(R.string.day_complete),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        } else {
-            Text(
-                text = stringResource(R.string.day_progress, readCount, state.readings.size),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = stringResource(R.string.day_complete),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 

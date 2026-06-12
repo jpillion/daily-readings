@@ -25,8 +25,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Pager-level behavior (Sprint 5): swiping between real calendar days, the Feb 29 and
@@ -95,7 +93,8 @@ class DayReadingsPagerScreenTest {
         }
     }
 
-    private fun formatted(date: LocalDate): String = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+    // D-S16-1 title pins are LITERAL strings (never computed via the production
+    // formatters, so a formatter mutation cannot rewrite the expectation with it).
 
     private fun swipeToNextDay() {
         composeRule.onNodeWithTag("day-pager").performTouchInput { swipeLeft() }
@@ -108,11 +107,11 @@ class DayReadingsPagerScreenTest {
     }
 
     @Test
-    fun launch_showsTodayTitleAndDate_withoutJumpAffordance() {
+    fun launch_showsSingleLineTodayTitle_withoutJumpAffordance() {
         val today = LocalDate.of(2026, 6, 10)
         setScreen(today)
-        composeRule.onNodeWithText("Today").assertIsDisplayed()
-        composeRule.onNodeWithText(formatted(today)).assertIsDisplayed()
+        // D-S16-1: one line — "Today \u2013 June 10"; no separate heading, no year.
+        composeRule.onNodeWithText("Today \u2013 June 10").assertIsDisplayed()
         composeRule.onNodeWithText("Genesis 1–2").assertIsDisplayed()
         composeRule.onNodeWithTag("jump-to-today").assertDoesNotExist()
     }
@@ -122,11 +121,12 @@ class DayReadingsPagerScreenTest {
         val today = LocalDate.of(2026, 6, 10)
         setScreen(today)
         swipeToNextDay()
-        composeRule.onNodeWithText("Readings").assertIsDisplayed()
-        composeRule.onNodeWithText(formatted(today.plusDays(1))).assertIsDisplayed()
+        // D-S16-1: no "Readings" heading — just the date, year omitted (same year as today).
+        composeRule.onNodeWithText("Readings").assertDoesNotExist()
+        composeRule.onNodeWithText("Thursday, June 11").assertIsDisplayed()
         composeRule.onNodeWithTag("jump-to-today").assertIsDisplayed().performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(formatted(today)).assertIsDisplayed()
+        composeRule.onNodeWithText("Today \u2013 June 10").assertIsDisplayed()
         composeRule.onNodeWithTag("jump-to-today").assertDoesNotExist()
     }
 
@@ -135,7 +135,7 @@ class DayReadingsPagerScreenTest {
         val today = LocalDate.of(2026, 6, 10)
         setScreen(today)
         swipeToPreviousDay()
-        composeRule.onNodeWithText(formatted(today.minusDays(1))).assertIsDisplayed()
+        composeRule.onNodeWithText("Tuesday, June 9").assertIsDisplayed()
     }
 
     @Test
@@ -157,7 +157,7 @@ class DayReadingsPagerScreenTest {
         composeRule.onNodeWithText("No scheduled readings for Feb 29th").assertIsDisplayed()
         composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
         swipeToNextDay()
-        composeRule.onNodeWithText(formatted(LocalDate.of(2028, 3, 1))).assertIsDisplayed()
+        composeRule.onNodeWithText("Wednesday, March 1").assertIsDisplayed()
         composeRule.onNodeWithTag("whole-day-button").assertExists()
     }
 
@@ -166,7 +166,8 @@ class DayReadingsPagerScreenTest {
         val today = LocalDate.of(2026, 12, 31)
         setScreen(today)
         swipeToNextDay()
-        composeRule.onNodeWithText(formatted(LocalDate.of(2027, 1, 1))).assertIsDisplayed()
+        // D-S16-1: a different year than today's IS shown in the title.
+        composeRule.onNodeWithText("Friday, January 1, 2027").assertIsDisplayed()
         composeRule.onNodeWithTag("whole-day-button").performScrollTo().performClick()
         assertThat(markCalls).containsExactly(LocalDate.of(2027, 1, 1) to false)
     }
@@ -232,11 +233,11 @@ class DayReadingsPagerScreenTest {
         val today = LocalDate.of(2026, 12, 31)
         setScreen(today)
         swipeToNextDay()
-        composeRule.onNodeWithText(formatted(LocalDate.of(2027, 1, 1))).assertIsDisplayed()
+        composeRule.onNodeWithText("Friday, January 1, 2027").assertIsDisplayed()
         composeRule.onNodeWithTag("open-date-picker").performClick()
         composeRule.onNodeWithTag("date-picker-confirm").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(formatted(today)).assertIsDisplayed()
+        composeRule.onNodeWithText("Today \u2013 December 31").assertIsDisplayed()
         composeRule.onNodeWithTag("jump-to-today").assertDoesNotExist()
     }
 }
