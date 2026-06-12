@@ -1,14 +1,20 @@
 package com.jpillion.dailyreadingplanner.ui.day
 
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,8 +39,10 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
-import com.jpillion.dailyreadingplanner.ui.browser.launchCustomTab
+import com.jpillion.dailyreadingplanner.ui.browser.launchReadingDestination
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
+import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
+import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -66,23 +73,25 @@ internal fun pageForDate(
 @Composable
 fun DayReadingsRoute(
     onOpenSettings: () -> Unit,
-    onOpenStats: () -> Unit,
     viewModel: DayReadingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     LaunchedEffect(viewModel) {
-        viewModel.openUrlEvents.collect { url -> launchCustomTab(context, url) }
+        viewModel.openDestinationEvents.collect { destination ->
+            launchReadingDestination(context, destination)
+        }
     }
+    val statsPanel by viewModel.statsPanel.collectAsStateWithLifecycle()
     DayReadingsPagerScreen(
         today = viewModel.today,
         uiStateFor = viewModel::uiStateFor,
         monthCompletionFor = viewModel::monthCompletionFor,
+        statsPanel = statsPanel,
         onToggleReading = viewModel::onToggleReading,
         onMarkWholeDay = viewModel::onMarkWholeDay,
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
         onOpenSettings = onOpenSettings,
-        onOpenStats = onOpenStats,
     )
 }
 
@@ -100,12 +109,12 @@ fun DayReadingsPagerScreen(
     today: LocalDate,
     uiStateFor: (LocalDate) -> StateFlow<DayUiState>,
     monthCompletionFor: (YearMonth) -> StateFlow<Map<LocalDate, DayCompletion>>,
+    statsPanel: StatsPanelUiState?,
     onToggleReading: (LocalDate, ReadingStatus) -> Unit,
     onMarkWholeDay: (LocalDate, Boolean) -> Unit,
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(initialPage = TODAY_PAGE) { PAGE_COUNT }
@@ -151,15 +160,6 @@ fun DayReadingsPagerScreen(
                         )
                     }
                     IconButton(
-                        onClick = onOpenStats,
-                        modifier = Modifier.testTag("open-stats"),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_stats),
-                            contentDescription = stringResource(R.string.open_stats),
-                        )
-                    }
-                    IconButton(
                         onClick = onOpenSettings,
                         modifier = Modifier.testTag("open-settings"),
                     ) {
@@ -172,26 +172,52 @@ fun DayReadingsPagerScreen(
             )
         },
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
+        // D-S15-4: the stats panel renders ONCE below the pager (year-level stats are the
+        // same for every displayed day). The panel is measured first, capped at 45% of the
+        // available height and internally scrollable, so the readings always keep the
+        // majority of the screen — on any screen size and font scale.
+        BoxWithConstraints(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .testTag("day-pager"),
-            key = { it },
-        ) { page ->
-            val date = dateForPage(today, page)
-            val state by uiStateFor(date).collectAsStateWithLifecycle()
-            DayContent(
-                state = state,
-                onToggleReading = { reading -> onToggleReading(date, reading) },
-                onMarkWholeDay = {
-                    (state as? DayUiState.Scheduled)?.let { onMarkWholeDay(date, it.dayComplete) }
-                },
-                onReadingTapped = onReadingTapped,
-                onRetry = onRetry,
-            )
+                    .padding(innerPadding),
+        ) {
+            val statsMaxHeight = maxHeight * 0.45f
+            Column(modifier = Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .testTag("day-pager"),
+                    key = { it },
+                ) { page ->
+                    val date = dateForPage(today, page)
+                    val state by uiStateFor(date).collectAsStateWithLifecycle()
+                    DayContent(
+                        state = state,
+                        onToggleReading = { reading -> onToggleReading(date, reading) },
+                        onMarkWholeDay = {
+                            (state as? DayUiState.Scheduled)?.let { onMarkWholeDay(date, it.dayComplete) }
+                        },
+                        onReadingTapped = onReadingTapped,
+                        onRetry = onRetry,
+                    )
+                }
+                if (statsPanel != null) {
+                    HorizontalDivider()
+                    StatsContent(
+                        stats = statsPanel.stats,
+                        showStreaks = statsPanel.showStreaks,
+                        modifier =
+                            Modifier
+                                .heightIn(max = statsMaxHeight)
+                                .verticalScroll(rememberScrollState())
+                                .testTag("stats-panel"),
+                    )
+                }
+            }
         }
     }
 

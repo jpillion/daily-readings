@@ -23,7 +23,7 @@ import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.day.DayContent
 import com.jpillion.dailyreadingplanner.ui.day.DayUiState
 import com.jpillion.dailyreadingplanner.ui.settings.SettingsScreen
-import com.jpillion.dailyreadingplanner.ui.stats.StatsScreen
+import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
@@ -94,6 +94,8 @@ class AccessibilityGateTest {
                 SettingsScreen(
                     selectedMode = ThemeMode.SYSTEM,
                     selectedProvider = BibleProvider.BLB,
+                    mySwordInstalled = false,
+                    showStreaks = true,
                     fontScale = 1f,
                     currentYear = 2026,
                     trackingStartDate = today,
@@ -102,6 +104,7 @@ class AccessibilityGateTest {
                     showReminderPermissionRationale = false,
                     onThemeModeSelected = {},
                     onBibleProviderSelected = {},
+                    onShowStreaksToggled = {},
                     onRequestApp = {},
                     onFontScaleChanged = {},
                     onTrackingStartChanged = {},
@@ -158,16 +161,25 @@ class AccessibilityGateTest {
             .assertTouchTargetAtLeast(48.dp)
             .assertContentDescriptionContains("Open readings in", substring = true)
             .performClick()
+        // S15: the disabled MySword "(app not installed)" item joins the disabled teaser —
+        // TalkBack must still reach and announce both.
         for (tag in listOf(
             "provider-option-blb",
             "provider-option-biblegateway",
             "provider-option-youversion",
+            "provider-option-mysword",
             "provider-option-inapp",
         )) {
             composeRule.onNodeWithTag(tag).assertTouchTargetAtLeast(48.dp)
         }
         composeRule.onNodeWithTag("provider-option-blb").performClick() // close the menu
         composeRule.onNodeWithTag("request-app-row").performScrollTo().assertTouchTargetAtLeast(48.dp)
+        // S15 (D-S15-5): the show-streaks toggle is an authored control -> 48dp + switch semantics.
+        composeRule
+            .onNodeWithTag("show-streaks-toggle")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState))
         composeRule
             .onNodeWithTag("reminder-toggle")
             .performScrollTo()
@@ -216,10 +228,10 @@ class AccessibilityGateTest {
     }
 
     @Test
-    fun `stats screen - back is 48dp and every stat group speaks label plus value as one node`() {
+    fun `stats panel - read-only and every stat group speaks label plus value as one node`() {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
-                StatsScreen(
+                StatsContent(
                     stats =
                         ReadingStats(
                             currentStreakDays = 4,
@@ -232,13 +244,12 @@ class AccessibilityGateTest {
                                     Stream.NEW_TESTAMENT to 144,
                                 ),
                         ),
-                    onBack = {},
+                    showStreaks = true,
                 )
             }
         }
-        composeRule.onNodeWithTag("stats-back").assertTouchTargetAtLeast(48.dp)
-        // The screen is read-only: the only interactive control is back. Each stat group is
-        // one merged semantics node so TalkBack reads label and value together.
+        // S15 (D-S15-4): the panel is read-only — no interactive controls. Each stat group
+        // is one merged semantics node so TalkBack reads label and value together.
         composeRule
             .onNodeWithTag("stats-current-streak")
             .assert(hasTextContaining("Current streak"))
@@ -253,7 +264,6 @@ class AccessibilityGateTest {
             .assert(hasTextContaining("40%"))
         composeRule
             .onNodeWithTag("stats-stream-1")
-            .performScrollTo()
             .assert(hasTextContaining("Law & History"))
             .assert(hasTextContaining("150 of 365"))
     }

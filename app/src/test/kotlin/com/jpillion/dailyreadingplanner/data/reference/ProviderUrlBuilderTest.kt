@@ -125,6 +125,28 @@ class ProviderUrlBuilderTest {
             .isEqualTo("https://www.biblegateway.com/passage/?search=Psalms+120-122&version=KJV")
     }
 
+    // --- MySword (S15, D-S15-1: numeric vendor form; single-chapter). ---
+
+    @Test
+    fun `mysword builds the numeric vendor form for all 66 books, first and last chapter`() {
+        for (book in BookCatalog.books) {
+            assertWithMessage(book.canonicalName)
+                .that(builder.build(BibleProvider.MYSWORD, portion(book.canonicalName to 1)))
+                .isEqualTo("https://mysword.info/b?r=${book.order}.1")
+            assertWithMessage("${book.canonicalName} last chapter")
+                .that(builder.build(BibleProvider.MYSWORD, portion(book.canonicalName to book.chapterCount)))
+                .isEqualTo("https://mysword.info/b?r=${book.order}.${book.chapterCount}")
+        }
+    }
+
+    @Test
+    fun `mysword is single-chapter - first chapter of a range, first book of the two-book portion`() {
+        assertThat(builder.build(BibleProvider.MYSWORD, portion("Genesis" to 1, "Genesis" to 2)))
+            .isEqualTo("https://mysword.info/b?r=1.1")
+        assertThat(builder.build(BibleProvider.MYSWORD, portion("2 John" to 1, "3 John" to 1)))
+            .isEqualTo("https://mysword.info/b?r=63.1")
+    }
+
     @Test
     fun `bible gateway does not collapse non-consecutive chapters of one book`() {
         assertThat(builder.build(BibleProvider.BIBLE_GATEWAY, portion("Psalms" to 1, "Psalms" to 5)))

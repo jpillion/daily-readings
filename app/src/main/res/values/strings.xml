@@ -48,8 +48,6 @@
     <string name="tracking_start_help">Days before this date are never counted as missed. You can still open and mark them.</string>
     <string name="tracking_start_dialog_confirm">Set date</string>
     <string name="tracking_start_dialog_cancel">Cancel</string>
-    <string name="stats_title">Stats</string>
-    <string name="open_stats">Open stats</string>
     <string name="stats_current_streak">Current streak</string>
     <string name="stats_longest_streak">Longest streak</string>
     <plurals name="stats_streak_days">
@@ -61,6 +59,11 @@
     <string name="stats_year_count">%1$s of %2$s readings</string>
     <string name="stats_stream_section">By stream</string>
     <string name="stats_stream_count">%1$d of %2$d</string>
+
+    <!-- S15: stats settings (D-S15-5). -->
+    <string name="stats_settings_section_title">Stats</string>
+    <string name="show_streaks_title">Show streaks</string>
+    <string name="show_streaks_help">When off, the current and longest streak are hidden. Year and per-stream progress still show.</string>
     <string name="reminders_section_title">Reminders</string>
     <string name="reminder_toggle_title">Daily reminder</string>
     <string name="reminder_help">One notification a day with that day\'s readings. It isn\'t sent if the readings are already done.</string>
@@ -86,6 +89,8 @@
     <string name="provider_blb">Blue Letter Bible (default)</string>
     <string name="provider_biblegateway">Bible Gateway (website)</string>
     <string name="provider_youversion">YouVersion / Bible.com</string>
+    <string name="provider_mysword">MySword</string>
+    <string name="provider_mysword_not_installed">MySword (app not installed)</string>
     <string name="provider_inapp_coming_soon">Read in this app (coming soon)</string>
     <string name="provider_dropdown_description">Open readings in, %1$s</string>
     <string name="request_app_title">Request another app or site</string>

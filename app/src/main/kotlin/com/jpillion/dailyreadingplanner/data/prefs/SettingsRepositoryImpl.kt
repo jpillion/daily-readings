@@ -104,12 +104,23 @@ class SettingsRepositoryImpl
             dataStore.edit { preferences -> preferences[BIBLE_PROVIDER_KEY] = provider.name }
         }
 
+        /** S15 (D-S15-5): absent key = true — streaks show until the user turns them off. */
+        override val showStreaks: Flow<Boolean> =
+            dataStore.data.map { preferences ->
+                preferences[SHOW_STREAKS_KEY] ?: true
+            }
+
+        override suspend fun setShowStreaks(show: Boolean) {
+            dataStore.edit { preferences -> preferences[SHOW_STREAKS_KEY] = show }
+        }
+
         private companion object {
             val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
             val BIBLE_PROVIDER_KEY = stringPreferencesKey("bible_provider")
             val FONT_SCALE_KEY = floatPreferencesKey("font_scale")
             val TRACKING_START_EPOCH_DAY_KEY = longPreferencesKey("tracking_start_epoch_day")
             val TRACKING_START_INITIALIZED_KEY = booleanPreferencesKey("tracking_start_initialized")
+            val SHOW_STREAKS_KEY = booleanPreferencesKey("show_streaks")
             val REMINDER_ENABLED_KEY = booleanPreferencesKey("reminder_enabled")
             val REMINDER_MINUTE_OF_DAY_KEY = intPreferencesKey("reminder_minute_of_day")
             const val MINUTES_PER_DAY = 24 * 60

@@ -7,8 +7,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
@@ -19,13 +17,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * S11: the four sober stat groups (PRD §13.1, FR-15/FR-16). Read-only — the only action is
- * back. The "no guilt mechanics" contract is pinned here: no copy on the screen ever
- * mentions missing/failure, whatever the numbers say.
+ * S11 sober stat groups (PRD §13.1, FR-15/FR-16), rendered inline since S15 (D-S15-4).
+ * The "no guilt mechanics" contract is pinned here: no copy ever mentions missing/failure,
+ * whatever the numbers say — and it must keep holding wherever the stats render.
+ * D-S15-5: the streak rows are gated by showStreaks; year + stream always show.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
-class StatsScreenTest {
+class StatsContentTest {
     @get:Rule
     val composeRule = createComposeRule()
 
@@ -42,20 +41,20 @@ class StatsScreenTest {
                 ),
         )
 
-    private fun setScreen(
-        stats: ReadingStats? = sampleStats,
-        onBack: () -> Unit = {},
+    private fun setContent(
+        stats: ReadingStats = sampleStats,
+        showStreaks: Boolean = true,
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
-                StatsScreen(stats = stats, onBack = onBack)
+                StatsContent(stats = stats, showStreaks = showStreaks)
             }
         }
     }
 
     @Test
     fun rendersAllFourStatGroups() {
-        setScreen()
+        setContent()
         composeRule.onNodeWithText("Current streak").assertExists()
         composeRule.onNodeWithText("4 days").assertExists()
         composeRule.onNodeWithText("Longest streak").assertExists()
@@ -71,11 +70,20 @@ class StatsScreenTest {
     }
 
     @Test
+    fun showStreaksOff_hidesOnlyTheStreakRows() {
+        // D-S15-5: display-only gate — year and per-stream progress always remain.
+        setContent(showStreaks = false)
+        composeRule.onNodeWithTag("stats-current-streak").assertDoesNotExist()
+        composeRule.onNodeWithTag("stats-longest-streak").assertDoesNotExist()
+        composeRule.onNodeWithText("Current streak").assertDoesNotExist()
+        composeRule.onNodeWithText("Longest streak").assertDoesNotExist()
+        composeRule.onNodeWithText("This year").assertExists()
+        composeRule.onNodeWithText("By stream").assertExists()
+    }
+
+    @Test
     fun singleDayStreakUsesSingularCopy() {
-        setScreen(
-            stats =
-                sampleStats.copy(currentStreakDays = 1, longestStreakDays = 1),
-        )
+        setContent(stats = sampleStats.copy(currentStreakDays = 1, longestStreakDays = 1))
         composeRule.onAllNodes(textContains("1 day")).assertCountEquals(2)
         composeRule.onAllNodes(textContains("1 days")).assertCountEquals(0)
     }
@@ -83,20 +91,20 @@ class StatsScreenTest {
     @Test
     fun percentRoundsDown_neverClaimsCompletionEarly() {
         // D-S11-4: 1,094 of 1,095 readings is 99%, not 100%.
-        setScreen(stats = sampleStats.copy(yearReadCount = 1_094))
+        setContent(stats = sampleStats.copy(yearReadCount = 1_094))
         composeRule.onNodeWithText("99%").assertExists()
         composeRule.onNodeWithText("1,094 of 1,095 readings").assertExists()
     }
 
     @Test
     fun fullYearShowsExactlyOneHundredPercent() {
-        setScreen(stats = sampleStats.copy(yearReadCount = 1_095))
+        setContent(stats = sampleStats.copy(yearReadCount = 1_095))
         composeRule.onNodeWithText("100%").assertExists()
     }
 
     @Test
     fun zeroStats_renderPlainZeros_withoutGuiltCopy() {
-        setScreen(
+        setContent(
             stats =
                 ReadingStats(
                     currentStreakDays = 0,
@@ -111,24 +119,9 @@ class StatsScreenTest {
     }
 
     @Test
-    fun noCopyOnTheScreenMentionsMissingOrFailure() {
-        setScreen(stats = sampleStats.copy(currentStreakDays = 0))
+    fun noCopyMentionsMissingOrFailure_streaksOnOrOff() {
+        setContent(stats = sampleStats.copy(currentStreakDays = 0))
         assertNoGuiltCopy()
-    }
-
-    @Test
-    fun backActionInvokesCallback() {
-        var backCalls = 0
-        setScreen(onBack = { backCalls++ })
-        composeRule.onNodeWithTag("stats-back").performClick()
-        assertThat(backCalls).isEqualTo(1)
-    }
-
-    @Test
-    fun nullStatsRendersOnlyTheTopBar() {
-        setScreen(stats = null)
-        composeRule.onNodeWithText("Stats").assertExists()
-        composeRule.onNodeWithText("Current streak").assertDoesNotExist()
     }
 
     /** FR-16 / §13.0: missed days are never called out — no shame copy anywhere. */

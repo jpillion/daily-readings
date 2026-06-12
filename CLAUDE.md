@@ -281,10 +281,37 @@ Do not reference or depend on strikelog.
   strings need owner tone sign-off (table in the handoff). Weight-based distribution and
   per-size look are NOT JVM-provable — top of the device-pass list.
   Handoff: [docs/sprints/sprint-0014-settings-widget-polish.md](docs/sprints/sprint-0014-settings-widget-polish.md).
-- Next up: **Sprint 15 — V2 release prep** (`sprint-0015-v2-release-prep`): version bump
-  past 1.1.1/10101, the owner's consolidated device pass (S9 checklists + tracking-start +
-  stats + S12 reminders + S13 provider items + S14 widget-look-per-size), S12/S13/S14
-  string tone sign-offs, upload key + Play listing if still pending, closed-track rollout.
+- ✅ **Sprint 15 (MySword provider + inline stats — owner feedback) is DONE**
+  (owner-redirected again from `v2-release-prep`; uncommitted by request; version stays
+  1.2.0/10200 while the v1.2.0 tag releases — needs a bump to ship).
+  (1) **MySword as an install-detected provider** (spec §11 go-path taken):
+  `BibleProvider.MYSWORD` + `requiresApp`; manifest `<queries>` + `data/apps/
+  AppInstallChecker` seam (D-S15-2, the D-S12-6 pattern); the provider dropdown shows
+  "MySword (app not installed)" disabled when absent (S14 teaser idiom), selectable when
+  installed. **D-S15-1:** URL = the vendor-documented NUMERIC form
+  `https://mysword.info/b?r={Book.order}.{chapter}` (vendor's `19.37.3-6` pins 19=Psalms=
+  canon order; no abbreviation list exists, so numeric = zero guesses, derived from the
+  pinned catalog — `MySwordTokenCatalogTest` is the 66-row gate). **D-S15-3:**
+  `OpenReferenceUseCase` now returns sealed `ReadingDestination` (`Web` | `MySwordApp(url,
+  fallbackUrl)`); the UI fires the explicit `com.riversoft.android.mysword/.MySwordLink`
+  intent and falls back to the BLB URL on `ActivityNotFoundException` (never the
+  mysword.info stub); the persisted choice is never rewritten. **Gate honesty:** MySword
+  links resolve only in-app — the live 66-book check is the owner's on-device pass (adb
+  list in the handoff); the committed suite pins tokens + URL construction offline.
+  (2) **Stats moved onto the main screen** (D-S15-4): `ui/stats/StatsContent` renders the
+  four S11 stat groups ONCE below the day pager (year-level = identical for every page),
+  height-capped at 45% + internally scrollable so readings keep the majority; guilt-ban
+  still pinned (`StatsContentTest`). The stats icon, `Routes.STATS`, route files, and
+  `ic_stats.xml` are REMOVED. (3) **Settings → Stats → "Show streaks"** (D-S15-5,
+  `show_streaks` default true): off hides only the streak rows; year + stream remain;
+  display-only. 304/304 tests (net +19; 7-test Sprint 1 gate untouched), 5 mutations
+  killed each by its intended test; Kover 95.8% on domain/data. S15 strings need owner
+  tone sign-off (table in the handoff).
+  Handoff: [docs/sprints/sprint-0015-mysword-inline-stats.md](docs/sprints/sprint-0015-mysword-inline-stats.md).
+- Next up: **Sprint 16 — V2.x release prep** (`sprint-0016-v2-release-prep`): version bump
+  past 1.2.0/10200, the owner's consolidated device pass (S9/S12/S13/S14 lists + the S15
+  MySword 66-book on-device gate + stats-panel look), S12–S15 string tone sign-offs,
+  closed-track rollout via the tag-to-Play pipeline.
 
 ## The reading plan
 

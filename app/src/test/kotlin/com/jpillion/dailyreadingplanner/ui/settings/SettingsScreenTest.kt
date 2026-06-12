@@ -52,9 +52,13 @@ class SettingsScreenTest {
     private var resetConfirms = 0
     private var backCalls = 0
 
+    private val showStreaksToggles = mutableListOf<Boolean>()
+
     private fun setScreen(
         selectedMode: ThemeMode,
         selectedProvider: BibleProvider = BibleProvider.BLB,
+        mySwordInstalled: Boolean = false,
+        showStreaks: Boolean = true,
         fontScale: Float = 1f,
         trackingStartDate: LocalDate? = null,
         reminderEnabled: Boolean = false,
@@ -66,6 +70,8 @@ class SettingsScreenTest {
                 SettingsScreen(
                     selectedMode = selectedMode,
                     selectedProvider = selectedProvider,
+                    mySwordInstalled = mySwordInstalled,
+                    showStreaks = showStreaks,
                     fontScale = fontScale,
                     currentYear = 2026,
                     trackingStartDate = trackingStartDate,
@@ -74,6 +80,7 @@ class SettingsScreenTest {
                     showReminderPermissionRationale = showReminderPermissionRationale,
                     onThemeModeSelected = { selections += it },
                     onBibleProviderSelected = { providerSelections += it },
+                    onShowStreaksToggled = { showStreaksToggles += it },
                     onRequestApp = { requestAppCalls++ },
                     onFontScaleChanged = { fontScaleChanges += it },
                     onTrackingStartChanged = { trackingStartChanges += it },
@@ -327,6 +334,63 @@ class SettingsScreenTest {
             .assertIsNotEnabled()
             .performClick()
         assertThat(providerSelections).isEmpty()
+    }
+
+    // --- S15: MySword install-detected provider option (D-S15-2) ---
+
+    @Test
+    fun mySwordOption_whenNotInstalled_isVisibleButDisabled_withTheNotInstalledLabel() {
+        // Owner UX: mirror the S14 teaser idiom — discoverable, never a dead tap.
+        setScreen(ThemeMode.SYSTEM, mySwordInstalled = false)
+        composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
+        composeRule
+            .onNodeWithTag("provider-option-mysword")
+            .assertIsDisplayed()
+            .assertIsNotEnabled()
+            .performClick()
+        composeRule.onNodeWithText("MySword (app not installed)").assertIsDisplayed()
+        assertThat(providerSelections).isEmpty()
+    }
+
+    @Test
+    fun mySwordOption_whenInstalled_isSelectable_andReportsTheProvider() {
+        setScreen(ThemeMode.SYSTEM, mySwordInstalled = true)
+        composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
+        composeRule.onNodeWithTag("provider-option-mysword").assertIsDisplayed().performClick()
+        assertThat(providerSelections).containsExactly(BibleProvider.MYSWORD)
+    }
+
+    @Test
+    fun mySwordChoice_showsInTheRow_whenSelected() {
+        setScreen(ThemeMode.SYSTEM, selectedProvider = BibleProvider.MYSWORD, mySwordInstalled = true)
+        composeRule
+            .onNodeWithTag("provider-dropdown")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Open readings in, MySword")
+            .performClick()
+        composeRule.onNodeWithTag("provider-option-mysword").assertIsSelected()
+    }
+
+    // --- S15: show-streaks toggle (D-S15-5) ---
+
+    @Test
+    fun showStreaksToggle_isOnByDefault_andReportsTheNewValue() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule
+            .onNodeWithTag("show-streaks-toggle")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertIsOn()
+        composeRule.onNodeWithTag("show-streaks-toggle").performClick()
+        assertThat(showStreaksToggles).containsExactly(false)
+    }
+
+    @Test
+    fun showStreaksToggle_reflectsTheOffState() {
+        setScreen(ThemeMode.SYSTEM, showStreaks = false)
+        composeRule.onNodeWithTag("show-streaks-toggle").performScrollTo().assertIsOff()
+        composeRule.onNodeWithTag("show-streaks-toggle").performClick()
+        assertThat(showStreaksToggles).containsExactly(true)
     }
 
     @Test

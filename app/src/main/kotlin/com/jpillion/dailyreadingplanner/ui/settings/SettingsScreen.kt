@@ -80,6 +80,7 @@ fun SettingsRoute(
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val bibleProvider by viewModel.bibleProvider.collectAsStateWithLifecycle()
+    val showStreaks by viewModel.showStreaks.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val trackingStartDate by viewModel.trackingStartDate.collectAsStateWithLifecycle()
     val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
@@ -104,6 +105,8 @@ fun SettingsRoute(
     SettingsScreen(
         selectedMode = themeMode,
         selectedProvider = bibleProvider,
+        mySwordInstalled = viewModel.mySwordInstalled,
+        showStreaks = showStreaks,
         fontScale = fontScale,
         currentYear = viewModel.currentYear,
         trackingStartDate = trackingStartDate,
@@ -112,6 +115,7 @@ fun SettingsRoute(
         showReminderPermissionRationale = showPermissionRationale,
         onThemeModeSelected = viewModel::onThemeModeSelected,
         onBibleProviderSelected = viewModel::onBibleProviderSelected,
+        onShowStreaksToggled = viewModel::onShowStreaksToggled,
         onRequestApp = {
             // Spec §7: an outbound mailto intent — the same intent class as a reading link;
             // no networking, nothing collected. No email app -> a quiet no-op (G-OFFLINE spirit).
@@ -154,6 +158,8 @@ fun SettingsRoute(
 fun SettingsScreen(
     selectedMode: ThemeMode,
     selectedProvider: BibleProvider,
+    mySwordInstalled: Boolean,
+    showStreaks: Boolean,
     fontScale: Float,
     currentYear: Int,
     trackingStartDate: LocalDate?,
@@ -162,6 +168,7 @@ fun SettingsScreen(
     showReminderPermissionRationale: Boolean,
     onThemeModeSelected: (ThemeMode) -> Unit,
     onBibleProviderSelected: (BibleProvider) -> Unit,
+    onShowStreaksToggled: (Boolean) -> Unit,
     onRequestApp: () -> Unit,
     onFontScaleChanged: (Float) -> Unit,
     onTrackingStartChanged: (LocalDate?) -> Unit,
@@ -215,6 +222,7 @@ fun SettingsScreen(
             SectionTitle(stringResource(R.string.provider_section_title))
             ProviderDropdown(
                 selectedProvider = selectedProvider,
+                mySwordInstalled = mySwordInstalled,
                 onBibleProviderSelected = onBibleProviderSelected,
             )
             Row(
@@ -236,6 +244,18 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+
+            SectionTitle(stringResource(R.string.stats_settings_section_title))
+            ShowStreaksToggleRow(
+                showStreaks = showStreaks,
+                onShowStreaksToggled = onShowStreaksToggled,
+            )
+            Text(
+                text = stringResource(R.string.show_streaks_help),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+            )
 
             SectionTitle(stringResource(R.string.reminders_section_title))
             ReminderToggleRow(
@@ -385,6 +405,34 @@ private fun ReminderToggleRow(
             modifier = Modifier.weight(1f),
         )
         Switch(checked = reminderEnabled, onCheckedChange = null)
+    }
+}
+
+/** S15 (D-S15-5): streak visibility — a labeled switch row, on by default. Display only. */
+@Composable
+private fun ShowStreaksToggleRow(
+    showStreaks: Boolean,
+    onShowStreaksToggled: (Boolean) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .toggleable(
+                    value = showStreaks,
+                    role = Role.Switch,
+                    onValueChange = onShowStreaksToggled,
+                ).testTag("show-streaks-toggle")
+                .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.show_streaks_title),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = showStreaks, onCheckedChange = null)
     }
 }
 
@@ -647,6 +695,7 @@ private fun ThemeDropdown(
 @Composable
 private fun ProviderDropdown(
     selectedProvider: BibleProvider,
+    mySwordInstalled: Boolean,
     onBibleProviderSelected: (BibleProvider) -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -664,7 +713,18 @@ private fun ProviderDropdown(
                 "provider-option-youversion",
             ),
         )
-    val valueText = options.first { it.first == selectedProvider }.second
+    val mySwordLabel =
+        if (mySwordInstalled) {
+            stringResource(R.string.provider_mysword)
+        } else {
+            stringResource(R.string.provider_mysword_not_installed)
+        }
+    val valueText =
+        if (selectedProvider == BibleProvider.MYSWORD) {
+            mySwordLabel
+        } else {
+            options.first { it.first == selectedProvider }.second
+        }
     SettingsDropdownRow(
         valueText = valueText,
         rowDescription = stringResource(R.string.provider_dropdown_description, valueText),
@@ -681,6 +741,27 @@ private fun ProviderDropdown(
                     expanded = false
                     onBibleProviderSelected(provider)
                 },
+            )
+        }
+        // S15 (D-S15-2, owner UX): MySword mirrors the S14 teaser idiom when absent —
+        // visible but disabled with an "app not installed" label, so the option is
+        // discoverable without ever being selectable into a dead tap.
+        if (mySwordInstalled) {
+            SelectableMenuItem(
+                label = mySwordLabel,
+                selected = selectedProvider == BibleProvider.MYSWORD,
+                testTag = "provider-option-mysword",
+                onClick = {
+                    expanded = false
+                    onBibleProviderSelected(BibleProvider.MYSWORD)
+                },
+            )
+        } else {
+            DropdownMenuItem(
+                text = { Text(text = mySwordLabel) },
+                onClick = {},
+                enabled = false,
+                modifier = Modifier.testTag("provider-option-mysword"),
             )
         }
         DropdownMenuItem(

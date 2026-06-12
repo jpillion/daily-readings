@@ -11,15 +11,20 @@ import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
+import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -41,22 +46,20 @@ class DayReadingsViewModelTest {
     private fun viewModel(
         date: LocalDate = today,
         planRepository: ReadingPlanRepository = FakeReadingPlanRepository(),
+        settings: FakeSettingsRepository = FakeSettingsRepository(),
     ): DayReadingsViewModel {
         val resolver = ScheduleDateResolver()
         val clock = clockAt(date)
+        val classifier = DayCompletionClassifier(resolver)
         return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress),
-            getMonthCompletion =
-                GetMonthCompletionUseCase(
-                    DayCompletionClassifier(resolver),
-                    progress,
-                    FakeSettingsRepository(),
-                    clock,
-                ),
+            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, clock),
             toggleReading = ToggleReadingUseCase(progress),
             markWholeDay = MarkWholeDayUseCase(progress),
-            openReference = OpenReferenceUseCase(FakeSettingsRepository(), ProviderUrlBuilder()),
+            openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = widgetRefresher,
+            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, clock),
+            settingsRepository = settings,
             clock = clock,
         )
     }
@@ -221,18 +224,78 @@ class DayReadingsViewModelTest {
         }
 
     @Test
-    fun `tapping a reading emits its BLB URL for the first ref`() =
+    fun `tapping a reading emits a web destination with its BLB URL for the first ref`() =
         runTest {
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
-                vm.openUrlEvents.test {
+                vm.openDestinationEvents.test {
                     vm.onReadingTapped(state.readings[0].portion)
-                    assertThat(awaitItem()).isEqualTo("https://www.blueletterbible.org/kjv/gen/1/")
+                    assertThat(awaitItem())
+                        .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/gen/1/"))
                     vm.onReadingTapped(state.readings[2].portion)
-                    assertThat(awaitItem()).isEqualTo("https://www.blueletterbible.org/kjv/mat/1/")
+                    assertThat(awaitItem())
+                        .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/mat/1/"))
                 }
             }
+        }
+
+    @Test
+    fun `with MySword chosen a tap emits the app destination carrying the BLB fallback`() =
+        runTest {
+            // S15 (D-S15-1/3): numeric vendor form for the intent URL; BLB as the
+            // uninstalled-fallback so a dead tap can never land on the mysword.info stub.
+            val settings = FakeSettingsRepository()
+            settings.setBibleProvider(BibleProvider.MYSWORD)
+            val vm = viewModel(settings = settings)
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                vm.openDestinationEvents.test {
+                    vm.onReadingTapped(state.readings[0].portion)
+                    assertThat(awaitItem())
+                        .isEqualTo(
+                            ReadingDestination.MySwordApp(
+                                url = "https://mysword.info/b?r=1.1",
+                                fallbackUrl = "https://www.blueletterbible.org/kjv/gen/1/",
+                            ),
+                        )
+                }
+            }
+        }
+
+    // --- Sprint 15: the inline stats panel (D-S15-4/5) ---
+
+    @Test
+    fun `stats panel starts null then exposes the live derivation with streaks shown by default`() =
+        runTest {
+            progress.setWholeDay(today.minusDays(1), true)
+            progress.setWholeDay(today, true)
+            val vm = viewModel()
+            assertThat(vm.statsPanel.value).isNull()
+            val panel = vm.statsPanel.filterNotNull().first()
+            assertThat(panel.showStreaks).isTrue()
+            assertThat(panel.stats.currentStreakDays).isEqualTo(2)
+            assertThat(panel.stats.yearReadCount).isEqualTo(6)
+        }
+
+    @Test
+    fun `stats panel reflects the show-streaks setting live`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            val vm = viewModel(settings = settings)
+            assertThat(
+                vm.statsPanel
+                    .filterNotNull()
+                    .first()
+                    .showStreaks,
+            ).isTrue()
+            settings.setShowStreaks(false)
+            assertThat(
+                vm.statsPanel
+                    .filterNotNull()
+                    .first { !it.showStreaks }
+                    .showStreaks,
+            ).isFalse()
         }
 
     // --- Sprint 7: opportunistic widget refresh on progress change (D9, ESpec §7) ---
@@ -268,7 +331,7 @@ class DayReadingsViewModelTest {
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
-                vm.openUrlEvents.test {
+                vm.openDestinationEvents.test {
                     vm.onReadingTapped(state.readings[0].portion)
                     awaitItem()
                 }

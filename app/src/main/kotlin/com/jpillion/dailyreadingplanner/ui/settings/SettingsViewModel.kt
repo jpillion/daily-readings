@@ -2,9 +2,11 @@ package com.jpillion.dailyreadingplanner.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jpillion.dailyreadingplanner.data.apps.AppInstallChecker
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
 import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
@@ -41,6 +43,7 @@ class SettingsViewModel
         private val widgetRefresher: WidgetRefresher,
         private val reminderScheduler: ReminderScheduler,
         private val notificationPermissionChecker: NotificationPermissionChecker,
+        appInstallChecker: AppInstallChecker,
         clock: Clock,
     ) : ViewModel() {
         /** The year a reset would clear — shown in the confirmation dialog. */
@@ -82,6 +85,26 @@ class SettingsViewModel
 
         fun onBibleProviderSelected(provider: BibleProvider) {
             viewModelScope.launch { settingsRepository.setBibleProvider(provider) }
+        }
+
+        /**
+         * S15 (D-S15-2, spec §4 product rule): MySword is offered only when detectably
+         * installed — checked once per Settings entry (the ViewModel is created per route
+         * push), so an install made while the app runs shows up on the next visit.
+         */
+        val mySwordInstalled: Boolean =
+            appInstallChecker.isInstalled(ReadingDestination.MYSWORD_PACKAGE)
+
+        /** S15 (D-S15-5): streak visibility — display only, on by default. */
+        val showStreaks: StateFlow<Boolean> =
+            settingsRepository.showStreaks.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = true,
+            )
+
+        fun onShowStreaksToggled(show: Boolean) {
+            viewModelScope.launch { settingsRepository.setShowStreaks(show) }
         }
 
         /** Persists each slider position; the app-wide theme collects the same flow (live preview). */

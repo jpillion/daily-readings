@@ -73,6 +73,15 @@ interface SettingsRepository {
 
     suspend fun setBibleProvider(provider: BibleProvider)
 
+    /**
+     * Whether the streak stats are shown (S15, D-S15-5): on by default; off hides the
+     * current/longest streak rows in the main-screen stats panel — year and per-stream
+     * progress always remain. Display-only: streak *data* is derived live either way.
+     */
+    val showStreaks: Flow<Boolean>
+
+    suspend fun setShowStreaks(show: Boolean)
+
     companion object {
         const val MIN_FONT_SCALE = 0.85f
         const val MAX_FONT_SCALE = 1.5f

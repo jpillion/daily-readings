@@ -186,4 +186,21 @@ class SettingsRepositoryImplTest {
             dataStore.edit { it[stringPreferencesKey("bible_provider")] = "ESV_DOT_ORG" }
             assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BLB)
         }
+
+    // --- S15: streak visibility (D-S15-5). ---
+
+    @Test
+    fun `show streaks defaults to true when nothing is stored`() =
+        themeTest { repository, _ ->
+            assertThat(repository.showStreaks.first()).isTrue()
+        }
+
+    @Test
+    fun `show streaks round-trips both ways`() =
+        themeTest { repository, _ ->
+            repository.setShowStreaks(false)
+            assertThat(repository.showStreaks.first()).isFalse()
+            repository.setShowStreaks(true)
+            assertThat(repository.showStreaks.first()).isTrue()
+        }
 }

@@ -11,9 +11,11 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,10 +59,23 @@ class DayReadingsPagerScreenTest {
         }
 
     private var openSettingsCalls = 0
-    private var openStatsCalls = 0
+
+    private val sampleStats =
+        ReadingStats(
+            currentStreakDays = 4,
+            longestStreakDays = 12,
+            yearReadCount = 438,
+            streamReadCounts =
+                mapOf(
+                    Stream.LAW_AND_HISTORY to 150,
+                    Stream.PSALMS_AND_PROPHECY to 144,
+                    Stream.NEW_TESTAMENT to 144,
+                ),
+        )
 
     private fun setScreen(
         today: LocalDate,
+        statsPanel: StatsPanelUiState? = null,
         onReadingTapped: (Portion) -> Unit = {},
     ) {
         composeRule.setContent {
@@ -69,12 +84,12 @@ class DayReadingsPagerScreenTest {
                     today = today,
                     uiStateFor = ::stateFor,
                     monthCompletionFor = { MutableStateFlow(emptyMap()) },
+                    statsPanel = statsPanel,
                     onToggleReading = { date, reading -> toggleCalls += date to reading.portion.stream },
                     onMarkWholeDay = { date, dayComplete -> markCalls += date to dayComplete },
                     onReadingTapped = onReadingTapped,
                     onRetry = {},
                     onOpenSettings = { openSettingsCalls++ },
-                    onOpenStats = { openStatsCalls++ },
                 )
             }
         }
@@ -163,11 +178,42 @@ class DayReadingsPagerScreenTest {
         assertThat(openSettingsCalls).isEqualTo(1)
     }
 
+    // --- Sprint 15 (D-S15-4): the inline stats panel ---
+
     @Test
-    fun statsAction_invokesOnOpenStats() {
-        setScreen(LocalDate.of(2026, 6, 10))
-        composeRule.onNodeWithTag("open-stats").assertIsDisplayed().performClick()
-        assertThat(openStatsCalls).isEqualTo(1)
+    fun statsPanel_rendersBelowTheReadings_onceNotPerPage() {
+        val today = LocalDate.of(2026, 6, 10)
+        setScreen(today, statsPanel = StatsPanelUiState(sampleStats, showStreaks = true))
+        composeRule.onNodeWithTag("stats-panel").assertExists()
+        composeRule.onNodeWithText("Current streak").assertExists()
+        composeRule.onNodeWithText("This year").assertExists()
+        // The readings stay the focus: the day content is still displayed above the panel.
+        composeRule.onNodeWithText("Genesis 1–2").assertIsDisplayed()
+        // Swiping to another day keeps the same year-level panel.
+        swipeToNextDay()
+        composeRule.onNodeWithTag("stats-panel").assertExists()
+        composeRule.onNodeWithText("438 of 1,095 readings").assertExists()
+    }
+
+    @Test
+    fun statsPanel_absentUntilStatsExist_andNoStatsTopBarAction() {
+        setScreen(LocalDate.of(2026, 6, 10), statsPanel = null)
+        composeRule.onNodeWithTag("stats-panel").assertDoesNotExist()
+        // S15: the stats route/icon is gone — the panel IS the stats surface.
+        composeRule.onNodeWithTag("open-stats").assertDoesNotExist()
+    }
+
+    @Test
+    fun statsPanel_hidesStreakRows_whenShowStreaksIsOff() {
+        // D-S15-5: streaks off hides ONLY the two streak rows; year + stream remain.
+        setScreen(
+            LocalDate.of(2026, 6, 10),
+            statsPanel = StatsPanelUiState(sampleStats, showStreaks = false),
+        )
+        composeRule.onNodeWithText("Current streak").assertDoesNotExist()
+        composeRule.onNodeWithText("Longest streak").assertDoesNotExist()
+        composeRule.onNodeWithText("This year").assertExists()
+        composeRule.onNodeWithText("By stream").assertExists()
     }
 
     @Test

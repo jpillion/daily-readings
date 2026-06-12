@@ -29,6 +29,7 @@ class ProviderUrlBuilder
                 BibleProvider.BLB -> blbUrl(portion.firstRef)
                 BibleProvider.YOUVERSION -> youVersionUrl(portion.firstRef)
                 BibleProvider.BIBLE_GATEWAY -> bibleGatewayUrl(portion)
+                BibleProvider.MYSWORD -> mySwordUrl(portion.firstRef)
             }
 
         /** Live-verified Sprint 1 + G-LINKS: 3-letter abbrev, trailing slash. */
@@ -38,6 +39,19 @@ class ProviderUrlBuilder
         /** Live-verified S13: version 1 = KJV, USFM book codes ("PHP", "EZK", "2JN"). */
         private fun youVersionUrl(reference: Reference): String =
             "https://www.bible.com/bible/1/${reference.book.usfmCode}.${reference.chapter}.KJV"
+
+        /**
+         * S15, D-S15-1: the vendor-documented NUMERIC reference form — `r={bookNumber}.{chapter}`
+         * (mysword-bible.info documents `19.37.3-6` alongside `Psa_37_3-6`, so 19 = Psalms pins
+         * the standard 66-book canon order — identical to [Book.order]). Numeric chosen over
+         * abbreviations because the vendor publishes NO abbreviation list and MySword links
+         * resolve only inside the app (nothing to HTTP-verify): the book number is derived from
+         * the already-pinned catalog order (D-S9-1 anti-drift), leaving zero per-book guesses.
+         * Pinned for all 66 books in MySwordTokenCatalogTest; the 66-book §3 gate for MySword
+         * is the owner's on-device pass (S15 handoff).
+         */
+        private fun mySwordUrl(reference: Reference): String =
+            "https://mysword.info/b?r=${reference.book.order}.${reference.chapter}"
 
         /**
          * Live-verified S13: full book names in the passage search; consecutive chapters of a

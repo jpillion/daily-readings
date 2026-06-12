@@ -80,4 +80,16 @@ class FakeSettingsRepository(
         bibleProviderCalls += provider
         storedBibleProvider.value = provider
     }
+
+    // --- S15: streak visibility. ---
+
+    val storedShowStreaks = MutableStateFlow(true)
+    val showStreaksCalls = mutableListOf<Boolean>()
+
+    override val showStreaks: Flow<Boolean> = storedShowStreaks
+
+    override suspend fun setShowStreaks(show: Boolean) {
+        showStreaksCalls += show
+        storedShowStreaks.value = show
+    }
 }

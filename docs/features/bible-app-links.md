@@ -200,15 +200,29 @@ install-detection work.
   (nothing to curl). *Go-path:* same install-detection sprint as Logos; verify on a device
   with the app.
 
-### MySword — NO-GO (explicit-component intent; web URL is a stub)
+### MySword — ✅ SHIPPED with install detection (Sprint 15, 2026-06-11)
 
-- Vendor-documented integration (mysword-bible.info "Link or open MySword from other apps"):
-  an intent with explicit component `com.riversoft.android.mysword/.MySwordLink` and data
-  `https://mysword.info/b?r=Gen_1`. Although the data URL is https, the web page it serves
-  is a **"MySword Bible Link" stub with no scripture text** (verified 2026-06-11) — the URL
-  only means something to the installed app, and the explicit component implies the app does
-  not claim it via App Links. Same fallback failure as Olive Tree. *Go-path:* same
-  install-detection sprint.
+- Originally NO-GO (explicit-component intent; the https URL serves a **"MySword Bible
+  Link" stub with no scripture text**, verified 2026-06-11) — the §4 go-path was taken in
+  Sprint 15 at the owner's request:
+  - **Install-detected** (manifest `<queries>` + `AppInstallChecker` over PackageManager,
+    D-S15-2): the Settings dropdown shows MySword **disabled with "(app not installed)"**
+    when absent (the S14 teaser idiom), selectable when installed.
+  - **Launch** (D-S15-3): explicit-component intent
+    `com.riversoft.android.mysword/.MySwordLink`; if the app was uninstalled after being
+    chosen, `ActivityNotFoundException` → the tap opens the **BLB URL** in the browser —
+    never the stub. The persisted choice is left as MySword (reinstall restores it).
+  - **URL form (D-S15-1):** the vendor-documented **numeric** reference,
+    `https://mysword.info/b?r={bookNumber}.{chapter}` (vendor example `19.37.3-6` pins
+    19 = Psalms = standard 66-book canon order). Chosen over abbreviations because the
+    vendor publishes no abbreviation list and nothing is HTTP-verifiable; the number derives
+    from the catalog `order` (D-S9-1 anti-drift) — zero per-book guesses. Pinned in
+    `MySwordTokenCatalogTest` + `ProviderUrlBuilderTest`.
+  - **§3 gate honesty:** MySword links resolve only inside the app, so gate item 1 (live
+    66-book check) **cannot be run over HTTP**. The committed suite pins the token table and
+    URL construction offline; the live half is the **owner's on-device pass** (adb
+    spot-check list in docs/sprints/sprint-0015-mysword-inline-stats.md). Multi-book
+    portions open the first reference (§6 default).
 
 ### Shipped first cut (Sprint 13)
 

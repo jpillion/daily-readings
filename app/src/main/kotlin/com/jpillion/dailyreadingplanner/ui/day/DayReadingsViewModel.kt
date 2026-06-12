@@ -2,15 +2,19 @@ package com.jpillion.dailyreadingplanner.ui.day
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
+import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
+import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -54,6 +59,8 @@ class DayReadingsViewModel
         private val markWholeDay: MarkWholeDayUseCase,
         private val openReference: OpenReferenceUseCase,
         private val widgetRefresher: WidgetRefresher,
+        getReadingStats: GetReadingStatsUseCase,
+        settingsRepository: SettingsRepository,
         clock: Clock,
     ) : ViewModel() {
         val today: LocalDate = LocalDate.now(clock)
@@ -90,10 +97,23 @@ class DayReadingsViewModel
                     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
             }
 
-        private val openUrlChannel = Channel<String>(Channel.BUFFERED)
+        /**
+         * The main-screen stats panel (S15, D-S15-4): the live S11 stats derivation plus the
+         * streak-visibility gate (D-S15-5), rendered ONCE below the pager — the stats are
+         * year-level, identical for every displayed day. `null` until the first emission (the
+         * pager simply keeps the full height); a derivation failure degrades to no panel,
+         * never a crash.
+         */
+        val statsPanel: StateFlow<StatsPanelUiState?> =
+            combine(getReadingStats(), settingsRepository.showStreaks) { stats, showStreaks ->
+                StatsPanelUiState(stats = stats, showStreaks = showStreaks) as StatsPanelUiState?
+            }.catch { emit(null) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-        /** One-shot BLB URLs to open in a Custom Tab; collect exactly once from the UI. */
-        val openUrlEvents: Flow<String> = openUrlChannel.receiveAsFlow()
+        private val openDestinationChannel = Channel<ReadingDestination>(Channel.BUFFERED)
+
+        /** One-shot resolved reading destinations (D-S15-3); collect exactly once from the UI. */
+        val openDestinationEvents: Flow<ReadingDestination> = openDestinationChannel.receiveAsFlow()
 
         /** Toggles [reading] for the *displayed* [date] — never implicitly "today" (D-S5-3). */
         fun onToggleReading(
@@ -119,7 +139,7 @@ class DayReadingsViewModel
         }
 
         fun onReadingTapped(portion: Portion) {
-            viewModelScope.launch { openUrlChannel.send(openReference(portion)) }
+            viewModelScope.launch { openDestinationChannel.send(openReference(portion)) }
         }
 
         fun onRetry() {

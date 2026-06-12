@@ -30,6 +30,16 @@ class SettingsViewModelTest {
     private val widgetRefresher = FakeWidgetRefresher()
     private val reminderScheduler = FakeReminderScheduler()
     private val permissionChecker = FakeNotificationPermissionChecker(granted = true)
+    private var mySwordInstalled = false
+    private val appInstallChecker =
+        object : com.jpillion.dailyreadingplanner.data.apps.AppInstallChecker {
+            val queries = mutableListOf<String>()
+
+            override fun isInstalled(packageName: String): Boolean {
+                queries += packageName
+                return mySwordInstalled
+            }
+        }
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val viewModel by lazy {
         SettingsViewModel(
@@ -38,6 +48,7 @@ class SettingsViewModelTest {
             widgetRefresher = widgetRefresher,
             reminderScheduler = reminderScheduler,
             notificationPermissionChecker = permissionChecker,
+            appInstallChecker = appInstallChecker,
             clock = clock,
         )
     }
@@ -226,5 +237,33 @@ class SettingsViewModelTest {
             viewModel.onBibleProviderSelected(BibleProvider.YOUVERSION)
             assertThat(repository.bibleProviderCalls).containsExactly(BibleProvider.YOUVERSION)
             assertThat(repository.storedBibleProvider.value).isEqualTo(BibleProvider.YOUVERSION)
+        }
+
+    // --- S15: MySword install detection (D-S15-2) + show-streaks (D-S15-5). ---
+
+    @Test
+    fun `mySwordInstalled reflects the install checker, queried for the mysword package`() {
+        mySwordInstalled = true
+        assertThat(viewModel.mySwordInstalled).isTrue()
+        assertThat(appInstallChecker.queries).containsExactly("com.riversoft.android.mysword")
+    }
+
+    @Test
+    fun `mySwordInstalled is false when the app is absent`() {
+        mySwordInstalled = false
+        assertThat(viewModel.mySwordInstalled).isFalse()
+    }
+
+    @Test
+    fun `show streaks defaults on and toggling persists the new value`() =
+        runTest {
+            viewModel.showStreaks.test {
+                assertThat(awaitItem()).isTrue()
+                viewModel.onShowStreaksToggled(false)
+                assertThat(awaitItem()).isFalse()
+                viewModel.onShowStreaksToggled(true)
+                assertThat(awaitItem()).isTrue()
+            }
+            assertThat(repository.showStreaksCalls).containsExactly(false, true).inOrder()
         }
 }
