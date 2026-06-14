@@ -216,19 +216,49 @@ Documented so it's ready, explicitly not built:
 
 ---
 
-## Open decisions for the owner
+## Owner decisions (resolved 2026-06-14)
 
-1. **Audio = networked app, yes/no?** (Gates whether audio is ever on the roadmap. Recommend:
-   defer to V4; keep V3 text fully offline regardless.)
-2. **UK licensing.** KJV is US public domain but **UK Crown copyright** (Cambridge), and the
-   Christadelphian community is UK-heavy while Play distributes globally. One-line footnote
-   today; needs a real call before V3 ships: geo-restrict / accept the (low, non-commercial)
-   risk / find a clean-PD KJV edition. **Recommend a quick check; most likely accept-risk, but
-   consciously.**
-3. **Nav: is the Bible reader secondary (pushed destination) or co-equal (bottom nav)?**
-   (Recommend: pushed destination now, revisit on use.)
-4. **External-provider default flip** to in-app for new installs, preserving explicit choices.
-   (Recommend: yes — confirm.)
+1. **Audio — NO, not in V3.** Future version. Keep the shape in mind, build nothing. V3 text
+   stays 100% offline; `INTERNET` stays out of the manifest.
+2. **UK licensing — accept the risk; do not geo-restrict, do not change the text.** KJV is PD
+   worldwide except the UK (Crown copyright, Cambridge), where it's a near-theoretical risk for
+   a free non-commercial app (Cambridge grants broad free use; every free Bible app serves KJV
+   in the UK). Optionally file a courtesy free-use permission request with Cambridge / the
+   King's Printer for certainty. Record the accepted risk in the spec before ship.
+3. **Nav — Bible reader is CO-EQUAL: bottom navigation.** Owner override of the pushed-
+   destination recommendation. Two co-equal top-level destinations (Schedule, Bible) via an M3
+   `NavigationBar`. This reframes the app as planner + reader (a deliberate graduation), and
+   takes back ~80dp of the Schedule surface — accept the one-screen-fit cost. Schedule remains
+   the start destination.
+4. **In-app is NOT the silent default.** Make it a **first-run setup question** (extend the
+   Sprint-19 first-run flow): *"Read in the in-app Bible, or open an external app?"* The answer
+   sets the "Open readings in" preference. External providers stay; the existing
+   `provider-option-inapp` teaser becomes a real `BibleProvider.IN_APP`.
+
+## Architecture principle (owner directive, 2026-06-14): version-agnostic spine + swappable text artifact
+
+**All logic is built around the verse_id spine and reference ids, and is indifferent to which
+text version is loaded. The text is a self-contained, swappable, encapsulated artifact keyed by
+verse_id.** Swap the artifact → different version, zero logic changes.
+
+- **Spine / logic layer (version-agnostic, in the app):** verse_id encoding, the `Reference`
+  resolver, `Portion → verse_id` range mapping, navigation, the reader (renders whatever markup
+  it's handed), and any future audio-offset join. None of it knows the version.
+- **Text artifact (swappable, encapsulated):** a single self-contained file keyed by canonical
+  verse_id, behind a one-method seam — `BibleTextSource.getVerses(idRange) → List<VerseText>`.
+  Recommended format: a SQLite `bible.db` (one file, but indexed for the `verse_id BETWEEN`
+  range queries the spine needs — a flat file would force 31k verses into memory). The format is
+  an encapsulated detail behind the seam; swappability comes from the interface, not the format.
+- **Book structure stays in the app** (`BookCatalog`: 66 books, chapter counts, verse_id scheme),
+  NOT in the artifact. The artifact carries only `verse_id → markup text`. This is the clean
+  reconciliation of "no duplicate book table" with "swappable encapsulated text."
+- **This retires versification from the app entirely.** If a future swapped-in version uses
+  different verse numbering, that mapping lives *inside that artifact* (it presents itself keyed
+  by the canonical verse_id scheme); the app stays version-ignorant. Appendix B (§6) becomes
+  "an artifact's internal concern, never the app's."
+- **Verification gate** checks the loaded artifact against the spine's expected structure
+  (BookCatalog chapter counts → expected verse_id coverage), so any artifact is verifiable the
+  same way regardless of version.
 
 ## Recommended phasing
 
