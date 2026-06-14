@@ -252,10 +252,25 @@ verse_id.** Swap the artifact → different version, zero logic changes.
 - **Book structure stays in the app** (`BookCatalog`: 66 books, chapter counts, verse_id scheme),
   NOT in the artifact. The artifact carries only `verse_id → markup text`. This is the clean
   reconciliation of "no duplicate book table" with "swappable encapsulated text."
-- **This retires versification from the app entirely.** If a future swapped-in version uses
-  different verse numbering, that mapping lives *inside that artifact* (it presents itself keyed
-  by the canonical verse_id scheme); the app stays version-ignorant. Appendix B (§6) becomes
-  "an artifact's internal concern, never the app's."
+- **This retires versification *logic* from the app — NOT the capability.** Two things must
+  not regress, and neither does:
+  - **Psalm titles are preserved** — they're a *spine* feature (verse ∈ [0,999], superscription
+    at verse 0), independent of versioning. Unaffected.
+  - **Different versification stays fully mappable** — what we cut is the `versification_map`
+    *app table* (which would have made app logic version-aware); the mapping data **relocates
+    into the artifact**. A differently-versified artifact presents its text keyed to the
+    canonical verse_id spine *and* carries a **native display label per verse**, so the app
+    stays version-agnostic (addresses by canonical id) while the reader still shows that
+    translation's **native numbering and gaps** (faithful display, Rule 1, preserved).
+- **The one door we keep open for this:** the seam returns text **plus a native display label** —
+  `getVerses(range) → List<VerseText(canonicalId, nativeLabel, markup)>`. For KJV `nativeLabel`
+  is derived from the verse_id (native == canonical), costing nothing now; a future
+  differently-versified artifact populates it from its own internal mapping. Don't hardcode
+  "display number == the verse_id's verse component" — read it from the seam.
+- **Simultaneous multi-translation (compare/parallel view), if ever:** each artifact
+  self-describes its delta from the canonical spine; the app aligns two artifacts by walking
+  canonical ids — still zero versification logic in the app. Appendix B (§6) becomes "each
+  artifact's internal concern," never a central app table.
 - **Verification gate** checks the loaded artifact against the spine's expected structure
   (BookCatalog chapter counts → expected verse_id coverage), so any artifact is verifiable the
   same way regardless of version.
