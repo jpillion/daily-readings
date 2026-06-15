@@ -68,6 +68,33 @@ class ReaderViewModelTest {
         }
 
     @Test
+    fun `a single Psalms chapter title is the singular Psalm N (D-UI-2)`() =
+        runTest {
+            // Mutation anchor for the reader's singular branch: one Psalms chapter -> "Psalm 23".
+            val model = vm()
+            val state = model.uiStateForPage(psalms23Page).value as ReaderUiState.Content
+            assertThat(state.title).isEqualTo("Psalm 23")
+        }
+
+    @Test
+    fun `a multi-chapter Psalms portion title is the plural Psalms M to N (D-UI-2)`() =
+        runTest {
+            // A portion spanning two Psalms chapters stays plural -> "Psalms 1–2" (en dash),
+            // mirroring ReadingFormatter's run rule.
+            val model = vm()
+            handoff.request(
+                Portion(
+                    Stream.PSALMS_AND_PROPHECY,
+                    listOf(Reference(psalms, 1), Reference(psalms, 2)),
+                ),
+            )
+            advanceUntilIdle()
+            val ctx = model.context.value as ReaderContext.Reading
+            val state = model.uiStateForPage(ctx.index.portionPage).value as ReaderUiState.Content
+            assertThat(state.title).isEqualTo("Psalms 1–2")
+        }
+
+    @Test
     fun `the default context is Browse and the default page is Genesis 1`() =
         runTest {
             val model = vm()

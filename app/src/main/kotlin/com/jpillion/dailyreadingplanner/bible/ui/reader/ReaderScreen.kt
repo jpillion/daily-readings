@@ -47,6 +47,7 @@ import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
+import com.jpillion.dailyreadingplanner.ui.day.ReadingFormatter
 
 /**
  * H2 (D-H-2) — the stateless in-app KJV reader. The Scaffold + top bar host a
@@ -163,7 +164,8 @@ private fun ReaderPage(
 @Composable
 private fun ChapterHeader(block: ChapterContent) {
     Text(
-        text = "${block.bookName} ${block.chapter}",
+        text =
+            "${ReadingFormatter.singularizeBookName(block.bookName, singleChapter = true)} ${block.chapter}",
         style = MaterialTheme.typography.titleLarge,
         modifier =
             Modifier
@@ -238,7 +240,9 @@ private fun VerseItem(
  */
 private fun verseTapDescription(verse: VerseText): String {
     val id = verse.canonicalId
-    val book = BookCatalog.books.firstOrNull { it.order == VerseId.book(id) }?.canonicalName ?: ""
+    val rawBook = BookCatalog.books.firstOrNull { it.order == VerseId.book(id) }?.canonicalName ?: ""
+    // A single tapped verse is always one chapter: speak "Psalm 23", never "Psalms 23".
+    val book = ReadingFormatter.singularizeBookName(rawBook, singleChapter = true)
     val ch = VerseId.chapter(id)
     val v = VerseId.verse(id).coerceAtLeast(1)
     val plain = MarkupStripper.strip(verse.markup)

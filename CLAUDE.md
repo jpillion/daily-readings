@@ -858,13 +858,38 @@ Do not reference or depend on strikelog.
   reads fine either way, D-UI-2, pinned by test). The branch lives in a single
   `ReadingFormatter.displayBookName` helper keyed on `run.size == 1` (a size-1 run IS one chapter)
   AND the resolved name == "Psalms"; only `Book::canonicalName` ("Psalms") triggers it, never
-  `Book::displayAbbrev` ("Psa"). **The in-app reader's "Psalms 23" chapter title is OUT of scope**
-  (it shows the full book name via `book.canonicalName`, independent of `ReadingFormatter` — left as
-  "Psalms"). NO plan-data change (the data still says book=Psalms; display-only). 596 tests
+  `Book::displayAbbrev` ("Psa"). **The in-app reader's "Psalms 23" titles were OUT of scope this
+  sprint** (it built its own titles from `book.canonicalName`, independent of `ReadingFormatter`) —
+  **closed by the `sprint-00L-psalm-reader` follow-up below.** NO plan-data change (the data still
+  says book=Psalms; display-only). 596 tests
   (net +6; **all three data/Room gates UNTOUCHED — plan gate = 11, BibleTextVerificationTest = 18,
   BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.4% on domain/data, **2 mutations
   killed** (always-plural → 8 single-chapter tests red; always-singular → 2 multi-chapter tests red),
   each restored in place. No new deps/permissions, no Room/manifest/DataStore change.
+- ✅ **Psalms singular/plural in the in-app reader (owner UI follow-up, `sprint-00L-psalm-reader`)
+  is DONE** (uncommitted in the working tree; the main session verifies + commits; no version bump —
+  display-only). Closes the reader gap Sprint K left open: the V3 reader built its OWN titles from
+  `book.canonicalName` and still showed "Psalms 23", inconsistent with the Schedule. Now **header,
+  top-bar single-chapter title, portion title, and the verse-tap spoken label** all apply D-UI-2:
+  a single Psalms chapter ⇒ **"Psalm N"** (incl. a verse-windowed Psalm 119 day — the window does
+  not change the chapter count, so "Psalm 119"); a multi-chapter Psalms portion ⇒ **"Psalms M–N"**
+  (en dash); the two-book Jun 19/Dec 19 portion keeps its shape (per-block singular). **No second
+  source of truth:** the rule is extracted ONCE into public `ReadingFormatter.singularizeBookName(
+  canonicalName, singleChapter)` and `ReadingFormatter`'s private `displayBookName` now delegates to
+  it — the reader (`bible/ui/reader/ReaderViewModel` + `ReaderScreen`) imports and calls that same
+  function, so Schedule and reader cannot drift. Abbreviated form ("Psa") still untouched; all other
+  books byte-for-byte unchanged. Display-only — NO plan-data/asset/Room/DataStore/manifest/version/
+  dependency change. Reader pins flipped "Psalms 23"→"Psalm 23"; new pins: `ReaderScreenTest` singular
+  header (`reader-header-19-23` == "Psalm 23"; nothing on screen says "Psalms 23"),
+  `ReaderViewModelTest` singular single-chapter title + plural multi-chapter portion title.
+  AccessibilityGateTest unchanged (its Psalms assertions are substring, not the full string). 599
+  tests (net +3; **all three data/Room gates UNTOUCHED — plan gate = 11, BibleTextVerificationTest =
+  18, BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.4% on domain/data, **2 mutations
+  killed** (disabling `singularizeBookName` reddens the reader's singular pins AND the Schedule's
+  `ReadingFormatter` pins — proving the single source of truth; flipping the multi-chapter portion
+  branch to `singleChapter = true` reddens only the plural portion pin), each restored in place.
+  Note: docs/features/psalm-singular-reader.md. Device-pass: the singular header/title/spoken label
+  on glass.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

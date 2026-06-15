@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -49,7 +50,7 @@ class ReaderScreenTest {
                 ),
         )
 
-    private fun content() = ReaderUiState.Content(blocks = listOf(psalm23()), title = "Psalms 23")
+    private fun content() = ReaderUiState.Content(blocks = listOf(psalm23()), title = "Psalm 23")
 
     private fun setContent(state: ReaderUiState = content()) {
         composeRule.setContent {
@@ -101,7 +102,7 @@ class ReaderScreenTest {
         // (verse 0 clamps to verse 1); the markup is still stripped, never spoken raw.
         composeRule
             .onNodeWithTag("reader-title-$titleId")
-            .assert(contentDescriptionIs("Open Psalms 23:1. A Psalm of David."))
+            .assert(contentDescriptionIs("Open Psalm 23:1. A Psalm of David."))
     }
 
     @Test
@@ -110,7 +111,7 @@ class ReaderScreenTest {
         // <a>LORD</a> -> "LORD" kept, tags gone (mutation target: stripping for a11y).
         composeRule
             .onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}")
-            .assert(contentDescriptionIs("Open Psalms 23:1. The LORD is my shepherd"))
+            .assert(contentDescriptionIs("Open Psalm 23:1. The LORD is my shepherd"))
     }
 
     @Test
@@ -210,6 +211,16 @@ class ReaderScreenTest {
     }
 
     @Test
+    fun `a Psalms chapter header renders the singular Psalm N`() {
+        // D-UI-2 in the reader: a single Psalms chapter header is "Psalm 23", never "Psalms 23".
+        // Both the header (tag reader-header-19-23) and the top-bar title now read "Psalm 23";
+        // assert the header node specifically, and that NOTHING on screen says "Psalms 23".
+        setContent()
+        composeRule.onNodeWithTag("reader-header-19-23").assertTextEquals("Psalm 23")
+        composeRule.onNodeWithText("Psalms 23").assertDoesNotExist()
+    }
+
+    @Test
     fun `loading state renders a spinner`() {
         setContent(ReaderUiState.Loading)
         composeRule.onNodeWithTag("reader-loading").assertIsDisplayed()
@@ -251,10 +262,10 @@ class ReaderScreenTest {
         setContent()
         val id = VerseId.encode(19, 23, 1)
         composeRule.onNodeWithTag("reader-verse-$id").assert(
-            SemanticsMatcher("contentDescription startsWith 'Open Psalms 23:1'") { node ->
+            SemanticsMatcher("contentDescription startsWith 'Open Psalm 23:1'") { node ->
                 node.config
                     .getOrNull(SemanticsProperties.ContentDescription)
-                    ?.any { it.startsWith("Open Psalms 23:1") } == true
+                    ?.any { it.startsWith("Open Psalm 23:1") } == true
             },
         )
     }

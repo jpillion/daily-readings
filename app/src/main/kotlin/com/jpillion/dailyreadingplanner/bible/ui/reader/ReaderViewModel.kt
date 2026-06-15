@@ -13,6 +13,7 @@ import com.jpillion.dailyreadingplanner.domain.OpenVerseUseCase
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.Reference
+import com.jpillion.dailyreadingplanner.ui.day.ReadingFormatter
 import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -125,7 +126,10 @@ class ReaderViewModel
                             val content = getChapter(book, chapter)
                             ReaderUiState.Content(
                                 blocks = listOf(content),
-                                title = "${book.canonicalName} $chapter",
+                                title = "${ReadingFormatter.singularizeBookName(
+                                    book.canonicalName,
+                                    singleChapter = true,
+                                )} $chapter",
                             )
                         }
                     } catch (e: Exception) {
@@ -235,13 +239,20 @@ class ReaderViewModel
             val last = blocks.last()
             return if (first.bookNo == last.bookNo) {
                 if (first.chapter == last.chapter) {
-                    "${first.bookName} ${first.chapter}"
+                    // One chapter (incl. a verse-windowed Psalm 119 day): singular -> "Psalm 119".
+                    "${ReadingFormatter.singularizeBookName(first.bookName, singleChapter = true)} ${first.chapter}"
                 } else {
-                    "${first.bookName} ${first.chapter}–${last.chapter}"
+                    // Spans chapters within one book: plural -> "Psalms 1–2" (en dash).
+                    "${ReadingFormatter.singularizeBookName(
+                        first.bookName,
+                        singleChapter = false,
+                    )} ${first.chapter}–${last.chapter}"
                 }
             } else {
-                // Two-book portion (Jun 19 / Dec 19): "2 John 1; 3 John 1".
-                blocks.joinToString("; ") { "${it.bookName} ${it.chapter}" }
+                // Two-book portion (Jun 19 / Dec 19): "2 John 1; 3 John 1". Each block is one chapter.
+                blocks.joinToString("; ") {
+                    "${ReadingFormatter.singularizeBookName(it.bookName, singleChapter = true)} ${it.chapter}"
+                }
             }
         }
 

@@ -40,6 +40,19 @@ object ReadingFormatter {
     fun formatAbbreviated(portion: Portion): String =
         consecutiveRuns(portion.refs).joinToString("; ") { formatRun(it, Book::displayAbbrev) }
 
+    /**
+     * The displayed full book name for a run covering [singleChapter] (true) or multiple chapters
+     * (false), applying the Psalms singular/plural rule (D-UI-2): canonical "Psalms" becomes
+     * "Psalm" for a single chapter, "Psalms" otherwise. This is the SINGLE home of the rule — the
+     * in-app reader (header, top-bar title, portion title, spoken verse label) reuses it so the
+     * Schedule and the reader can never drift. Pass the canonical name ([Book.canonicalName]); no
+     * other book changes, and the abbreviated form ("Psa") is intentionally not affected.
+     */
+    fun singularizeBookName(
+        canonicalName: String,
+        singleChapter: Boolean,
+    ): String = if (singleChapter && canonicalName == "Psalms") "Psalm" else canonicalName
+
     /** Splits refs into runs of the same book with consecutive chapters, preserving order. */
     private fun consecutiveRuns(refs: List<Reference>): List<List<Reference>> {
         val runs = mutableListOf<MutableList<Reference>>()
@@ -93,6 +106,6 @@ object ReadingFormatter {
         singleChapter: Boolean,
     ): String {
         val name = bookName(book)
-        return if (singleChapter && name == "Psalms") "Psalm" else name
+        return singularizeBookName(name, singleChapter)
     }
 }
