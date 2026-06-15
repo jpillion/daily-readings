@@ -13,6 +13,12 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
+import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
+import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
+import com.jpillion.dailyreadingplanner.bible.ui.picker.BookChapterPicker
+import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderScreen
+import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderUiState
 import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
@@ -293,6 +299,73 @@ class AccessibilityGateTest {
             .onNodeWithTag("stats-stream-1")
             .assert(hasTextContaining("Law & History"))
             .assert(hasTextContaining("150 of 365"))
+    }
+
+    @Test
+    fun `reader Prev and Next controls meet 48dp touch targets`() {
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                ReaderScreen(
+                    state =
+                        ReaderUiState.Content(
+                            blocks =
+                                listOf(
+                                    ChapterContent(
+                                        bookNo = 19,
+                                        bookName = "Psalms",
+                                        chapter = 23,
+                                        verses =
+                                            listOf(
+                                                VerseText(
+                                                    VerseId.encode(19, 23, 0),
+                                                    "",
+                                                    isTitle = true,
+                                                    markup = "A Psalm of David.",
+                                                ),
+                                                VerseText(
+                                                    VerseId.encode(19, 23, 1),
+                                                    "1",
+                                                    isTitle = false,
+                                                    markup = "The <a>LORD</a> is my shepherd",
+                                                ),
+                                            ),
+                                    ),
+                                ),
+                            title = "Psalms 23",
+                        ),
+                    onOpenPicker = {},
+                    onPrevChapter = {},
+                    onNextChapter = {},
+                    onRetry = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("reader-prev-chapter").assertTouchTargetAtLeast(48.dp)
+        composeRule.onNodeWithTag("reader-next-chapter").assertTouchTargetAtLeast(48.dp)
+        composeRule.onNodeWithTag("reader-open-picker").assertTouchTargetAtLeast(48.dp)
+        // The superscription carries heading semantics and speaks the plain (stripped) title.
+        composeRule
+            .onNodeWithTag("reader-title-${VerseId.encode(19, 23, 0)}")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            .assertContentDescriptionContains("A Psalm of David", substring = true)
+        // The verse speaks stripped markup (added word kept, tags gone), never the raw tags.
+        composeRule
+            .onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}")
+            .assertContentDescriptionContains("The LORD is my shepherd", substring = true)
+    }
+
+    @Test
+    fun `picker book rows and chapter cells meet 48dp touch targets`() {
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                BookChapterPicker(onChapterSelected = { _, _ -> })
+            }
+        }
+        composeRule.onNodeWithTag("picker-book-1").assertTouchTargetAtLeast(48.dp)
+        composeRule.onNodeWithTag("picker-book-1").performClick()
+        for (chapter in listOf(1, 2, 3)) {
+            composeRule.onNodeWithTag("picker-chapter-$chapter").assertTouchTargetAtLeast(48.dp)
+        }
     }
 
     private fun hasTextContaining(substring: String): SemanticsMatcher =

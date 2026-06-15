@@ -11,6 +11,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,6 +73,9 @@ internal fun pageForDate(
 @Composable
 fun DayReadingsRoute(
     onOpenSettings: () -> Unit,
+    // SPRINT C TEMPORARY — opens the in-app reader via the temp Routes.READER push. Default {}
+    // keeps existing previews/tests unchanged. Replaced by the Sprint D bottom-nav (D-V3-16).
+    onOpenReader: () -> Unit = {},
     viewModel: DayReadingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -92,6 +96,7 @@ fun DayReadingsRoute(
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
         onOpenSettings = onOpenSettings,
+        onOpenReader = onOpenReader,
         showTrackingStartPrompt = showTrackingStartPrompt,
         onTrackingStartChosen = viewModel::onTrackingStartChosen,
         onTrackingStartPromptDismissed = viewModel::onTrackingStartPromptDismissed,
@@ -119,6 +124,8 @@ fun DayReadingsPagerScreen(
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    // SPRINT C TEMPORARY — temp reader entry; default {} keeps existing callers unchanged.
+    onOpenReader: () -> Unit = {},
     // S19: the one-time first-run tracking-start prompt (default off so existing callers
     // and the dominant render path are unchanged).
     showTrackingStartPrompt: Boolean = false,
@@ -163,6 +170,17 @@ fun DayReadingsPagerScreen(
                         Icon(
                             imageVector = Icons.Filled.DateRange,
                             contentDescription = stringResource(R.string.open_date_picker),
+                        )
+                    }
+                    // SPRINT C TEMPORARY — reachable entry to the in-app reader (D-V3-16 bottom
+                    // nav replaces this in Sprint D).
+                    IconButton(
+                        onClick = onOpenReader,
+                        modifier = Modifier.testTag("open-reader-dev"),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.List,
+                            contentDescription = stringResource(R.string.reader_open),
                         )
                     }
                     IconButton(

@@ -499,16 +499,47 @@ Do not reference or depend on strikelog.
   debt carried forward: the `BibleAssetVersion` startup hook (still deferred to Sprint E device
   pass) and the `exportBookCatalog` Gradle-task wrapping (Jordan follow-up).
   Handoff: [docs/sprints/sprint-00B-spine-resolver-bridge.md](docs/sprints/sprint-00B-spine-resolver-bridge.md).
-- Next up: **V3 Sprint C — the reader UI** (`sprint-00C-reader-ui`): `ReaderRoute`/`ReaderScreen`/
-  `ReaderViewModel`; the verse-id-keyed `LazyColumn` (D-V3-12); `VerseRenderer` (closed-tag →
-  `AnnotatedString`, `<a>`→italic) + verse-0 superscription as unnumbered `heading()`-semantic
-  heading; two-step book→chapter picker; `HorizontalPager` chapter nav + Prev/Next; `fontScale`
-  reuse; in-session last-read (`SavedStateHandle`); the EMPTY audio seam (D-V3-14);
-  accessibility-gate extension. Consumes the Sprint B surface: inject `GetChapterUseCase` /
-  `GetPortionTextUseCase` (suspend → `ChapterContent`/`PortionContent`), key list items by
-  `VerseText.canonicalId`, render `VerseText.markup`, label with `VerseText.nativeLabel`, branch
-  the superscription on `VerseText.isTitle`. (V2.x release prep remains queued, owner-scheduled
-  independently of the V3 line.)
+- ✅ **V3 Sprint C (the reader UI) is DONE** (uncommitted in the working tree; the main session
+  verifies and commits; version untouched). **The user can read faithfully-formatted KJV inside
+  the app, fully offline, browse any book/chapter, and navigate chapter-to-chapter across book
+  boundaries** — over the Sprint B spine, no networking. (1) **The reader screen:**
+  `bible/ui/reader/ReaderViewModel` (`@HiltViewModel`; injects `GetChapterUseCase`/
+  `GetPortionTextUseCase`; `openChapter(book,ch)`/`openPortion(portion)`; `StateFlow<ReaderUiState>`
+  = `Loading | Content(blocks, title, activeVerseId) | Error`) + stateless `ReaderScreen` +
+  stateful `ReaderRoute`. (2) **Verse-id-keyed `LazyColumn` (D-V3-12):** every verse a `LazyColumn`
+  item keyed by `VerseText.canonicalId` — reads as prose, each verse individually addressable
+  (mutation-pinned: same-label verses across chapters don’t collide). (3) **`VerseRenderer`**
+  (pure, JVM-testable): closed-tag markup → `AnnotatedString` — `<a>`→italic span (P0,
+  mutation-pinned), `<w>` recognized/no span (P1), `<l/>`→newline (P1); render text never drops
+  inner words. (4) **Superscription (D-V3-7):** an `isTitle` verse renders as an unnumbered italic
+  `heading()`-semantic block, not a numbered verse (mutation-pinned). Verse labels are the seam’s
+  `nativeLabel`, **never derived from the id** (D-V3-4, mutation-pinned). (5) **TalkBack** speaks
+  `MarkupStripper.strip(markup)`, never raw tags (NFR-V3-C). (6) **Picker (`bible/ui/picker/`):**
+  stateless `BookChapterPicker` (66 books grouped OT/NT by `order<=39`, then a chapter grid sized
+  to `chapterCount`) inside an M3 `ModalBottomSheet`; ≥48dp rows/cells. (7) **Chapter nav:**
+  pure `ChapterNavigator` walks `BookCatalog` order — Prev/Next cross book boundaries
+  (Gen 50→Exo 1), bounded at Gen 1 / Rev 22; visible Prev/Next controls. (8) **In-session
+  last-read (D-V3-13):** `(bookNo,chapter)` in `SavedStateHandle` (`reader_book_no`/`reader_chapter`);
+  restored on init, else Genesis 1. (9) **Empty audio seam (D-V3-14):** `ReaderAudioSlot` bottomBar
+  (renders nothing) + `Content.activeVerseId` (always null). `fontScale` inherited free from the
+  theme. **Temporary reader entry (Sprint-D-replaced):** a top-bar book-list action (tag
+  `open-reader-dev`) pushes a plain `Routes.READER` in the existing single `NavHost` — comment-marked
+  `SPRINT C TEMPORARY`; D’s bottom-nav (D-V3-16) + tap-handoff replace it. The two-book portion
+  is exercised by `ReaderViewModelTest.openPortion`, not yet tap-wired. 453/453 tests (net +32;
+  **both data gates untouched — Sprint-1 plan gate = 7, `BibleTextVerificationTest` = 18**),
+  4 load-bearing mutations killed (added-word italic span, superscription isTitle branch,
+  nativeLabel-not-derived, keyed-by-canonicalId), each restored in place; Kover 96.2% on
+  domain/data; full pipeline green. Reading feel / markup look / picker on-glass = device-pass
+  items (E). New strings need owner tone sign-off (table in the handoff).
+  Handoff: [docs/sprints/sprint-00C-reader-ui.md](docs/sprints/sprint-00C-reader-ui.md).
+- Next up: **V3 Sprint D — nav restructure + integration** (`sprint-00D-nav-integration`):
+  `RootScaffold` + co-equal `NavigationBar` (Schedule | Bible, Schedule start, D-V3-16); nested
+  Schedule/Bible graphs replacing the temporary `Routes.READER` push; the Robolectric
+  nav-regression suite (D-V3-17, R-V3-5); `BibleProvider.IN_APP` promotion +
+  `ReadingDestination.InApp(portion)` + the `DayReadingsRoute` tap-handoff (calls
+  `ReaderViewModel.openPortion`); Settings teaser→real value; the Sprint-19 first-run
+  reading-destination question (D-V3-19); the bundle-size CI check (D-V3-20). Resolve owner
+  OQ-1/2/3 before D lands. (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
