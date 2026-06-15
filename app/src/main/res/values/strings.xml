@@ -85,6 +85,13 @@
     <string name="reminder_channel_name">Daily reminder</string>
     <string name="reminder_channel_description">A daily notification listing the day\'s readings</string>
     <string name="reminder_notification_title">Today\'s readings</string>
+    <!-- S21: persistent (ongoing) tray notification -->
+    <string name="persistent_channel_name">Today\'s readings (always shown)</string>
+    <string name="persistent_channel_description">An ongoing notification that keeps the day\'s readings in your tray and refreshes each morning</string>
+    <string name="persistent_notification_title">Today\'s readings</string>
+    <string name="persistent_no_readings_body">No readings scheduled today</string>
+    <string name="persistent_notification_toggle_title">Keep readings in the tray</string>
+    <string name="persistent_notification_help">An ongoing notification that always shows the day\'s readings and refreshes at 1:00 AM. It stays in your notification tray and can\'t be swiped away while it\'s on.</string>
     <string name="widget_description">Today\'s three Bible Companion readings at a glance</string>
     <string name="widget_load_failed">Couldn\'t load readings — tap to open the app</string>
     <string name="widget_reading_read">Read</string>

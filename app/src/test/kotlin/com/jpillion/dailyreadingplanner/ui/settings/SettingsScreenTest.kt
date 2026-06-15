@@ -47,6 +47,7 @@ class SettingsScreenTest {
     private val fontScaleChanges = mutableListOf<Float>()
     private val trackingStartChanges = mutableListOf<LocalDate?>()
     private val reminderToggles = mutableListOf<Boolean>()
+    private val persistentToggles = mutableListOf<Boolean>()
     private val reminderTimeChanges = mutableListOf<LocalTime>()
     private var rationaleDismissals = 0
     private var openNotificationSettingsCalls = 0
@@ -64,6 +65,7 @@ class SettingsScreenTest {
         trackingStartDate: LocalDate? = null,
         reminderEnabled: Boolean = false,
         reminderTime: LocalTime = LocalTime.of(8, 0),
+        persistentNotificationEnabled: Boolean = false,
         showReminderPermissionRationale: Boolean = false,
     ) {
         composeRule.setContent {
@@ -78,6 +80,7 @@ class SettingsScreenTest {
                     trackingStartDate = trackingStartDate,
                     reminderEnabled = reminderEnabled,
                     reminderTime = reminderTime,
+                    persistentNotificationEnabled = persistentNotificationEnabled,
                     showReminderPermissionRationale = showReminderPermissionRationale,
                     onThemeModeSelected = { selections += it },
                     onBibleProviderSelected = { providerSelections += it },
@@ -87,6 +90,7 @@ class SettingsScreenTest {
                     onTrackingStartChanged = { trackingStartChanges += it },
                     onReminderToggled = { reminderToggles += it },
                     onReminderTimeChanged = { reminderTimeChanges += it },
+                    onPersistentNotificationToggled = { persistentToggles += it },
                     onPermissionRationaleDismissed = { rationaleDismissals++ },
                     onOpenNotificationSettings = { openNotificationSettingsCalls++ },
                     onResetProgressConfirmed = { resetConfirms++ },
@@ -413,5 +417,19 @@ class SettingsScreenTest {
         setScreen(ThemeMode.SYSTEM)
         composeRule.onNodeWithTag("request-app-row").performScrollTo().performClick()
         assertThat(requestAppCalls).isEqualTo(1)
+    }
+
+    @Test
+    fun persistentToggle_isOffByDefault_andReportsTaps() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("persistent-notification-toggle").performScrollTo().assertIsOff()
+        composeRule.onNodeWithTag("persistent-notification-toggle").performScrollTo().performClick()
+        assertThat(persistentToggles).containsExactly(true)
+    }
+
+    @Test
+    fun persistentToggle_reflectsEnabledState() {
+        setScreen(ThemeMode.SYSTEM, persistentNotificationEnabled = true)
+        composeRule.onNodeWithTag("persistent-notification-toggle").performScrollTo().assertIsOn()
     }
 }

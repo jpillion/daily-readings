@@ -24,6 +24,9 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
     @Inject
     lateinit var midnightRefresh: MidnightRefreshHandler
 
+    @Inject
+    lateinit var refreshPersistent: com.jpillion.dailyreadingplanner.domain.RefreshPersistentNotificationUseCase
+
     override fun onReceive(
         context: Context,
         intent: Intent,
@@ -35,6 +38,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                 when (action) {
                     ACTION_SHOW_REMINDER -> deliverDueReminder()
                     ACTION_MIDNIGHT_REFRESH -> midnightRefresh()
+                    ACTION_REFRESH_PERSISTENT -> refreshPersistent()
                 }
             } finally {
                 pendingResult.finish()
@@ -45,5 +49,6 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_SHOW_REMINDER = "com.jpillion.dailyreadingplanner.action.SHOW_REMINDER"
         const val ACTION_MIDNIGHT_REFRESH = "com.jpillion.dailyreadingplanner.action.MIDNIGHT_REFRESH"
+        const val ACTION_REFRESH_PERSISTENT = "com.jpillion.dailyreadingplanner.action.REFRESH_PERSISTENT"
     }
 }

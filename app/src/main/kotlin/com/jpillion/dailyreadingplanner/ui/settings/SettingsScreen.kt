@@ -80,6 +80,7 @@ fun SettingsRoute(
     val trackingStartDate by viewModel.trackingStartDate.collectAsStateWithLifecycle()
     val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
     val reminderTime by viewModel.reminderTime.collectAsStateWithLifecycle()
+    val persistentNotificationEnabled by viewModel.persistentNotificationEnabled.collectAsStateWithLifecycle()
     val showPermissionRationale by viewModel.showPermissionRationale.collectAsStateWithLifecycle()
 
     // R-REM-7: the system POST_NOTIFICATIONS prompt, launched only when the user flips the
@@ -107,6 +108,7 @@ fun SettingsRoute(
         trackingStartDate = trackingStartDate,
         reminderEnabled = reminderEnabled,
         reminderTime = reminderTime,
+        persistentNotificationEnabled = persistentNotificationEnabled,
         showReminderPermissionRationale = showPermissionRationale,
         onThemeModeSelected = viewModel::onThemeModeSelected,
         onBibleProviderSelected = viewModel::onBibleProviderSelected,
@@ -129,6 +131,7 @@ fun SettingsRoute(
         onTrackingStartChanged = viewModel::onTrackingStartChanged,
         onReminderToggled = viewModel::onReminderToggled,
         onReminderTimeChanged = viewModel::onReminderTimeChanged,
+        onPersistentNotificationToggled = viewModel::onPersistentNotificationToggled,
         onPermissionRationaleDismissed = viewModel::onPermissionRationaleDismissed,
         onOpenNotificationSettings = {
             viewModel.onPermissionRationaleDismissed()
@@ -160,6 +163,7 @@ fun SettingsScreen(
     trackingStartDate: LocalDate?,
     reminderEnabled: Boolean,
     reminderTime: LocalTime,
+    persistentNotificationEnabled: Boolean,
     showReminderPermissionRationale: Boolean,
     onThemeModeSelected: (ThemeMode) -> Unit,
     onBibleProviderSelected: (BibleProvider) -> Unit,
@@ -169,6 +173,7 @@ fun SettingsScreen(
     onTrackingStartChanged: (LocalDate?) -> Unit,
     onReminderToggled: (Boolean) -> Unit,
     onReminderTimeChanged: (LocalTime) -> Unit,
+    onPersistentNotificationToggled: (Boolean) -> Unit,
     onPermissionRationaleDismissed: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onResetProgressConfirmed: () -> Unit,
@@ -265,6 +270,16 @@ fun SettingsScreen(
             }
             Text(
                 text = stringResource(R.string.reminder_help),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+            )
+            PersistentNotificationToggleRow(
+                enabled = persistentNotificationEnabled,
+                onToggled = onPersistentNotificationToggled,
+            )
+            Text(
+                text = stringResource(R.string.persistent_notification_help),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
@@ -400,6 +415,34 @@ private fun ReminderToggleRow(
             modifier = Modifier.weight(1f),
         )
         Switch(checked = reminderEnabled, onCheckedChange = null)
+    }
+}
+
+/** S21 (D-S21-5): the persistent ongoing-notification opt-in — a labeled switch row, off by default. */
+@Composable
+private fun PersistentNotificationToggleRow(
+    enabled: Boolean,
+    onToggled: (Boolean) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .toggleable(
+                    value = enabled,
+                    role = Role.Switch,
+                    onValueChange = onToggled,
+                ).testTag("persistent-notification-toggle")
+                .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.persistent_notification_toggle_title),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = enabled, onCheckedChange = null)
     }
 }
 

@@ -212,4 +212,14 @@ class SettingsRepositoryImplTest {
             repository.setShowStreaks(true)
             assertThat(repository.showStreaks.first()).isTrue()
         }
+
+    @Test
+    fun `persistent notification defaults to off and round-trips both ways`() =
+        themeTest { repository, _ ->
+            assertThat(repository.persistentNotificationEnabled.first()).isFalse()
+            repository.setPersistentNotificationEnabled(true)
+            assertThat(repository.persistentNotificationEnabled.first()).isTrue()
+            repository.setPersistentNotificationEnabled(false)
+            assertThat(repository.persistentNotificationEnabled.first()).isFalse()
+        }
 }

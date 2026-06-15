@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.testing
 
+import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.reminders.ReminderNotifier
@@ -29,6 +30,21 @@ class FakeReminderScheduler : ReminderScheduler {
         midnightRefreshCount++
         callLog += "scheduleMidnightRefresh"
     }
+
+    var persistentRefreshCount = 0
+        private set
+    var cancelPersistentCount = 0
+        private set
+
+    override fun schedulePersistentRefresh() {
+        persistentRefreshCount++
+        callLog += "schedulePersistentRefresh"
+    }
+
+    override fun cancelPersistentRefresh() {
+        cancelPersistentCount++
+        callLog += "cancelPersistentRefresh"
+    }
 }
 
 /** Records every posted reminder's portions (S12). */
@@ -37,6 +53,21 @@ class FakeReminderNotifier : ReminderNotifier {
 
     override fun showTodayReminder(portions: List<Portion>) {
         shownPortions += portions
+    }
+}
+
+/** Records every persistent-notification post/cancel (S21). */
+class FakePersistentNotifier : com.jpillion.dailyreadingplanner.reminders.PersistentNotifier {
+    val shown = mutableListOf<DayReadings>()
+    var cancelCount = 0
+        private set
+
+    override fun showPersistent(day: DayReadings) {
+        shown += day
+    }
+
+    override fun cancelPersistent() {
+        cancelCount++
     }
 }
 

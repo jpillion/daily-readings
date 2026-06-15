@@ -108,6 +108,7 @@ class AccessibilityGateTest {
                     trackingStartDate = today,
                     reminderEnabled = true,
                     reminderTime = LocalTime.of(8, 0),
+                    persistentNotificationEnabled = true,
                     showReminderPermissionRationale = false,
                     onThemeModeSelected = {},
                     onBibleProviderSelected = {},
@@ -117,6 +118,7 @@ class AccessibilityGateTest {
                     onTrackingStartChanged = {},
                     onReminderToggled = {},
                     onReminderTimeChanged = {},
+                    onPersistentNotificationToggled = {},
                     onPermissionRationaleDismissed = {},
                     onOpenNotificationSettings = {},
                     onResetProgressConfirmed = {},
@@ -189,6 +191,11 @@ class AccessibilityGateTest {
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState))
         composeRule
             .onNodeWithTag("reminder-toggle")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState))
+        composeRule
+            .onNodeWithTag("persistent-notification-toggle")
             .performScrollTo()
             .assertTouchTargetAtLeast(48.dp)
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState))

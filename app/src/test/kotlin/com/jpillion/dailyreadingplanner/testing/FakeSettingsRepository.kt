@@ -69,6 +69,17 @@ class FakeSettingsRepository(
         storedReminderTime.value = time
     }
 
+    // --- S21: persistent (ongoing) notification. ---
+    val storedPersistentEnabled = MutableStateFlow(false)
+    val persistentEnabledCalls = mutableListOf<Boolean>()
+
+    override val persistentNotificationEnabled: Flow<Boolean> = storedPersistentEnabled
+
+    override suspend fun setPersistentNotificationEnabled(enabled: Boolean) {
+        persistentEnabledCalls += enabled
+        storedPersistentEnabled.value = enabled
+    }
+
     // --- S13: bible provider. ---
 
     val storedBibleProvider = MutableStateFlow(BibleProvider.DEFAULT)

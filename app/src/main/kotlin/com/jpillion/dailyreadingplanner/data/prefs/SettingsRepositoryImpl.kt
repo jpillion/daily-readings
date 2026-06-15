@@ -94,6 +94,16 @@ class SettingsRepositoryImpl
             }
         }
 
+        /** S21: absent key = false — the persistent notification is opt-in. */
+        override val persistentNotificationEnabled: Flow<Boolean> =
+            dataStore.data.map { preferences ->
+                preferences[PERSISTENT_NOTIFICATION_ENABLED_KEY] ?: false
+            }
+
+        override suspend fun setPersistentNotificationEnabled(enabled: Boolean) {
+            dataStore.edit { preferences -> preferences[PERSISTENT_NOTIFICATION_ENABLED_KEY] = enabled }
+        }
+
         /** Stored as the enum name; [BibleProvider.fromStored] absorbs unknown/corrupt ids. */
         override val bibleProvider: Flow<BibleProvider> =
             dataStore.data.map { preferences ->
@@ -147,6 +157,7 @@ class SettingsRepositoryImpl
             val UPGRADE_NOTE_SHOWN_KEY = booleanPreferencesKey("upgrade_note_shown")
             val REMINDER_ENABLED_KEY = booleanPreferencesKey("reminder_enabled")
             val REMINDER_MINUTE_OF_DAY_KEY = intPreferencesKey("reminder_minute_of_day")
+            val PERSISTENT_NOTIFICATION_ENABLED_KEY = booleanPreferencesKey("persistent_notification_enabled")
             const val MINUTES_PER_DAY = 24 * 60
         }
     }

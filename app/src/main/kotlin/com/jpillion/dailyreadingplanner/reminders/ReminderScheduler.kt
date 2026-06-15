@@ -27,6 +27,12 @@ interface ReminderScheduler {
      * D-S12-2). Independent of the reminder toggle; idempotent (one standing alarm).
      */
     fun scheduleMidnightRefresh()
+
+    /** (Re)schedules the persistent-notification refresh alarm for the next 01:00 local (S21, D-S21-3). */
+    fun schedulePersistentRefresh()
+
+    /** Cancels any pending persistent-notification refresh alarm (toggle off). */
+    fun cancelPersistentRefresh()
 }
 
 /**
@@ -66,11 +72,27 @@ class AlarmManagerReminderScheduler
             )
         }
 
+        override fun schedulePersistentRefresh() {
+            val trigger = AlarmTimes.nextOccurrence(ZonedDateTime.now(clock), AlarmTimes.PERSISTENT_REFRESH_TIME)
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                trigger.toInstant().toEpochMilli(),
+                persistentRefreshIntent(),
+            )
+        }
+
+        override fun cancelPersistentRefresh() {
+            alarmManager.cancel(persistentRefreshIntent())
+        }
+
         private fun reminderIntent(): PendingIntent =
             broadcast(REQUEST_REMINDER, ReminderAlarmReceiver.ACTION_SHOW_REMINDER)
 
         private fun midnightRefreshIntent(): PendingIntent =
             broadcast(REQUEST_MIDNIGHT_REFRESH, ReminderAlarmReceiver.ACTION_MIDNIGHT_REFRESH)
+
+        private fun persistentRefreshIntent(): PendingIntent =
+            broadcast(REQUEST_PERSISTENT_REFRESH, ReminderAlarmReceiver.ACTION_REFRESH_PERSISTENT)
 
         private fun broadcast(
             requestCode: Int,
@@ -86,5 +108,6 @@ class AlarmManagerReminderScheduler
         private companion object {
             const val REQUEST_REMINDER = 2001
             const val REQUEST_MIDNIGHT_REFRESH = 2002
+            const val REQUEST_PERSISTENT_REFRESH = 2004
         }
     }

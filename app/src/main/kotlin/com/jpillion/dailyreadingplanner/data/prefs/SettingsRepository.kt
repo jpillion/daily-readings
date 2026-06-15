@@ -65,6 +65,15 @@ interface SettingsRepository {
     suspend fun setReminderTime(time: LocalTime)
 
     /**
+     * Persistent (ongoing) tray notification opt-in (S21): off by default. When on, a silent,
+     * non-dismissible notification listing today's three readings sits in the tray and refreshes
+     * to the new day at 01:00 local time. Separate from [reminderEnabled] (the popup reminder).
+     */
+    val persistentNotificationEnabled: Flow<Boolean>
+
+    suspend fun setPersistentNotificationEnabled(enabled: Boolean)
+
+    /**
      * The KJV destination reading taps open (S13, docs/features/bible-app-links.md).
      * Defaults to [BibleProvider.DEFAULT] (Blue Letter Bible) — existing users see zero
      * behavior change; unknown stored ids degrade to the default, never crash.

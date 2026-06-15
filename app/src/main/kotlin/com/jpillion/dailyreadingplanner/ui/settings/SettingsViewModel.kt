@@ -42,6 +42,8 @@ class SettingsViewModel
         private val resetYearProgress: ResetYearProgressUseCase,
         private val widgetRefresher: WidgetRefresher,
         private val reminderScheduler: ReminderScheduler,
+        private val refreshPersistentNotification:
+            com.jpillion.dailyreadingplanner.domain.RefreshPersistentNotificationUseCase,
         private val notificationPermissionChecker: NotificationPermissionChecker,
         appInstallChecker: AppInstallChecker,
         clock: Clock,
@@ -133,6 +135,11 @@ class SettingsViewModel
                 initialValue = SettingsRepository.DEFAULT_REMINDER_TIME,
             )
 
+        /** Which toggle is awaiting the POST_NOTIFICATIONS result (S21 — shared prompt). */
+        private enum class PendingPermissionFeature { REMINDER, PERSISTENT }
+
+        private var pendingPermissionFeature: PendingPermissionFeature? = null
+
         private val permissionRequestChannel = Channel<Unit>(Channel.BUFFERED)
 
         /** One-shot "launch the POST_NOTIFICATIONS prompt" events for the Route (R-REM-7). */
@@ -151,6 +158,7 @@ class SettingsViewModel
         fun onReminderToggled(enabled: Boolean) {
             viewModelScope.launch {
                 if (enabled && !notificationPermissionChecker.hasNotificationPermission()) {
+                    pendingPermissionFeature = PendingPermissionFeature.REMINDER
                     permissionRequestChannel.send(Unit)
                     return@launch
                 }
@@ -158,11 +166,49 @@ class SettingsViewModel
             }
         }
 
+        // --- S21: persistent (ongoing) tray notification. ---
+
+        val persistentNotificationEnabled: StateFlow<Boolean> =
+            settingsRepository.persistentNotificationEnabled.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = false,
+            )
+
+        /**
+         * The toggle (S21, D-S21-5, off by default): enabling without notification permission
+         * requests it (shared S12 prompt) instead of persisting. Disabling cancels the alarm and
+         * dismisses the notification immediately.
+         */
+        fun onPersistentNotificationToggled(enabled: Boolean) {
+            viewModelScope.launch {
+                if (enabled && !notificationPermissionChecker.hasNotificationPermission()) {
+                    pendingPermissionFeature = PendingPermissionFeature.PERSISTENT
+                    permissionRequestChannel.send(Unit)
+                    return@launch
+                }
+                persistPersistentEnabled(enabled)
+            }
+        }
+
+        private suspend fun persistPersistentEnabled(enabled: Boolean) {
+            settingsRepository.setPersistentNotificationEnabled(enabled)
+            // The use case reads the freshly-persisted flag and does the right thing for both
+            // states: enabled → post today's readings + arm the 01:00 alarm; disabled → dismiss
+            // the notification + cancel the alarm. One home for the rule (no double-action).
+            refreshPersistentNotification()
+        }
+
         /** Result of the system permission prompt: granted → enable; denied → explain, stay off. */
         fun onNotificationPermissionResult(granted: Boolean) {
+            val feature = pendingPermissionFeature
+            pendingPermissionFeature = null
             viewModelScope.launch {
                 if (granted) {
-                    persistReminderEnabled(true)
+                    when (feature) {
+                        PendingPermissionFeature.PERSISTENT -> persistPersistentEnabled(true)
+                        else -> persistReminderEnabled(true)
+                    }
                 } else {
                     showPermissionRationaleState.value = true
                 }

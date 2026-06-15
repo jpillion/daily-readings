@@ -17,6 +17,7 @@ class RescheduleAlarmsUseCase
     constructor(
         private val settingsRepository: SettingsRepository,
         private val scheduler: ReminderScheduler,
+        private val refreshPersistentNotification: RefreshPersistentNotificationUseCase,
     ) {
         suspend operator fun invoke() {
             scheduler.scheduleMidnightRefresh()
@@ -25,5 +26,8 @@ class RescheduleAlarmsUseCase
             } else {
                 scheduler.cancelReminder()
             }
+            // S21: posts today's readings + arms the 01:00 alarm when enabled (correct on
+            // boot/launch); cancels the notification + its alarm when disabled.
+            refreshPersistentNotification()
         }
     }

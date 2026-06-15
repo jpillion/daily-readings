@@ -450,6 +450,36 @@ Do not reference or depend on strikelog.
   in place; Kover ≥70% floor holds; a11y gate green. No new strings (one removed).
   Device-pass: swipe feel, one-tap accuracy on glass.
   Handoff: [docs/sprints/sprint-0021-date-picker-ux.md](docs/sprints/sprint-0021-date-picker-ux.md).
+- ✅ **Sprint 22 (persistent tray notification — owner request) is DONE** (numbered V2
+  track; owner-redirected from the queued v2.x release prep; uncommitted in the working
+  tree; version untouched — the main session verifies + commits). A SEPARATE feature from
+  the S12 popup reminder: an **always-present, ongoing** notification that shows the day's
+  three readings in the tray and refreshes to the new day at **01:00 local**. Off by default
+  (D-S21-5/D-S22-5), enabled in Settings → Reminders ("Keep readings in the tray"); the S12
+  POST_NOTIFICATIONS flow is shared (the prompt routes to whichever toggle requested it).
+  **D-S22-1:** own channel `persistent_readings` at IMPORTANCE_LOW (silent), `setOngoing(true)`
+  (non-dismissible, NO foreground service needed/used — D-S22-2), `PRIORITY_MAX` +
+  `CATEGORY_STATUS` to bias ranking high *within* the low channel (Android/OEM own final
+  placement — "close to the top" is best-effort, not guaranteed). BigTextStyle lists the
+  three references (same `ReadingFormatter`); tap opens the app on today. **D-S22-4:** content
+  decided at post/refresh time via `GetDayReadingsUseCase`; Feb 29 shows "No readings
+  scheduled today" (stays present — NOT suppressed; unlike the popup there is no completion
+  suppression, the readings are always shown). **D-S22-3:** a DEDICATED 01:00 alarm (request
+  code 2004, `ACTION_REFRESH_PERSISTENT`), reusing the S12 inexact `setAndAllowWhileIdle`
+  pattern — re-armed after each fire, on BOOT_COMPLETED, and on every app launch via the
+  existing `RescheduleAlarmsUseCase` hook; NOT the 00:00 widget-rollover alarm (owner said
+  1am). New: `reminders/PersistentNotifier`(+`SystemPersistentNotifier`),
+  `domain/RefreshPersistentNotificationUseCase` (the one home for the enable/disable +
+  Feb-29 rule); `ReminderScheduler` gained `schedule/cancelPersistentRefresh()`,
+  `AlarmTimes.PERSISTENT_REFRESH_TIME`, a third receiver action; DataStore key
+  `persistent_notification_enabled` (default false). No new permissions, no new receivers,
+  no Room/manifest changes; receivers stay non-exported. 542/542 tests (net +22; the three
+  data/Room gates untouched — plan 7, BibleText 18, RoomOpen 5), 4 mutations killed
+  (disabled-gate, 01:00 re-arm, Feb-29 body, persistent reschedule-on-boot), each by its
+  intended test, restored in place; Kover 95.1% on domain/data; full pipeline green. S22
+  strings need owner tone sign-off (table in the handoff). Device-pass: real 01:00 fire,
+  reboot persistence, tray ranking/expansion, ongoing non-dismissibility.
+  Handoff: [docs/sprints/sprint-0022-persistent-notification.md](docs/sprints/sprint-0022-persistent-notification.md).
 - ✅ **V3 Sprint A (Bible data foundation — the HARD GATE) is DONE** (uncommitted in the
   working tree; the main session verifies the gate and commits; version untouched at
   1.3.5/10305 — V3 WIP). **The project's second core-IP asset exists and is provably

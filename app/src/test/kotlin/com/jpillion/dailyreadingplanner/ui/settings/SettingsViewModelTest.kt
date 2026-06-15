@@ -29,6 +29,9 @@ class SettingsViewModelTest {
     private val progress = FakeProgressRepository()
     private val widgetRefresher = FakeWidgetRefresher()
     private val reminderScheduler = FakeReminderScheduler()
+    private val persistentNotifier =
+        com.jpillion.dailyreadingplanner.testing
+            .FakePersistentNotifier()
     private val permissionChecker = FakeNotificationPermissionChecker(granted = true)
     private var mySwordInstalled = false
     private val appInstallChecker =
@@ -41,12 +44,30 @@ class SettingsViewModelTest {
             }
         }
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
+    private val refreshPersistent =
+        com.jpillion.dailyreadingplanner.domain.RefreshPersistentNotificationUseCase(
+            settingsRepository = repository,
+            getDayReadings =
+                com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase(
+                    resolver =
+                        com.jpillion.dailyreadingplanner.core.date
+                            .ScheduleDateResolver(),
+                    planRepository =
+                        com.jpillion.dailyreadingplanner.domain
+                            .FakeReadingPlanRepository(),
+                    progressRepository = progress,
+                ),
+            notifier = persistentNotifier,
+            scheduler = reminderScheduler,
+            clock = clock,
+        )
     private val viewModel by lazy {
         SettingsViewModel(
             settingsRepository = repository,
             resetYearProgress = ResetYearProgressUseCase(progress, clock),
             widgetRefresher = widgetRefresher,
             reminderScheduler = reminderScheduler,
+            refreshPersistentNotification = refreshPersistent,
             notificationPermissionChecker = permissionChecker,
             appInstallChecker = appInstallChecker,
             clock = clock,
@@ -266,5 +287,55 @@ class SettingsViewModelTest {
                 assertThat(awaitItem()).isFalse()
             }
             assertThat(repository.showStreaksCalls).containsExactly(true, false).inOrder()
+        }
+
+    // --- S21: persistent (ongoing) notification toggle. ---
+
+    @Test
+    fun `enabling the persistent notification with permission schedules the alarm and posts`() =
+        runTest {
+            permissionChecker.granted = true
+            viewModel.onPersistentNotificationToggled(true)
+            assertThat(repository.persistentEnabledCalls).containsExactly(true)
+            assertThat(reminderScheduler.persistentRefreshCount).isEqualTo(1)
+            assertThat(persistentNotifier.shown).hasSize(1)
+        }
+
+    @Test
+    fun `disabling the persistent notification cancels the alarm and dismisses it`() =
+        runTest {
+            repository.storedPersistentEnabled.value = true
+            viewModel.onPersistentNotificationToggled(false)
+            assertThat(repository.persistentEnabledCalls).contains(false)
+            assertThat(reminderScheduler.cancelPersistentCount).isEqualTo(1)
+            assertThat(persistentNotifier.cancelCount).isEqualTo(1)
+        }
+
+    @Test
+    fun `enabling without permission requests it and does not persist yet`() =
+        runTest {
+            permissionChecker.granted = false
+            viewModel.permissionRequests.test {
+                viewModel.onPersistentNotificationToggled(true)
+                awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+            assertThat(repository.persistentEnabledCalls).isEmpty()
+            assertThat(persistentNotifier.shown).isEmpty()
+        }
+
+    @Test
+    fun `a granted permission result for the persistent toggle enables persistent, not the reminder`() =
+        runTest {
+            // The shared prompt must route to whichever toggle requested it (S21).
+            permissionChecker.granted = false
+            viewModel.permissionRequests.test {
+                viewModel.onPersistentNotificationToggled(true)
+                awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+            viewModel.onNotificationPermissionResult(granted = true)
+            assertThat(repository.persistentEnabledCalls).containsExactly(true)
+            assertThat(repository.reminderEnabledCalls).isEmpty()
         }
 }

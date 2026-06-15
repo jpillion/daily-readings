@@ -3,8 +3,10 @@ package com.jpillion.dailyreadingplanner.di
 import com.jpillion.dailyreadingplanner.reminders.AlarmManagerReminderScheduler
 import com.jpillion.dailyreadingplanner.reminders.AndroidNotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
+import com.jpillion.dailyreadingplanner.reminders.PersistentNotifier
 import com.jpillion.dailyreadingplanner.reminders.ReminderNotifier
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
+import com.jpillion.dailyreadingplanner.reminders.SystemPersistentNotifier
 import com.jpillion.dailyreadingplanner.reminders.SystemReminderNotifier
 import dagger.Binds
 import dagger.Module
@@ -23,6 +25,10 @@ abstract class ReminderModule {
     @Binds
     @Singleton
     abstract fun bindReminderNotifier(impl: SystemReminderNotifier): ReminderNotifier
+
+    @Binds
+    @Singleton
+    abstract fun bindPersistentNotifier(impl: SystemPersistentNotifier): PersistentNotifier
 
     @Binds
     @Singleton

@@ -8,6 +8,9 @@ import java.time.ZonedDateTime
  * only the thin [AlarmManagerReminderScheduler] touches the platform.
  */
 object AlarmTimes {
+    /** The persistent-notification refresh time (S21, D-S21-3): 01:00 local, owner-specified. */
+    val PERSISTENT_REFRESH_TIME: LocalTime = LocalTime.of(1, 0)
+
     /**
      * The next wall-clock occurrence of [timeOfDay] strictly after [now]. "Strictly" is
      * load-bearing: when an alarm fires exactly at its target time, the reschedule must

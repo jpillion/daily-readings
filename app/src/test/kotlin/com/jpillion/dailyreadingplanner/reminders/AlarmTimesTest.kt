@@ -61,4 +61,9 @@ class AlarmTimesTest {
         assertThat(AlarmTimes.nextOccurrence(newYearsEve, LocalTime.of(8, 0)))
             .isEqualTo(ZonedDateTime.of(2027, 1, 1, 8, 0, 0, 0, zone))
     }
+
+    @Test
+    fun `the persistent refresh time is 01-00 local - owner specified`() {
+        assertThat(AlarmTimes.PERSISTENT_REFRESH_TIME).isEqualTo(LocalTime.of(1, 0))
+    }
 }

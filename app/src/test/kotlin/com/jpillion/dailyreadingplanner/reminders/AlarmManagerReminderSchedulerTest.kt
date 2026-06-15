@@ -82,4 +82,22 @@ class AlarmManagerReminderSchedulerTest {
         assertThat(remaining).hasSize(1)
         assertThat(remaining.single().triggerAtMs).isEqualTo(epochMilliAtUtc(0, 0, dayOfMonth = 11))
     }
+
+    @Test
+    fun `persistent refresh arms at the next 01-00 - tomorrow since 01-00 today has passed`() {
+        scheduler.schedulePersistentRefresh()
+        val alarm = requireNotNull(shadowOf(alarmManager).peekNextScheduledAlarm())
+        assertThat(alarm.type).isEqualTo(AlarmManager.RTC_WAKEUP)
+        assertThat(alarm.triggerAtMs).isEqualTo(epochMilliAtUtc(1, 0, dayOfMonth = 11))
+    }
+
+    @Test
+    fun `the persistent refresh alarm is independent of the reminder and midnight alarms`() {
+        scheduler.scheduleReminder(LocalTime.of(8, 0))
+        scheduler.scheduleMidnightRefresh()
+        scheduler.schedulePersistentRefresh()
+        assertThat(shadowOf(alarmManager).scheduledAlarms).hasSize(3)
+        scheduler.cancelPersistentRefresh()
+        assertThat(shadowOf(alarmManager).scheduledAlarms).hasSize(2)
+    }
 }
