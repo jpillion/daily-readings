@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bible-tab icon: the same open-book glyph as the app launcher (ic_launcher_foreground),
+     so the in-app Bible reader reads as the same brand. Tinted by the NavigationBar item. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M54,36 C48,31 40,29 31,29 L31,72 C40,72 48,74 54,79 C60,74 68,72 77,72 L77,29 C68,29 60,31 54,36 Z M54,42 C58,38.5 63.5,36.5 72,36 L72,67.5 C64.5,68 58.5,70 54,73 C49.5,70 43.5,68 36,67.5 L36,36 C44.5,36.5 50,38.5 54,42 Z" />
+</vector>

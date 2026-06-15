@@ -2,7 +2,6 @@ package com.jpillion.dailyreadingplanner.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -13,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
@@ -65,7 +65,12 @@ fun RootScaffold() {
                 NavigationBarItem(
                     selected = currentDestination.isInGraph(Graph.BIBLE),
                     onClick = { navController.switchTab(Graph.BIBLE) },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_bible_book),
+                            contentDescription = null,
+                        )
+                    },
                     label = { Text(stringResource(R.string.nav_bible)) },
                     modifier = Modifier.testTag("nav-bible"),
                 )
