@@ -150,17 +150,28 @@ V1 delivered the foundation V2 needs: progress keyed by full date (streak/stats 
 the exported Room schema baseline (D-S9-4) for any streak-supporting migration, and the
 `WidgetRefresher` seam that reminders' alarm infrastructure can also serve (§13.2, R6/D9).
 
-### V3 — Text & beyond — *deferred*
+### V3 — In-app KJV text — **scoped; detailed in [docs/PRD-v3.md](PRD-v3.md)**
 
-- **In-app scripture text:** bundled, read-only **KJV** (public domain). This is where the
-  offline Bible dataset work lives.
-- Study-notes integration (dailyreadings.org.uk style); additional translations (licensing
-  permitting); audio playback; verse sharing; cross-device backup.
+V3 graduates the product from a **planner** to a **planner + reader**: bundled, read-only,
+offline **KJV** scripture text rendered inside the app, a co-equal **Bible** destination for
+free book/chapter browsing, and reading-tap → in-app handoff. The full V3 PRD —
+problem/motivation, personas, goals & non-goals, user stories (U13…), functional requirements
+(FR-V3-*), the KJV verification gate as a release blocker, release scoping (V3.0 / V3.x / V4),
+and the accepted UK-licensing risk — lives in **[docs/PRD-v3.md](PRD-v3.md)**.
 
-**Why deferring is safe:** bundling and validating a full KJV dataset is the project's
-largest data/risk item, and Blue Letter Bible already serves the text one tap away for free.
-V1 proves the planner is wanted before we invest in carrying scripture in-app. Deferring also
-keeps the V1 app small and avoids the offline-Bible storage/schema work entirely.
+> **This supersedes V1's "not a Bible reader / text deferred to V3" framing** (§1, §5 above).
+> Those statements stand as a record of V1; they are retired as a description of the product
+> going forward. See PRD-v3.md §0.
+
+**V3.x / V4 (not committed):** highlights/bookmarks/last-read, full-text search, App Links
+(V3.x); audio follow-along (V4 — gated on an explicit decision to become a networked app);
+multi-translation (speculative). Study-notes integration (dailyreadings.org.uk style), verse
+sharing, and cross-device backup remain parked candidates.
+
+**Why deferring text to V3 was safe (V1 rationale, retained):** bundling and validating a full
+KJV dataset is the project's largest data item, and external providers already serve the text
+one tap away for free. V1/V2 proved the planner is wanted before we invested in carrying
+scripture in-app; V3 now closes the gap, keeping the app fully offline (no audio, no network).
 
 ## 7. User stories / key use cases
 
