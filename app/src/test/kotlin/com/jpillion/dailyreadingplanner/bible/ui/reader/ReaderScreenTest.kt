@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollToIndex
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
@@ -149,6 +150,56 @@ class ReaderScreenTest {
         setContent(state)
         composeRule.onNodeWithTag("reader-verse-${VerseId.encode(43, 3, 1)}").assertIsDisplayed()
         composeRule.onNodeWithTag("reader-verse-${VerseId.encode(43, 4, 1)}").assertIsDisplayed()
+    }
+
+    @Test
+    fun `opening a new chapter resets scroll to the top`() {
+        // Regression: the LazyListState persists across content swaps, so without the reset a new
+        // chapter opens at the prior chapter's scroll offset (owner: "never at the top").
+        fun bigChapter(
+            book: Int,
+            ch: Int,
+        ) = ReaderUiState.Content(
+            blocks =
+                listOf(
+                    ChapterContent(
+                        book,
+                        "Book",
+                        ch,
+                        (1..40).map { v ->
+                            VerseText(VerseId.encode(book, ch, v), "$v", isTitle = false, markup = "Verse $v text")
+                        },
+                    ),
+                ),
+            title = "Book $ch",
+        )
+        val listState =
+            androidx.compose.foundation.lazy
+                .LazyListState()
+        val state = androidx.compose.runtime.mutableStateOf<ReaderUiState>(bigChapter(43, 1))
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                ReaderScreen(
+                    state = state.value,
+                    onOpenPicker = {},
+                    onPrevChapter = {},
+                    onNextChapter = {},
+                    onRetry = {},
+                    listState = listState,
+                )
+            }
+        }
+        composeRule.onNodeWithTag("reader-list").performScrollToIndex(35)
+        composeRule.waitForIdle()
+        com.google.common.truth.Truth
+            .assertThat(listState.firstVisibleItemIndex)
+            .isGreaterThan(0)
+
+        state.value = bigChapter(43, 2)
+        composeRule.waitForIdle()
+        com.google.common.truth.Truth
+            .assertThat(listState.firstVisibleItemIndex)
+            .isEqualTo(0)
     }
 
     @Test

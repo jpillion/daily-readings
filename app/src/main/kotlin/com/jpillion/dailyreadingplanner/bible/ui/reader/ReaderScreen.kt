@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -68,6 +69,15 @@ fun ReaderScreen(
     prevEnabled: Boolean = true,
     nextEnabled: Boolean = true,
 ) {
+    // A freshly-opened chapter/portion must start at the top: the LazyListState persists across
+    // content swaps (Prev/Next, tap-a-reading, picker), so without this it keeps the prior
+    // chapter's scroll offset and opens part way down. Key on the displayed chapter identity so
+    // the reset fires on every chapter change (and on first load — a no-op at offset 0).
+    val chapterKey =
+        (state as? ReaderUiState.Content)?.blocks?.firstOrNull()?.let { "${it.bookNo}-${it.chapter}" }
+    LaunchedEffect(chapterKey) {
+        if (chapterKey != null) listState.scrollToItem(0)
+    }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
