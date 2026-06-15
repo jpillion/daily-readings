@@ -14,8 +14,14 @@ import com.jpillion.dailyreadingplanner.domain.model.Stream
  * "2Jo 1; 3Jo 1") for width-constrained surfaces — the 1x1/1x2 widget (D-S9-1).
  *
  * A ref carrying a verse window ([Reference.verses], schema v2 / the four Psalm-119 days) renders
- * "Psalms 119:1–40" (en dash; abbreviated "Psa 119:1–40"); a single-verse window → "Psalms 119:1"
+ * "Psalm 119:1–40" (en dash; abbreviated "Psa 119:1–40"); a single-verse window → "Psalm 119:1"
  * (D-UI-1). A windowed ref is always its own run (it never merges with a chapter neighbour).
+ *
+ * Psalms singular/plural (D-UI-2, owner request): the only book whose canonical name has a
+ * singular form. The full form renders "Psalm" when a run covers exactly ONE chapter
+ * (single chapter, with or without a verse window — "Psalm 23", "Psalm 119:1–40") and
+ * "Psalms" when it spans MORE than one chapter ("Psalms 1–2"). No other book changes. The
+ * abbreviated form keeps "Psa" for both (reads fine either way — pinned unchanged).
  *
  * Plain strings, not resources: book names are canonical data (V1 is English/KJV-only);
  * revisit if localization ever lands.
@@ -59,8 +65,10 @@ object ReadingFormatter {
         run: List<Reference>,
         bookName: (Book) -> String,
     ): String {
-        val book = bookName(run.first().book)
-        return if (run.size == 1) {
+        // A run of size 1 is exactly one chapter (plain or verse-windowed); size > 1 spans chapters.
+        val singleChapter = run.size == 1
+        val book = displayBookName(run.first().book, bookName, singleChapter)
+        return if (singleChapter) {
             val ref = run.first()
             val verses = ref.verses
             when {
@@ -71,5 +79,20 @@ object ReadingFormatter {
         } else {
             "$book ${run.first().chapter}–${run.last().chapter}"
         }
+    }
+
+    /**
+     * Resolves the displayed book name, applying the Psalms singular/plural rule (D-UI-2):
+     * the full canonical "Psalms" becomes "Psalm" for a single-chapter run. Only the full
+     * form ([Book.canonicalName]) carries the plural; [Book.displayAbbrev] ("Psa") is left
+     * untouched, so the abbreviated form is unaffected.
+     */
+    private fun displayBookName(
+        book: Book,
+        bookName: (Book) -> String,
+        singleChapter: Boolean,
+    ): String {
+        val name = bookName(book)
+        return if (singleChapter && name == "Psalms") "Psalm" else name
     }
 }

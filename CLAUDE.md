@@ -844,6 +844,27 @@ Do not reference or depend on strikelog.
   "Psalm" (singular, as the booklet) and the en dash. Device-pass: the window's look in the Schedule
   card / widget tiers / notification, and the reader showing exactly verses 1–40 on glass.
   Handoff: [docs/sprints/sprint-00J-psalm-119-verse-ranges.md](docs/sprints/sprint-00J-psalm-119-verse-ranges.md).
+- ✅ **Psalms singular/plural display fix (owner UI tweak, `sprint-00K-psalm-singular`) is DONE**
+  (uncommitted in the working tree; the main session verifies + commits; no version bump — display-only).
+  **D-UI-2 (resolves the Sprint J D-UI-1 open question — owner chose singular for one chapter):**
+  `ReadingFormatter` now renders **"Psalm" (singular)** when a collapsed reference covers exactly
+  **one chapter** of Psalms — single chapter with or without a verse window: "Psalm 23",
+  "Psalm 119:1–40", "Psalm 119:7" — and keeps **"Psalms" (plural)** for multi-chapter runs
+  ("Psalms 1–2", "Psalms 149–150"). Psalms-specific (the only book with a singular form); all
+  other books and all existing formatting (en-dash ranges, multi-book Jun 19/Dec 19 portion, the
+  windowed-ref-is-its-own-run rule) are byte-for-byte unchanged. Applies to all four collapsed-
+  reference surfaces (Schedule card, widget tiers, reminder, persistent tray) for free — they all
+  flow through `format`. **Abbreviated form left unchanged ("Psa" for both singular and plural** —
+  reads fine either way, D-UI-2, pinned by test). The branch lives in a single
+  `ReadingFormatter.displayBookName` helper keyed on `run.size == 1` (a size-1 run IS one chapter)
+  AND the resolved name == "Psalms"; only `Book::canonicalName` ("Psalms") triggers it, never
+  `Book::displayAbbrev` ("Psa"). **The in-app reader's "Psalms 23" chapter title is OUT of scope**
+  (it shows the full book name via `book.canonicalName`, independent of `ReadingFormatter` — left as
+  "Psalms"). NO plan-data change (the data still says book=Psalms; display-only). 596 tests
+  (net +6; **all three data/Room gates UNTOUCHED — plan gate = 11, BibleTextVerificationTest = 18,
+  BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.4% on domain/data, **2 mutations
+  killed** (always-plural → 8 single-chapter tests red; always-singular → 2 multi-chapter tests red),
+  each restored in place. No new deps/permissions, no Room/manifest/DataStore change.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
