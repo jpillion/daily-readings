@@ -598,6 +598,34 @@ Do not reference or depend on strikelog.
 - Next up: **release cut** — owner runs the device pass + sign-offs from the Sprint E handoff,
   the main session applies the 1.4.0/10400 bump and the closed-track tag-to-Play rollout. (V2.x
   release prep remains queued, owner-scheduled independently.)
+- 🐛 **P0 FIX — KJV reader load failure (`sprint-00F-kjv-load-fix`) is DONE** (owner-reported on
+  device: the V3 in-app reader showed "couldn't load this chapter" for every book+chapter even
+  though JVM tests were green). **Root cause:** the prebuilt `app/src/main/assets/bible/bible.db`
+  had tables `translation`/`book`/`verse` but **no `room_master_table`**, and its `verse` DDL
+  carried a foreign key + an `idx_verse_book_ch` index that `VerseEntity` does not declare — so
+  Room's `createFromAsset` schema validation threw `IllegalStateException: Pre-packaged database
+  has an invalid schema` on the first query, surfacing as the reader's load-failed state.
+  Nothing caught it because `BibleTextVerificationTest` opens the `.db` via the sqlite-jdbc driver
+  (bypassing Room) and the reader/use-case tests fake `BibleTextSource` — Room never opened the
+  real asset in any test. **Fix:** `tools/build_bible_db.py` now emits the `verse` table with the
+  EXACT DDL Room generates (no FK, no secondary index — only the implicit PK autoindex, which
+  Room ignores) plus a `room_master_table` carrying Room's identity hash
+  `8144e1bc57f05006d1a15856ac762552` (`ROOM_IDENTITY_HASH` constant, re-derivable from the
+  generated `BibleDatabase_Impl`); the asset was REGENERATED from the script (not hand-edited),
+  so the `data-rebuild` byte-diff gate still reproduces it. **`exportSchema` stays `false`** on
+  `BibleDatabase` (read-only asset DB; the hash is a pinned build artifact, the new test is the
+  drift guard — no checked-in schema JSON). **Test gap closed:** new
+  `BibleDatabaseRoomOpenTest` (Robolectric, real SQLite) opens the SAME `BibleDatabase` via the
+  SAME `createFromAsset` builder as `BibleModule` and reads Gen 1:1 / John 3:16 / John 11:35 /
+  Ps 3 verse-0 superscription through `RoomBibleTextSource`+`VerseDao` — proven to FAIL against
+  the broken asset ("invalid schema") and PASS after the fix. Verse content is byte-identical
+  before/after (only Room metadata + DDL changed; 31,102 verses + 117 superscriptions intact).
+  495 tests (net +5; **both data gates untouched — plan gate = 7, `BibleTextVerificationTest`
+  = 18**), full pipeline green, Kover 95.1% on domain/data, asset reproduces byte-identically.
+  No version bump (main session ships). Known follow-up (non-blocking, queued): `getChapter`
+  lost its dedicated index — declare `@Index` on `VerseEntity` if a chapter-open profile ever
+  shows it (re-derives the hash).
+  Handoff: [docs/sprints/sprint-00F-kjv-load-fix.md](docs/sprints/sprint-00F-kjv-load-fix.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

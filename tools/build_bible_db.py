@@ -38,6 +38,11 @@ DB_OUT = ROOT / "app/src/main/assets/bible/bible.db"
 COUNTS_OUT = ROOT / "app/src/test/resources/bible/kjv_verse_counts.csv"
 SUPER_OUT = ROOT / "app/src/test/resources/bible/kjv_superscriptions.csv"
 
+# Room schema identity hash for BibleDatabase v1 (entities=[VerseEntity], exportSchema=false).
+# Source of truth: BibleDatabase_Impl.createOpenDelegate() -> RoomOpenDelegate(1, "<hash>", ...).
+# Re-derive after any VerseEntity change (see the verse-DDL comment in main()).
+ROOM_IDENTITY_HASH = "8144e1bc57f05006d1a15856ac762552"
+
 OSIS_NS = "{http://www.bibletechnologies.net/2003/OSIS/namespace}"
 
 # OSIS osisID -> BookCatalog order, for the 66 canonical books only (Apocrypha excluded).
@@ -285,6 +290,20 @@ def main():
     con = sqlite3.connect(DB_OUT)
     con.execute("PRAGMA page_size=4096")
     con.execute("PRAGMA encoding='UTF-8'")
+    # ---- VERSE TABLE DDL MUST MATCH ROOM EXACTLY (KJV-load-fix) ----
+    # The `verse` table is the ONLY table Room maps (VerseEntity). Room's createFromAsset
+    # validates the bundled DB against the structure Room generates for the entity, so this
+    # DDL is byte-for-byte the CREATE TABLE statement emitted by BibleDatabase_Impl
+    # (translation_id/verse_id are the composite PK; NO foreign keys, NO secondary index —
+    # VerseEntity declares neither, and an unexpected FK or index makes Room's onValidateSchema
+    # reject the asset). `translation` and `book` are NOT Room entities (Room never reads them),
+    # so their DDL is free-form and unchanged. Room also requires room_master_table carrying the
+    # identity hash for schema version 1; the hash below is the one in the generated
+    # BibleDatabase_Impl.createOpenDelegate() (RoomOpenDelegate(1, "<hash>", ...)). To re-derive
+    # it after any VerseEntity change: build the app, read app/build/.../BibleDatabase_Impl.kt
+    # (or set exportSchema=true once and read app/schemas/.../BibleDatabase/1.json identityHash),
+    # and update ROOM_IDENTITY_HASH below. The Robolectric Room-open test (BibleDatabaseRoomOpenTest)
+    # is the durable guard: if this hash or DDL drifts from the entity, that test goes red.
     con.executescript("""
         CREATE TABLE translation (
           id INTEGER PRIMARY KEY, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
@@ -293,14 +312,12 @@ def main():
         CREATE TABLE book (
           book_no INTEGER PRIMARY KEY, name TEXT NOT NULL, usfm_code TEXT NOT NULL UNIQUE,
           testament TEXT NOT NULL, chapter_count INTEGER NOT NULL);
-        CREATE TABLE verse (
-          translation_id INTEGER NOT NULL REFERENCES translation(id),
-          verse_id INTEGER NOT NULL, book_no INTEGER NOT NULL REFERENCES book(book_no),
-          chapter INTEGER NOT NULL, verse INTEGER NOT NULL, native_label TEXT NOT NULL,
-          is_title INTEGER NOT NULL DEFAULT 0, text_markup TEXT NOT NULL,
-          PRIMARY KEY (translation_id, verse_id));
-        CREATE INDEX idx_verse_book_ch ON verse(translation_id, book_no, chapter);
+        CREATE TABLE `verse` (`translation_id` INTEGER NOT NULL, `verse_id` INTEGER NOT NULL, `book_no` INTEGER NOT NULL, `chapter` INTEGER NOT NULL, `verse` INTEGER NOT NULL, `native_label` TEXT NOT NULL, `is_title` INTEGER NOT NULL, `text_markup` TEXT NOT NULL, PRIMARY KEY(`translation_id`, `verse_id`));
+        CREATE TABLE room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT);
     """)
+    con.execute(
+        "INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES (42, ?)",
+        (ROOM_IDENTITY_HASH,))
     con.execute(
         "INSERT INTO translation (id,code,name,language,is_public_domain,copyright) "
         "VALUES (1,'KJV','King James Version','en',1,NULL)")
