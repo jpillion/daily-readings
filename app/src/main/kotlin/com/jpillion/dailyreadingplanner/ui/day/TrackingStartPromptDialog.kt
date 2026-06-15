@@ -88,7 +88,7 @@ internal fun TrackingStartPromptDialog(
 
 /** An authored 48dp option row (a11y gate): full text spoken, Button role. */
 @Composable
-private fun PromptOptionRow(
+internal fun PromptOptionRow(
     text: String,
     tag: String,
     onClick: () -> Unit,

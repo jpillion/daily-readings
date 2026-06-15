@@ -650,6 +650,9 @@ private fun ProviderDropdown(
     var expanded by rememberSaveable { mutableStateOf(false) }
     val options =
         listOf(
+            // VD-T6 (D-V3-18, OQ-1 emphasis): the in-app reader is a real, selectable provider at
+            // the top of the list — the Sprint-14 disabled teaser is retired.
+            Triple(BibleProvider.IN_APP, stringResource(R.string.provider_inapp), "provider-option-inapp"),
             Triple(BibleProvider.BLB, stringResource(R.string.provider_blb), "provider-option-blb"),
             Triple(
                 BibleProvider.BIBLE_GATEWAY,
@@ -713,12 +716,6 @@ private fun ProviderDropdown(
                 modifier = Modifier.testTag("provider-option-mysword"),
             )
         }
-        DropdownMenuItem(
-            text = { Text(text = stringResource(R.string.provider_inapp_coming_soon)) },
-            onClick = {},
-            enabled = false,
-            modifier = Modifier.testTag("provider-option-inapp"),
-        )
     }
 }
 

@@ -170,8 +170,8 @@ class AccessibilityGateTest {
             .assertTouchTargetAtLeast(48.dp)
             .assertContentDescriptionContains("Open readings in", substring = true)
             .performClick()
-        // S15: the disabled MySword "(app not installed)" item joins the disabled teaser —
-        // TalkBack must still reach and announce both.
+        // S15/VD-T6: every provider item — including the now-enabled in-app option and the
+        // install-gated MySword item — must be reachable with a 48dp touch target for TalkBack.
         for (tag in listOf(
             "provider-option-blb",
             "provider-option-biblegateway",

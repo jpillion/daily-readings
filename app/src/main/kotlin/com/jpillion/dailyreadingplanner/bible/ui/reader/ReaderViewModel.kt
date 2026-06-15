@@ -8,10 +8,12 @@ import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
 import com.jpillion.dailyreadingplanner.data.reference.Book
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,6 +33,7 @@ class ReaderViewModel
         private val getChapter: GetChapterUseCase,
         private val getPortionText: GetPortionTextUseCase,
         private val savedStateHandle: SavedStateHandle,
+        private val readerHandoff: ReaderHandoff,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
         val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
@@ -43,6 +46,15 @@ class ReaderViewModel
                     ?: openDefault()
             } else {
                 openDefault()
+            }
+            // VD-T5 (D-D-1): when a Schedule reading tap hands off a portion to open in-app, render
+            // it. consume() is single-shot, so a later config change won't re-open it. Collected for
+            // the VM's lifetime so a handoff that arrives while the reader is already alive is honored.
+            viewModelScope.launch {
+                readerHandoff.pending.filterNotNull().collect { portion ->
+                    readerHandoff.consume()
+                    openPortion(portion)
+                }
             }
         }
 

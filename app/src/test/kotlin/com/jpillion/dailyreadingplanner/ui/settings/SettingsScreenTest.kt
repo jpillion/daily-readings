@@ -3,6 +3,7 @@ package com.jpillion.dailyreadingplanner.ui.settings
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
@@ -323,17 +324,17 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun comingSoonOption_isVisibleButDisabled_andNeverReportsASelection() {
-        // S14 owner request: the in-app reading teaser is render-layer only — present so
-        // users know it's coming, disabled so no tap can ever persist it.
+    fun inAppOption_isSelectable_andReportsTheInAppProvider() {
+        // VD-T6 (D-V3-18): the Sprint-14 disabled teaser is now a real, selectable provider —
+        // tapping it persists BibleProvider.IN_APP (in-app reading is on, no app required).
         setScreen(ThemeMode.SYSTEM)
         composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
         composeRule
             .onNodeWithTag("provider-option-inapp")
             .assertIsDisplayed()
-            .assertIsNotEnabled()
+            .assertIsEnabled()
             .performClick()
-        assertThat(providerSelections).isEmpty()
+        assertThat(providerSelections).containsExactly(BibleProvider.IN_APP)
     }
 
     // --- S15: MySword install-detected provider option (D-S15-2) ---

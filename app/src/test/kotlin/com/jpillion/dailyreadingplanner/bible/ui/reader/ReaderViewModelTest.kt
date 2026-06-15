@@ -11,6 +11,7 @@ import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
+import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -27,7 +28,10 @@ class ReaderViewModelTest {
     private val getChapter = GetChapterUseCase(source)
     private val getPortionText = GetPortionTextUseCase(PortionVerseBridge(), source)
 
-    private fun vm(handle: SavedStateHandle = SavedStateHandle()) = ReaderViewModel(getChapter, getPortionText, handle)
+    private val handoff = ReaderHandoff()
+
+    private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
+        ReaderViewModel(getChapter, getPortionText, handle, handoff)
 
     @Test
     fun `openChapter emits content for the requested chapter`() =

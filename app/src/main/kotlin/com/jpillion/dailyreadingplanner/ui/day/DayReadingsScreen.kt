@@ -11,7 +11,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
@@ -73,9 +73,10 @@ internal fun pageForDate(
 @Composable
 fun DayReadingsRoute(
     onOpenSettings: () -> Unit,
-    // SPRINT C TEMPORARY — opens the in-app reader via the temp Routes.READER push. Default {}
-    // keeps existing previews/tests unchanged. Replaced by the Sprint D bottom-nav (D-V3-16).
-    onOpenReader: () -> Unit = {},
+    // VD-T5 (D-D-1): a reading tap whose provider is IN_APP switches to the Bible tab; the
+    // portion itself was published to ReaderHandoff by the ViewModel. Default {} keeps
+    // non-nav callers (previews/tests) unchanged.
+    onOpenInApp: () -> Unit = {},
     viewModel: DayReadingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -84,8 +85,13 @@ fun DayReadingsRoute(
             launchReadingDestination(context, destination)
         }
     }
+    LaunchedEffect(viewModel) {
+        viewModel.openReaderEvents.collect { onOpenInApp() }
+    }
     val statsPanel by viewModel.statsPanel.collectAsStateWithLifecycle()
     val showTrackingStartPrompt by viewModel.showTrackingStartPrompt.collectAsStateWithLifecycle()
+    val showReadingDestinationPrompt by viewModel.showReadingDestinationPrompt.collectAsStateWithLifecycle()
+    val showUpgradeNote by viewModel.showUpgradeNote.collectAsStateWithLifecycle()
     DayReadingsPagerScreen(
         today = viewModel.today,
         uiStateFor = viewModel::uiStateFor,
@@ -96,10 +102,14 @@ fun DayReadingsRoute(
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
         onOpenSettings = onOpenSettings,
-        onOpenReader = onOpenReader,
         showTrackingStartPrompt = showTrackingStartPrompt,
         onTrackingStartChosen = viewModel::onTrackingStartChosen,
         onTrackingStartPromptDismissed = viewModel::onTrackingStartPromptDismissed,
+        showReadingDestinationPrompt = showReadingDestinationPrompt,
+        onReadingDestinationChosen = viewModel::onReadingDestinationChosen,
+        onReadingDestinationPromptDismissed = viewModel::onReadingDestinationPromptDismissed,
+        showUpgradeNote = showUpgradeNote,
+        onUpgradeNoteDismissed = viewModel::onUpgradeNoteDismissed,
     )
 }
 
@@ -124,13 +134,18 @@ fun DayReadingsPagerScreen(
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    // SPRINT C TEMPORARY — temp reader entry; default {} keeps existing callers unchanged.
-    onOpenReader: () -> Unit = {},
     // S19: the one-time first-run tracking-start prompt (default off so existing callers
     // and the dominant render path are unchanged).
     showTrackingStartPrompt: Boolean = false,
     onTrackingStartChosen: (LocalDate) -> Unit = {},
     onTrackingStartPromptDismissed: () -> Unit = {},
+    // VD-T7/T10: the V3 first-run reading-destination question (fresh installs) and the one-time
+    // upgrade note (existing users); both default off so non-prompt callers are unchanged.
+    showReadingDestinationPrompt: Boolean = false,
+    onReadingDestinationChosen: (BibleProvider) -> Unit = {},
+    onReadingDestinationPromptDismissed: () -> Unit = {},
+    showUpgradeNote: Boolean = false,
+    onUpgradeNoteDismissed: (Boolean) -> Unit = {},
 ) {
     val pagerState = rememberPagerState(initialPage = TODAY_PAGE) { PAGE_COUNT }
     val scope = rememberCoroutineScope()
@@ -170,17 +185,6 @@ fun DayReadingsPagerScreen(
                         Icon(
                             imageVector = Icons.Filled.DateRange,
                             contentDescription = stringResource(R.string.open_date_picker),
-                        )
-                    }
-                    // SPRINT C TEMPORARY — reachable entry to the in-app reader (D-V3-16 bottom
-                    // nav replaces this in Sprint D).
-                    IconButton(
-                        onClick = onOpenReader,
-                        modifier = Modifier.testTag("open-reader-dev"),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.List,
-                            contentDescription = stringResource(R.string.reader_open),
                         )
                     }
                     IconButton(
@@ -252,6 +256,18 @@ fun DayReadingsPagerScreen(
             onChoose = onTrackingStartChosen,
             onDismiss = onTrackingStartPromptDismissed,
         )
+    }
+
+    if (showReadingDestinationPrompt) {
+        ReadingDestinationPromptDialog(
+            onChoose = onReadingDestinationChosen,
+            // Dismiss is NOT an answer (D-V3-19): hide now, persist nothing, re-ask next launch.
+            onDismiss = onReadingDestinationPromptDismissed,
+        )
+    }
+
+    if (showUpgradeNote) {
+        UpgradeNoteDialog(onDismiss = onUpgradeNoteDismissed)
     }
 
     if (showDatePicker) {

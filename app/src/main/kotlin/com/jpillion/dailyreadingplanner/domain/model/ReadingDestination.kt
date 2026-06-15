@@ -24,6 +24,11 @@ sealed interface ReadingDestination {
         val fallbackUrl: String,
     ) : ReadingDestination
 
+    /** Render the whole portion in the in-app reader (V3, D-V3-18) — carries the portion, not a URL. */
+    data class InApp(
+        val portion: Portion,
+    ) : ReadingDestination
+
     companion object {
         /** MySword's package — also the manifest `<queries>` entry (package visibility, API 30+). */
         const val MYSWORD_PACKAGE = "com.riversoft.android.mysword"

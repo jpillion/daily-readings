@@ -25,14 +25,22 @@
 
 | # | Feature | Definition (one line) | Priority | Size | Status | Notes |
 |---|---------|-----------------------|----------|------|--------|-------|
-| 1 | Downloadable version catalog | Let users download Bible translations on demand from a catalog rather than bundling every version in the APK, to keep install size small. | — | — | 🔵 Idea | Ties into V3 in-app text; implies a download manager + on-device store + per-version licensing. |
-| 2 | Bible audio | Play audio narration of the day's readings (or any chapter). | — | — | 🔵 Idea | Source/licensing of audio TBD; likely also a downloadable/streamed asset (overlaps #1's catalog idea). |
-| 3 | Alternate reading schedules | Support reading plans beyond the Bible Companion (e.g. other Christadelphian or general plans) the user can choose from. | — | — | 🔵 Idea | Core data model is currently single-plan + date-anchored; would generalize plan selection. |
+| 1 | Downloadable version catalog | Let users download Bible translations on demand from a catalog rather than bundling every version in the APK, to keep install size small. | — | — | 🟡 Discussed | PRD: [downloadable-version-catalog.md](explorations/downloadable-version-catalog.md). Depends on V3 text. Crux: introduces the app's **first network dependency**. Shares download infra with #2 — Maya recommends gating on #2 and building together, not standalone. |
+| 2 | Bible audio | Play audio narration of the day's readings (or any chapter). | — | — | 🟡 Discussed | PRD: [bible-audio.md](explorations/bible-audio.md). Hard gate: can we lawfully ship + cache KJV *audio* (a recording is a separate copyright from the public-domain text). Shares the download/catalog mechanism with #1. |
+| 3 | Alternate reading schedules | Support reading plans beyond the Bible Companion (e.g. other Christadelphian or general plans) the user can choose from. | — | — | 🟡 Discussed | PRD: [alternate-reading-schedules.md](explorations/alternate-reading-schedules.md). Identity shift ("THE Bible Companion app" → "a reading-plan app"). Splits into (A) more same-shape Christadelphian plans vs (B) any popular plan. Open: what happens to progress on plan switch. |
+| 4 | New-version notice | Notify the user in-app when a new **minor-or-higher** version is available (1.x → 1.x+1 or 2.0), but stay silent for patch releases (1.1.x). | — | — | 🟡 Discussed | PRD: [new-version-notice.md](explorations/new-version-notice.md). Fork: local "what's new since you updated" card (zero posture cost) vs Play In-App Updates / remote check (needs network — breaks the no-networking posture). Maya leans local-first. |
+| 5 | Per-verse "open in external app" links | In the in-app reader pane, a small icon beside each verse that opens that exact verse location in the user's chosen external app/site. | — | — | 🟡 Discussed | PRD: [per-verse-external-links.md](explorations/per-verse-external-links.md). Depends on V3 reader. Extends `ProviderUrlBuilder`/`BibleProvider` from chapter→verse deep links. Feasibility gate: not every provider supports verse-level links — needs a per-provider link-check (mirrors existing gates). |
 
 ---
 
 ## Notes / parking lot
 
 Free-form space for half-formed thoughts that aren't yet a backlog row.
+
+**Cross-cutting decision the PRDs surfaced — the networking posture.** The app is deliberately
+offline-first with **no network dependency and no telemetry**. Items #1, #2, and (one branch of)
+#4 each want to reach the network. That's not 3 separate calls — it's **one owner decision**:
+is the app allowed to make anonymous, explicit, content-only network requests at all? Until
+that's answered, #1 and #2 can't really proceed, and #4 collapses to its local-only branch.
 
 -

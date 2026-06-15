@@ -74,6 +74,24 @@ interface SettingsRepository {
     suspend fun setBibleProvider(provider: BibleProvider)
 
     /**
+     * Whether the first-run reading-destination question has been answered (V3, D-V3-19).
+     * Gates the one-time first-run step that asks in-app vs. external; absent = never asked.
+     * In-app is NEVER a silent default — the marker is set only with the user's answer.
+     */
+    val readingDestinationPromptCompleted: Flow<Boolean>
+
+    suspend fun markReadingDestinationPromptCompleted()
+
+    /**
+     * Whether the one-time upgrade note ("the in-app Bible is here") has been shown (V3,
+     * OQ-2). Existing users keep their external provider; this note is purely informational
+     * and shows once. Absent = not yet shown.
+     */
+    val upgradeNoteShown: Flow<Boolean>
+
+    suspend fun markUpgradeNoteShown()
+
+    /**
      * Whether the streak stats are shown (S15, D-S15-5; default flipped OFF in S18 —
      * streaks are opt-in, owner decision). Off hides the
      * current/longest streak rows in the main-screen stats panel — year and per-stream

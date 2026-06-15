@@ -24,6 +24,11 @@ class OpenReferenceUseCase
     ) {
         suspend operator fun invoke(portion: Portion): ReadingDestination {
             val provider = settingsRepository.bibleProvider.first()
+            // V3 (D-V3-18): the in-app reader carries the whole portion, not a URL — branch BEFORE
+            // building a URL (the URL builder has no IN_APP scheme; it errors by design).
+            if (provider == BibleProvider.IN_APP) {
+                return ReadingDestination.InApp(portion)
+            }
             val url = urlBuilder.build(provider, portion)
             return when (provider) {
                 BibleProvider.MYSWORD ->

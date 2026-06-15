@@ -31,6 +31,8 @@ class ProviderUrlBuilder
                 BibleProvider.YOUVERSION -> youVersionUrl(portion.firstRef)
                 BibleProvider.BIBLE_GATEWAY -> bibleGatewayUrl(portion)
                 BibleProvider.MYSWORD -> mySwordUrl(portion.firstRef)
+                BibleProvider.IN_APP ->
+                    error("IN_APP has no URL; OpenReferenceUseCase must branch before building a URL")
             }
 
         /** Live-verified Sprint 1 + G-LINKS: 3-letter abbrev, trailing slash. */

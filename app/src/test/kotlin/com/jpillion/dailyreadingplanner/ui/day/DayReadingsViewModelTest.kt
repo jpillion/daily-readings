@@ -6,7 +6,9 @@ import com.jpillion.dailyreadingplanner.core.date.ReadingDate
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
+import com.jpillion.dailyreadingplanner.domain.CompleteReadingDestinationPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.CompleteTrackingStartPromptUseCase
+import com.jpillion.dailyreadingplanner.domain.CompleteUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.DayCompletionClassifier
 import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
@@ -16,7 +18,9 @@ import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
+import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
+import com.jpillion.dailyreadingplanner.domain.ResolveUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.Portion
@@ -26,6 +30,7 @@ import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
+import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -41,6 +46,7 @@ class DayReadingsViewModelTest {
 
     private val progress = FakeProgressRepository()
     private val widgetRefresher = FakeWidgetRefresher()
+    private val readerHandoff = ReaderHandoff()
     private val today = LocalDate.of(2026, 6, 10)
 
     private fun clockAt(date: LocalDate): Clock =
@@ -61,8 +67,13 @@ class DayReadingsViewModelTest {
             markWholeDay = MarkWholeDayUseCase(progress),
             openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = widgetRefresher,
+            readerHandoff = readerHandoff,
             completeTrackingStartPrompt = CompleteTrackingStartPromptUseCase(settings),
             resolveTrackingStartPrompt = ResolveTrackingStartPromptUseCase(settings, progress),
+            completeReadingDestinationPrompt = CompleteReadingDestinationPromptUseCase(settings),
+            resolveReadingDestinationPrompt = ResolveReadingDestinationPromptUseCase(settings, progress),
+            completeUpgradeNote = CompleteUpgradeNoteUseCase(settings),
+            resolveUpgradeNote = ResolveUpgradeNoteUseCase(settings, progress),
             getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, clock),
             getYearStrips = GetYearStripsUseCase(classifier, progress, settings, clock),
             settingsRepository = settings,
@@ -265,6 +276,40 @@ class DayReadingsViewModelTest {
                                 fallbackUrl = "https://www.blueletterbible.org/kjv/gen/1/",
                             ),
                         )
+                }
+            }
+        }
+
+    @Test
+    fun `with the in-app reader chosen a tap hands off the portion and signals navigation`() =
+        runTest {
+            // VD-T5 (D-V3-18, D-D-1): IN_APP is a navigation target, not an OS launch. The tap
+            // publishes the portion to the handoff seam and raises openReaderEvents; it must NOT
+            // emit on openDestinationEvents (the Web/MySword OS-launch path).
+            val settings = FakeSettingsRepository()
+            settings.setBibleProvider(BibleProvider.IN_APP)
+            val vm = viewModel(settings = settings)
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                vm.openReaderEvents.test {
+                    vm.onReadingTapped(state.readings[0].portion)
+                    awaitItem() // the navigate-to-Bible-tab signal
+                    assertThat(readerHandoff.pending.value).isEqualTo(state.readings[0].portion)
+                }
+            }
+        }
+
+    @Test
+    fun `an in-app tap does not emit on the OS-launch destination channel`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            settings.setBibleProvider(BibleProvider.IN_APP)
+            val vm = viewModel(settings = settings)
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                vm.openDestinationEvents.test {
+                    vm.onReadingTapped(state.readings[0].portion)
+                    expectNoEvents()
                 }
             }
         }

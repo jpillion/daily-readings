@@ -48,6 +48,11 @@ fun launchReadingDestination(
 ) {
     when (destination) {
         is ReadingDestination.Web -> launchCustomTab(context, destination.url)
+        is ReadingDestination.InApp ->
+            // V3 (D-V3-18): the in-app reader is a NAVIGATION target, not an OS launch — the
+            // route intercepts InApp and navigates into the Bible graph (VD-T5), so this branch
+            // is never reached here. Logged rather than silently dropped as a safety net.
+            Log.w(TAG, "InApp destination reached the OS launcher; expected navigation handling")
         is ReadingDestination.MySwordApp -> {
             val intent =
                 Intent(Intent.ACTION_VIEW, destination.url.toUri())

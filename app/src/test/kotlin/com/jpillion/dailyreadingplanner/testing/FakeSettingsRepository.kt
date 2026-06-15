@@ -92,4 +92,26 @@ class FakeSettingsRepository(
         showStreaksCalls += show
         storedShowStreaks.value = show
     }
+
+    // --- VD-T7/T10: first-run reading-destination question + one-time upgrade note markers. ---
+
+    val storedReadingDestinationPromptCompleted = MutableStateFlow(false)
+    var readingDestinationPromptCompletedCalls = 0
+
+    override val readingDestinationPromptCompleted: Flow<Boolean> = storedReadingDestinationPromptCompleted
+
+    override suspend fun markReadingDestinationPromptCompleted() {
+        readingDestinationPromptCompletedCalls += 1
+        storedReadingDestinationPromptCompleted.value = true
+    }
+
+    val storedUpgradeNoteShown = MutableStateFlow(false)
+    var upgradeNoteShownCalls = 0
+
+    override val upgradeNoteShown: Flow<Boolean> = storedUpgradeNoteShown
+
+    override suspend fun markUpgradeNoteShown() {
+        upgradeNoteShownCalls += 1
+        storedUpgradeNoteShown.value = true
+    }
 }

@@ -98,7 +98,7 @@
     <string name="provider_youversion">YouVersion / Bible.com</string>
     <string name="provider_mysword">MySword</string>
     <string name="provider_mysword_not_installed">MySword (app not installed)</string>
-    <string name="provider_inapp_coming_soon">Read in this app (coming soon)</string>
+    <string name="provider_inapp">Read in this app</string>
     <string name="provider_dropdown_description">Open readings in, %1$s</string>
     <string name="request_app_title">Request another app or site</string>
     <string name="request_app_subject">Daily Reading Planner — Bible app request</string>
@@ -119,4 +119,20 @@
     <string name="picker_testament_ot">Old Testament</string>
     <string name="picker_testament_nt">New Testament</string>
     <string name="picker_back_to_books">All books</string>
+
+    <!-- V3 Sprint D: co-equal bottom nav (Schedule | Bible). OQ-3: labels are placeholders,
+         finalized at owner tone sign-off in Sprint E. -->
+    <string name="nav_schedule">Schedule</string>
+    <string name="nav_bible">Bible</string>
+
+    <!-- V3 Sprint D: first-run reading-destination question (fresh installs) + one-time upgrade
+         note (existing users). Strings await owner tone sign-off in Sprint E. -->
+    <string name="reading_destination_prompt_title">Where would you like to read?</string>
+    <string name="reading_destination_prompt_body">You can read each day\'s chapters right here in the app, or open them in a Bible website or app. You can change this anytime in Settings.</string>
+    <string name="reading_destination_prompt_inapp">Read in this app</string>
+    <string name="reading_destination_prompt_external">Open in a Bible website or app</string>
+    <string name="upgrade_note_title">Read the Bible in the app</string>
+    <string name="upgrade_note_body">You can now read each day\'s chapters right inside the app, fully offline. Your current reading destination is unchanged \u2014 switch anytime in Settings.</string>
+    <string name="upgrade_note_use_it_now">Use the in-app reader</string>
+    <string name="upgrade_note_keep_current">Keep my current choice</string>
 </resources>

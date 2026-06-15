@@ -12,7 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.jpillion.dailyreadingplanner.domain.RescheduleAlarmsUseCase
-import com.jpillion.dailyreadingplanner.ui.navigation.AppNavHost
+import com.jpillion.dailyreadingplanner.ui.navigation.RootScaffold
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import com.jpillion.dailyreadingplanner.ui.theme.ThemeViewModel
 import com.jpillion.dailyreadingplanner.ui.theme.resolveDarkTheme
@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
             }
 
             DailyReadingPlannerTheme(darkTheme = darkTheme, fontScale = fontScale) {
-                AppNavHost()
+                RootScaffold()
             }
         }
     }

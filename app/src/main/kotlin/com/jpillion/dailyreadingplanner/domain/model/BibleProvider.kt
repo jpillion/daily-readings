@@ -23,6 +23,9 @@ enum class BibleProvider(
     val multiRefCapable: Boolean,
     val requiresApp: Boolean = false,
 ) {
+    /** The in-app KJV reader (V3, D-V3-18): renders the whole portion natively, no app/URL needed. */
+    IN_APP(multiRefCapable = true, requiresApp = false),
+
     /** Blue Letter Bible — the default since Sprint 1; per-chapter URLs. */
     BLB(multiRefCapable = false),
 

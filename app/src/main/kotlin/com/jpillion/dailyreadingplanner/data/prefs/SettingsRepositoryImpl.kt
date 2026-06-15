@@ -104,6 +104,24 @@ class SettingsRepositoryImpl
             dataStore.edit { preferences -> preferences[BIBLE_PROVIDER_KEY] = provider.name }
         }
 
+        override val readingDestinationPromptCompleted: Flow<Boolean> =
+            dataStore.data.map { preferences ->
+                preferences[READING_DESTINATION_PROMPT_COMPLETED_KEY] ?: false
+            }
+
+        override suspend fun markReadingDestinationPromptCompleted() {
+            dataStore.edit { preferences -> preferences[READING_DESTINATION_PROMPT_COMPLETED_KEY] = true }
+        }
+
+        override val upgradeNoteShown: Flow<Boolean> =
+            dataStore.data.map { preferences ->
+                preferences[UPGRADE_NOTE_SHOWN_KEY] ?: false
+            }
+
+        override suspend fun markUpgradeNoteShown() {
+            dataStore.edit { preferences -> preferences[UPGRADE_NOTE_SHOWN_KEY] = true }
+        }
+
         /**
          * S18 (owner, supersedes the S15 default): absent key = false — streaks are opt-in.
          * A user who ever toggled the switch keeps their stored value (normal DataStore
@@ -125,6 +143,8 @@ class SettingsRepositoryImpl
             val TRACKING_START_EPOCH_DAY_KEY = longPreferencesKey("tracking_start_epoch_day")
             val TRACKING_START_INITIALIZED_KEY = booleanPreferencesKey("tracking_start_initialized")
             val SHOW_STREAKS_KEY = booleanPreferencesKey("show_streaks")
+            val READING_DESTINATION_PROMPT_COMPLETED_KEY = booleanPreferencesKey("reading_destination_prompt_completed")
+            val UPGRADE_NOTE_SHOWN_KEY = booleanPreferencesKey("upgrade_note_shown")
             val REMINDER_ENABLED_KEY = booleanPreferencesKey("reminder_enabled")
             val REMINDER_MINUTE_OF_DAY_KEY = intPreferencesKey("reminder_minute_of_day")
             const val MINUTES_PER_DAY = 24 * 60

@@ -81,6 +81,16 @@ class OpenReferenceUseCaseTest {
         }
 
     @Test
+    fun `the in-app provider resolves to an InApp destination carrying the whole portion`() =
+        runTest {
+            // VD-T5 (D-V3-18): IN_APP returns ReadingDestination.InApp(portion) — NOT a URL; the
+            // multi-book portion rides whole, and no URL is built (the builder errors for IN_APP).
+            settings.setBibleProvider(BibleProvider.IN_APP)
+            val johannine = portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1)
+            assertThat(useCase(johannine)).isEqualTo(ReadingDestination.InApp(johannine))
+        }
+
+    @Test
     fun `the persisted choice is never rewritten by resolving a destination`() =
         runTest {
             // D-S15-3 pin: degradation happens at launch time in the UI layer; the stored

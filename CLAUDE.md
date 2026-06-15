@@ -532,14 +532,42 @@ Do not reference or depend on strikelog.
   domain/data; full pipeline green. Reading feel / markup look / picker on-glass = device-pass
   items (E). New strings need owner tone sign-off (table in the handoff).
   Handoff: [docs/sprints/sprint-00C-reader-ui.md](docs/sprints/sprint-00C-reader-ui.md).
-- Next up: **V3 Sprint D — nav restructure + integration** (`sprint-00D-nav-integration`):
-  `RootScaffold` + co-equal `NavigationBar` (Schedule | Bible, Schedule start, D-V3-16); nested
-  Schedule/Bible graphs replacing the temporary `Routes.READER` push; the Robolectric
-  nav-regression suite (D-V3-17, R-V3-5); `BibleProvider.IN_APP` promotion +
-  `ReadingDestination.InApp(portion)` + the `DayReadingsRoute` tap-handoff (calls
-  `ReaderViewModel.openPortion`); Settings teaser→real value; the Sprint-19 first-run
-  reading-destination question (D-V3-19); the bundle-size CI check (D-V3-20). Resolve owner
-  OQ-1/2/3 before D lands. (V2.x release prep remains queued, owner-scheduled independently.)
+- ✅ **V3 Sprint D (nav restructure + integration) is DONE** (uncommitted in the working tree; the
+  main session commits + handles the release; version untouched at 1.3.5/10305 — needs a bump to
+  ship). **Tapping today's reading now opens it in the in-app reader, and Schedule + Bible are two
+  co-equal places.** The app root is `ui/navigation/RootScaffold` — a co-equal `Schedule | Bible`
+  `NavigationBar` over two nested graphs (`Graph.SCHEDULE` start = day pager + pushed Settings;
+  `Graph.BIBLE` = reader); `switchTab` preserves each tab's back-stack across a switch (D-V3-16,
+  D-D-3, U18). The Sprint-C temporary `Routes.READER` push + `open-reader-dev` action are deleted.
+  **`BibleProvider.IN_APP`** is a real, top-of-list selectable provider (multiRefCapable, no app;
+  D-V3-18); `ReadingDestination.InApp(portion)` and `OpenReferenceUseCase`'s IN_APP branch carry
+  the whole portion (not a URL); Web/MySword paths byte-for-byte unchanged (R-V3-4). The
+  cross-graph tap-handoff (D-D-1): `DayReadingsViewModel` publishes the tapped portion to an
+  `@ActivityRetainedScoped` `ReaderHandoff`, raises `openReaderEvents`; the Route switches to the
+  Bible tab; `ReaderViewModel` consumes the pending portion and renders it. **Settings** "Open
+  readings in" — the S14 disabled teaser is now the enabled "Read in this app" option at the top.
+  **First-run reading-destination question** (fresh installs only, no marks; in-app NEVER a silent
+  default, dismiss re-asks) + a **separate one-time upgrade note** for existing users (marks
+  present; their external choice preserved unless they tap "use it now") — two mutually-exclusive
+  gates split on `hasAnyMarks` (D-V3-19, OQ-2, D-D-4). New DataStore markers
+  `reading_destination_prompt_completed` + `upgrade_note_shown` (no Room/schema change). **CI**
+  gained a bundle-size gate on `release-bundle` (fails > 12 MB = pre-V3 ~5.7 + ~6 MB budget,
+  D-V3-20). New: nav-regression Robolectric suite retires part of the Sprint-6 `AppNavHost` JVM
+  debt (Schedule=start, both tabs + every screen reachable, back-stack preserved across a switch).
+  New test dep: `androidx.navigation:navigation-testing`. 487 tests (net +34; **both data gates
+  untouched — plan gate = 7, `BibleTextVerificationTest` = 18**), full pipeline green, Kover 95.1%
+  on domain/data, **4 load-bearing mutations killed** (IN_APP destination branch, first-run show
+  gate, upgrade-note show-once gate, upgrade-vs-fresh-install has-marks split), each restored in
+  place. Nav glyph for Bible = `AutoMirrored.List` (MenuBook absent from icons-core; OQ-3
+  placeholder). Device-pass: one-screen-fit WITH the ~80dp bottom bar (R-V3-1, VD-T9), tab-state
+  preservation on glass, the reading-tap→reader handoff feel. S-D strings await owner tone
+  sign-off.
+  Handoff: [docs/sprints/sprint-00D-nav-integration.md](docs/sprints/sprint-00D-nav-integration.md).
+- Next up: **V3 Sprint E — V3.0 hardening + release** (`sprint-00E-v3-hardening-release`):
+  consolidated device pass (A/C/D items, incl. one-screen-fit with the bottom bar), M-V3-2
+  faithful-presentation owner sign-off, OQ-3 nav label/icon + S-string tone sign-offs, version
+  bump + UK accepted-risk recorded + closed-track rollout. (V2.x release prep remains queued,
+  owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

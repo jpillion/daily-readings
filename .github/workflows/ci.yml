@@ -76,6 +76,18 @@ jobs:
       - name: Build release bundle
         run: ./gradlew bundleRelease
 
+      - name: Bundle size gate (D-V3-20, +6 MB text-asset budget)
+        run: |
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          CEILING=12000000
+          SIZE=$(stat -c%s "$AAB")
+          echo "Release bundle: ${SIZE} bytes (ceiling ${CEILING} bytes = pre-V3 ~5.7 MB + ~6 MB text-asset budget)."
+          if [ "$SIZE" -gt "$CEILING" ]; then
+            echo "::error::Release bundle ${SIZE} bytes exceeds the +6 MB budget ceiling of ${CEILING} bytes (D-V3-20)"
+            exit 1
+          fi
+          echo "Bundle size within budget."
+
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
         with:
