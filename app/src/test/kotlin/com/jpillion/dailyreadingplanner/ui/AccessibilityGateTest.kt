@@ -1,5 +1,8 @@
 package com.jpillion.dailyreadingplanner.ui
 
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -8,6 +11,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Dp
@@ -32,9 +36,11 @@ import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.day.DayContent
 import com.jpillion.dailyreadingplanner.ui.day.DayUiState
 import com.jpillion.dailyreadingplanner.ui.day.TrackingStartPromptDialog
+import com.jpillion.dailyreadingplanner.ui.navigation.UpdateRestartSnackbarEffect
 import com.jpillion.dailyreadingplanner.ui.settings.SettingsScreen
 import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
+import com.jpillion.dailyreadingplanner.update.UpdatePhase
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
@@ -384,6 +390,20 @@ class AccessibilityGateTest {
         for (chapter in listOf(1, 2, 3)) {
             composeRule.onNodeWithTag("picker-chapter-$chapter").assertTouchTargetAtLeast(48.dp)
         }
+    }
+
+    @Test
+    fun `update Restart snackbar action meets 48dp touch target and is spoken`() {
+        // S-L (D-L-4): the in-app-update Restart affordance is an authored interactive control —
+        // it must meet the 48dp touch target and carry spoken text (never an unlabeled icon).
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                val host = remember { SnackbarHostState() }
+                UpdateRestartSnackbarEffect(UpdatePhase.ReadyToRestart, host, onRestart = {})
+                SnackbarHost(host)
+            }
+        }
+        composeRule.onNodeWithText("Restart").assertTouchTargetAtLeast(48.dp)
     }
 
     private fun hasTextContaining(substring: String): SemanticsMatcher =

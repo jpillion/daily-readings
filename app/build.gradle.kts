@@ -34,8 +34,8 @@ android {
         targetSdk = 37
         // D-S9-3: versionCode = MAJOR*10000 + MINOR*100 + PATCH (1.0.0 -> 10000) — monotonic
         // for Play, derivable from versionName, with room for 99 patch/minor steps each.
-        versionCode = 10401
-        versionName = "1.4.1"
+        versionCode = 10402
+        versionName = "1.4.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -164,6 +164,14 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.browser)
+    // S-L (D-L-1): Google Play In-App Updates (flexible flow). Pulls Play Core +
+    // GMS transitive deps (core-common 2.0.3, play-services-basement 18.1.0,
+    // play-services-tasks 18.0.2). D-L-6 VERIFIED: this adds NO new manifest permission
+    // (no INTERNET, no GMS perms) — only a PlayCoreDialogWrapperActivity + the
+    // gms.version meta-data. Networking is brokered via the Play Store app/GMS, not an
+    // app-held INTERNET grant, so the no-INTERNET offline identity (NFR-V3-A) is intact.
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
     ksp(libs.hilt.compiler)

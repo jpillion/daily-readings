@@ -7,14 +7,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -29,6 +36,7 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderRoute
 import com.jpillion.dailyreadingplanner.ui.day.DayReadingsRoute
 import com.jpillion.dailyreadingplanner.ui.settings.SettingsRoute
+import com.jpillion.dailyreadingplanner.update.UpdatePhase
 
 /** Nested-graph roots (D-V3-16): two co-equal tabs, Schedule the start destination. */
 object Graph {
@@ -53,7 +61,25 @@ fun RootScaffold(rootViewModel: RootViewModel = hiltViewModel()) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+
+    // S-L (D-L-4): the Restart snackbar — the calm, least-intrusive surface for the in-app
+    // flexible update (over a banner/dialog). Shown only when a flexible update has finished
+    // downloading; the readings are never gated.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val updatePhase by rootViewModel.updatePhase.collectAsStateWithLifecycle()
+    UpdateRestartSnackbarEffect(
+        phase = updatePhase,
+        snackbarHostState = snackbarHostState,
+        onRestart = rootViewModel::restartToInstallUpdate,
+    )
+
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.testTag("update-snackbar-host"),
+            )
+        },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
@@ -136,5 +162,37 @@ internal fun NavController.switchTab(graphRoute: String) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+/**
+ * S-L (D-L-4) — the stateless Restart-snackbar effect, extracted from [RootScaffold] so the
+ * snackbar's wording, indefinite duration, dismiss affordance and the Restart action are pinnable
+ * without the full Hilt nav graph. When [phase] becomes [UpdatePhase.ReadyToRestart] it shows an
+ * indefinite snackbar carrying a "Restart" action; tapping Restart calls [onRestart] (which installs
+ * the staged update). The action button is a stock M3 snackbar action (>=48dp interactive minimum)
+ * and the message + action label are spoken by TalkBack.
+ */
+@Composable
+internal fun UpdateRestartSnackbarEffect(
+    phase: UpdatePhase,
+    snackbarHostState: SnackbarHostState,
+    onRestart: () -> Unit,
+) {
+    val message = stringResource(R.string.update_downloaded_message)
+    val restartLabel = stringResource(R.string.update_restart_action)
+    LaunchedEffect(phase) {
+        if (phase is UpdatePhase.ReadyToRestart) {
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = restartLabel,
+                    withDismissAction = true,
+                    duration = SnackbarDuration.Indefinite,
+                )
+            if (result == SnackbarResult.ActionPerformed) {
+                onRestart()
+            }
+        }
     }
 }

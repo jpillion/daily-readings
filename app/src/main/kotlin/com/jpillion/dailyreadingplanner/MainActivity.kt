@@ -19,6 +19,7 @@ import com.jpillion.dailyreadingplanner.ui.navigation.RootScaffold
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import com.jpillion.dailyreadingplanner.ui.theme.ThemeViewModel
 import com.jpillion.dailyreadingplanner.ui.theme.resolveDarkTheme
+import com.jpillion.dailyreadingplanner.update.InAppUpdateManager
 import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -38,6 +39,15 @@ class MainActivity : ComponentActivity() {
     lateinit var shouldRequestNotificationPermissionOnLaunch:
         ShouldRequestNotificationPermissionOnLaunchUseCase
 
+    @Inject
+    lateinit var inAppUpdateManager: InAppUpdateManager
+
+    // S-L (D-L-1): receives the Play flexible-update consent intent. The result is irrelevant to
+    // us — the download proceeds in the background and the InstallStateUpdatedListener (in the
+    // manager) is what raises the Restart snackbar on DOWNLOADED — so the callback is a no-op.
+    private val updateFlowLauncher =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { }
+
     // S22 (amends D-S22-5): the persistent tray notification is now ON by default, so a fresh
     // API 33+ install must request POST_NOTIFICATIONS for it to post. On grant we re-run the
     // reschedule/refresh hook so the notification appears immediately; on denial the setting
@@ -54,6 +64,9 @@ class MainActivity : ComponentActivity() {
         // Opportunistic widget refresh on resume (D9/ESpec §7): the dominant date-rollover
         // case — opening the app after midnight snaps the widget to the new day.
         lifecycleScope.launch { widgetRefresher.refreshTodayWidget() }
+        // S-L: if a flexible update finished downloading while we were backgrounded, re-surface
+        // the Restart snackbar (Play's recommended onResume re-check). Inert if none/Play-less.
+        inAppUpdateManager.resume(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,5 +108,16 @@ class MainActivity : ComponentActivity() {
                 RootScaffold()
             }
         }
+        // S-L (D-L-1/D-L-5): the one-per-process Play update availability check. The
+        // minor-vs-patch gate is decided by UpdatePromptDecision inside the manager; a PATCH
+        // bump is silent, a minor-or-higher one starts the non-blocking flexible flow. Inert on
+        // Play-less devices or when the check fails (FR-NV6/NV10) — never blocks the readings.
+        inAppUpdateManager.checkForUpdate(this, updateFlowLauncher)
+    }
+
+    override fun onDestroy() {
+        // S-L: detach the Play install-state listener so it doesn't outlive the activity.
+        inAppUpdateManager.unregister()
+        super.onDestroy()
     }
 }

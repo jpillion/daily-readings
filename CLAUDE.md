@@ -945,6 +945,37 @@ Do not reference or depend on strikelog.
   circled empty band on a short chapter, end-of-scroll reach on a long chapter, live update on a
   provider change. Handoff:
   [docs/sprints/sprint-00K-reader-footer-hint.md](docs/sprints/sprint-00K-reader-footer-hint.md).
+- ✅ **Sprint 23 (in-app update flow — Play In-App Updates, `sprint-0023-in-app-update`) is DONE**
+  (owner-redirected from the queued v2.x release prep; uncommitted in the working tree; version
+  untouched at 1.4.1/10401 — the main session bumps to 1.4.2/10402 + tags + deploys). Closes
+  **BACKLOG #4** with **Option A** (Play In-App Updates, flexible/non-blocking flow). On launch the
+  app checks Play for a newer build; the pure `domain/UpdatePromptDecision.shouldPrompt` gates the
+  prompt — **PATCH=silent, MINOR/MAJOR=prompt** via the D-S9-3 `/100` rule (drops the two patch
+  digits); a downloaded update raises a calm **"Restart" snackbar** in `RootScaffold`
+  (`UpdateRestartSnackbarEffect`, indefinite, ≥48dp spoken action) that installs + relaunches on tap.
+  Stalled downloads re-surface on `onResume`; the whole feature is inert on Play-less devices / failed
+  checks (no crash, never gates the readings). **New `update/` package:** `InAppUpdateState`
+  (`@ActivityRetainedScoped` seam à la `ReaderHandoff` — `phase` Idle/ReadyToRestart + the
+  process-lifetime no-nag flag, **D-L-5: NO new DataStore key**), `InAppUpdateManager` interface +
+  `PlayInAppUpdateManager` (maps Play `UpdateAvailability`/`isUpdateTypeAllowed(FLEXIBLE)` →
+  `UpdateAvailabilitySignal`, off-main, runCatching-wrapped); `di/UpdateModule` binds it; MainActivity
+  drives `checkForUpdate`/`resume`/`unregister` + the `StartIntentSenderForResult` launcher; `RootViewModel`
+  exposes `updatePhase` + `restartToInstallUpdate`. **D-L-6 (VERIFIED, required finding):** the
+  `app-update`/`app-update-ktx` **2.1.0** dep (+ transitive `core-common 2.0.3`,
+  `play-services-basement 18.1.0`, `play-services-tasks 18.0.2`) adds **ZERO new manifest permission**
+  — diffed the merged manifest with/without the dep — **no INTERNET, no GMS perms**, only a
+  `PlayCoreDialogWrapperActivity` + the `gms.version` meta-data. The 6 existing permissions are
+  unchanged (pre-L Glance/WorkManager merges). **The no-INTERNET offline identity (NFR-V3-A) holds** —
+  Play's networking is brokered via the Play Store app/GMS, not an app-held INTERNET grant. **644 tests**
+  (net +17; the three data/Room gates UNTOUCHED — plan = 11, `BibleTextVerificationTest` = 18,
+  `BibleDatabaseRoomOpenTest` = 5), full pipeline green, Kover 95.8% on domain/data, **5 load-bearing
+  mutations killed** (minor-boundary `/100`, signal gate, staleness guard, no-nag flag, snackbar
+  branch), each restored in place. **`bundleRelease` builds clean** with the new dep (R8 + Play Core
+  consumer rules; 777 Play Core entries survive R8; no app-side keep rule needed; AAB **8.07 MB** <
+  12 MB ceiling). S-L strings (`update_downloaded_message`/`update_restart_action`) await owner tone
+  sign-off. Device-pass (needs a real Play internal track): minor-bump surfaces the flow, DOWNLOADED →
+  Restart installs, resume re-surface, patch-only stays silent.
+  Handoff: [docs/sprints/sprint-0023-in-app-update.md](docs/sprints/sprint-0023-in-app-update.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

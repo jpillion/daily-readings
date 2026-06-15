@@ -166,4 +166,9 @@
     <string name="upgrade_note_body">You can now read each day\'s chapters right inside the app, fully offline. Your current reading destination is unchanged \u2014 switch anytime in Settings.</string>
     <string name="upgrade_note_use_it_now">Use the in-app reader</string>
     <string name="upgrade_note_keep_current">Keep my current choice</string>
+
+    <!-- S-L (D-L-4): in-app flexible-update Restart snackbar. Sober, factual, no urgency
+         framing (new-version-notice G4). Strings await owner tone sign-off. -->
+    <string name="update_downloaded_message">An update is ready to install.</string>
+    <string name="update_restart_action">Restart</string>
 </resources>
