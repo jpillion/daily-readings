@@ -154,4 +154,66 @@ class ProviderUrlBuilderTest {
                 "https://www.biblegateway.com/passage/?search=Psalms+1%2CPsalms+5&version=KJV",
             )
     }
+
+    // --- H5 (D-H-5): VERSE-level deep links, live-verified 2026-06-15 (provider-link-checks.md). ---
+
+    private fun ref(
+        book: String,
+        chapter: Int,
+    ): Reference = Reference(BookCatalog.requireByName(book), chapter)
+
+    @Test
+    fun `blb verse url appends the verse segment`() {
+        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Genesis", 1), 1))
+            .isEqualTo("https://www.blueletterbible.org/kjv/gen/1/1/")
+        // Awkward books: Psalms, Philemon, 2/3 John.
+        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Psalms", 119), 176))
+            .isEqualTo("https://www.blueletterbible.org/kjv/psa/119/176/")
+        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Philemon", 1), 25))
+            .isEqualTo("https://www.blueletterbible.org/kjv/phm/1/25/")
+        assertThat(builder.buildVerse(BibleProvider.BLB, ref("2 John", 1), 1))
+            .isEqualTo("https://www.blueletterbible.org/kjv/2jo/1/1/")
+        assertThat(builder.buildVerse(BibleProvider.BLB, ref("3 John", 1), 14))
+            .isEqualTo("https://www.blueletterbible.org/kjv/3jo/1/14/")
+    }
+
+    @Test
+    fun `youversion verse url uses usfm code chapter verse`() {
+        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Genesis", 1), 1))
+            .isEqualTo("https://www.bible.com/bible/1/GEN.1.1.KJV")
+        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Psalms", 23), 1))
+            .isEqualTo("https://www.bible.com/bible/1/PSA.23.1.KJV")
+        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Philemon", 1), 25))
+            .isEqualTo("https://www.bible.com/bible/1/PHM.1.25.KJV")
+        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("2 John", 1), 1))
+            .isEqualTo("https://www.bible.com/bible/1/2JN.1.1.KJV")
+    }
+
+    @Test
+    fun `mysword verse url is numeric order chapter verse`() {
+        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("Genesis", 1), 1))
+            .isEqualTo("https://mysword.info/b?r=1.1.1")
+        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("Psalms", 23), 1))
+            .isEqualTo("https://mysword.info/b?r=19.23.1")
+        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("3 John", 1), 14))
+            .isEqualTo("https://mysword.info/b?r=64.1.14")
+    }
+
+    @Test
+    fun `bible gateway verse url carries book chapter colon verse`() {
+        assertThat(builder.buildVerse(BibleProvider.BIBLE_GATEWAY, ref("Genesis", 1), 1))
+            .isEqualTo("https://www.biblegateway.com/passage/?search=Genesis+1%3A1&version=KJV")
+        assertThat(builder.buildVerse(BibleProvider.BIBLE_GATEWAY, ref("2 John", 1), 1))
+            .isEqualTo("https://www.biblegateway.com/passage/?search=2+John+1%3A1&version=KJV")
+    }
+
+    @Test
+    fun `a superscription tap - verse 0 - clamps to verse 1 across providers`() {
+        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Psalms", 23), 0))
+            .isEqualTo("https://www.blueletterbible.org/kjv/psa/23/1/")
+        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Psalms", 23), 0))
+            .isEqualTo("https://www.bible.com/bible/1/PSA.23.1.KJV")
+        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("Psalms", 23), 0))
+            .isEqualTo("https://mysword.info/b?r=19.23.1")
+    }
 }

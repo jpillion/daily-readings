@@ -17,7 +17,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,12 +33,16 @@ import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
  * Sprint 5 (D-S5-1): this is Sprint 4's TodayScreen body, generalized so each pager page
  * renders one [DayUiState]; the caller binds the page's date into the callbacks. The Scaffold
  * and top bar live above the pager in [DayReadingsPagerScreen].
+ *
+ * H3/H4 (owner): the "Mark whole day as done" button and the "All readings done" badge are
+ * removed — the three per-reading checkboxes are the only mark affordance and the only
+ * completion cue (owner: the visible checkboxes are enough). [MarkWholeDayUseCase] remains for
+ * the widget; only the on-screen button UI is gone.
  */
 @Composable
 fun DayContent(
     state: DayUiState,
     onToggleReading: (ReadingStatus) -> Unit,
-    onMarkWholeDay: () -> Unit,
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -51,7 +54,6 @@ fun DayContent(
                 ScheduledContent(
                     state = state,
                     onToggleReading = onToggleReading,
-                    onMarkWholeDay = onMarkWholeDay,
                     onReadingTapped = onReadingTapped,
                 )
             is DayUiState.NoScheduledReadings -> NoReadingsContent()
@@ -71,7 +73,6 @@ private fun LoadingContent() {
 private fun ScheduledContent(
     state: DayUiState.Scheduled,
     onToggleReading: (ReadingStatus) -> Unit,
-    onMarkWholeDay: () -> Unit,
     onReadingTapped: (Portion) -> Unit,
 ) {
     Column(
@@ -88,12 +89,6 @@ private fun ScheduledContent(
                 onToggleReading = onToggleReading,
                 onReadingTapped = onReadingTapped,
             )
-        }
-        // D-S16-2: the whole-day button sits directly under the cards (owner: space
-        // efficiency); the count line is gone and the complete badge follows the button.
-        WholeDayButton(dayComplete = state.dayComplete, onMarkWholeDay = onMarkWholeDay)
-        if (state.dayComplete) {
-            DayCompleteBadge()
         }
     }
 }
@@ -155,51 +150,6 @@ private fun ReadingCard(
                         .testTag("toggle-${portion.stream.number}"),
             )
         }
-    }
-}
-
-@Composable
-private fun DayCompleteBadge() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.day_complete),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-    }
-}
-
-@Composable
-private fun WholeDayButton(
-    dayComplete: Boolean,
-    onMarkWholeDay: () -> Unit,
-) {
-    val label =
-        if (dayComplete) {
-            stringResource(R.string.unmark_whole_day)
-        } else {
-            stringResource(R.string.mark_whole_day_done)
-        }
-    if (dayComplete) {
-        OutlinedButton(
-            onClick = onMarkWholeDay,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .testTag("whole-day-button"),
-        ) { Text(text = label) }
-    } else {
-        Button(
-            onClick = onMarkWholeDay,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .testTag("whole-day-button"),
-        ) { Text(text = label) }
     }
 }
 

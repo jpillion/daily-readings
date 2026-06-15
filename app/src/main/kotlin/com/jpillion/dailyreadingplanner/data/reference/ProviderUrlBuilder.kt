@@ -35,6 +35,43 @@ class ProviderUrlBuilder
                     error("IN_APP has no URL; OpenReferenceUseCase must branch before building a URL")
             }
 
+        /**
+         * H5 (D-H-5) — the VERSE-level deep link for a single (book, chapter, verse), per provider
+         * (BACKLOG #5; verse tap in the in-app reader). All four providers support a verse target;
+         * the per-provider token columns from [build] are reused (no new catalog — D-S9-1). A
+         * superscription tap arrives as verse 0 (the title verse): no provider links a "verse 0",
+         * so it is clamped to verse 1 — the chapter's first real verse.
+         *
+         * Verse forms live-verified 2026-06-15 across providers and awkward books (Psalms, Philemon,
+         * 2/3 John) — docs/data/provider-link-checks.md; pinned field-by-field in ProviderUrlBuilderTest.
+         * [BibleProvider.IN_APP] has no external verse target and is resolved BEFORE this is called
+         * (OpenVerseUseCase maps IN_APP -> BLB, D-H-4); reaching it here is a programming error.
+         */
+        fun buildVerse(
+            provider: BibleProvider,
+            reference: Reference,
+            verse: Int,
+        ): String {
+            val v = verse.coerceAtLeast(1)
+            val book = reference.book
+            val ch = reference.chapter
+            return when (provider) {
+                BibleProvider.BLB ->
+                    "https://www.blueletterbible.org/kjv/${book.blbAbbrev}/$ch/$v/"
+                BibleProvider.YOUVERSION ->
+                    "https://www.bible.com/bible/1/${book.usfmCode}.$ch.$v.KJV"
+                BibleProvider.MYSWORD ->
+                    "https://mysword.info/b?r=${book.order}.$ch.$v"
+                BibleProvider.BIBLE_GATEWAY -> {
+                    val search = "${book.canonicalName} $ch:$v"
+                    val encoded = URLEncoder.encode(search, Charsets.UTF_8.name())
+                    "https://www.biblegateway.com/passage/?search=$encoded&version=KJV"
+                }
+                BibleProvider.IN_APP ->
+                    error("IN_APP has no verse URL; OpenVerseUseCase maps IN_APP -> BLB before building")
+            }
+        }
+
         /** Live-verified Sprint 1 + G-LINKS: 3-letter abbrev, trailing slash. */
         private fun blbUrl(reference: Reference): String =
             "https://www.blueletterbible.org/kjv/${reference.book.blbAbbrev}/${reference.chapter}/"

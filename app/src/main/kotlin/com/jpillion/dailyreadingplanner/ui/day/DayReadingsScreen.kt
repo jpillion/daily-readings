@@ -98,7 +98,6 @@ fun DayReadingsRoute(
         monthCompletionFor = viewModel::monthCompletionFor,
         statsPanel = statsPanel,
         onToggleReading = viewModel::onToggleReading,
-        onMarkWholeDay = viewModel::onMarkWholeDay,
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
         onOpenSettings = onOpenSettings,
@@ -129,7 +128,6 @@ fun DayReadingsPagerScreen(
     monthCompletionFor: (YearMonth) -> StateFlow<Map<LocalDate, DayCompletion>>,
     statsPanel: StatsPanelUiState?,
     onToggleReading: (LocalDate, ReadingStatus) -> Unit,
-    onMarkWholeDay: (LocalDate, Boolean) -> Unit,
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -226,9 +224,6 @@ fun DayReadingsPagerScreen(
                     DayContent(
                         state = state,
                         onToggleReading = { reading -> onToggleReading(date, reading) },
-                        onMarkWholeDay = {
-                            (state as? DayUiState.Scheduled)?.let { onMarkWholeDay(date, it.dayComplete) }
-                        },
                         onReadingTapped = onReadingTapped,
                         onRetry = onRetry,
                     )

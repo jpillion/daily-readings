@@ -1,16 +1,19 @@
 package com.jpillion.dailyreadingplanner.bible.ui.reader
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Button
@@ -19,7 +22,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -29,8 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -40,50 +44,42 @@ import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.bible.data.markup.MarkupStripper
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
+import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
+import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 
 /**
- * VC-T3 — the stateless in-app KJV reader. Renders one [ReaderUiState]; the route owns the VM and
- * side-effects. The body is a `LazyColumn` whose every verse is an item keyed by `canonicalId`
- * (D-V3-12, the rewrite-forcing P0): it reads as flowing prose but each verse is individually
- * addressable / scroll-locatable for V3.x highlights and V4 audio.
+ * H2 (D-H-2) — the stateless in-app KJV reader. The Scaffold + top bar host a
+ * [HorizontalPager] over the WHOLE canon ([GlobalChapterIndex.TOTAL_CHAPTERS] pages, page ==
+ * global chapter index): the user swipes left/right between chapters, continuously across book
+ * boundaries (Genesis 50 → Exodus 1) and bounded at Genesis 1 / Revelation 22 (the pager simply
+ * cannot scroll past the first/last page). The old Prev/Next [androidx.compose.material3.OutlinedButton]
+ * row is gone — its vertical space goes to the text.
  *
- * Faithful rendering: `<a>` added words italic via [VerseRenderer]; the verse's de-emphasized
- * label is the seam's [VerseText.nativeLabel] (NEVER derived from the id, D-V3-4); a verse-0
- * superscription ([VerseText.isTitle]) is an unnumbered italic heading with `heading()` semantics
- * (D-V3-7, FR-V3-6). TalkBack speaks `MarkupStripper.strip(markup)`, never the tags (NFR-V3-C).
+ * Each page renders the chapter's verse-id-keyed [LazyColumn] (D-V3-12): markup via [VerseRenderer],
+ * de-emphasized [VerseText.nativeLabel] (D-V3-4), superscription as an unnumbered heading (D-V3-7).
+ * Each verse is individually TAPPABLE (H7, BACKLOG #5) — a tap opens that exact verse in the user's
+ * external Bible app via [onVerseTapped]; a ≥48dp row with a spoken "Open <book ch:verse>" role.
+ * The list resets to the top on every page so a freshly-swiped chapter opens at verse 1.
  *
- * The empty audio seam (D-V3-14): [ReaderUiState.Content.activeVerseId] is read per verse for a
- * (V4) highlight background — always null in V3.0 — and the [bottomBar] hosts an empty audio slot.
+ * The route owns the VM, the [PagerState], the picker, and the per-page state provider.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
-    state: ReaderUiState,
+    pagerState: PagerState,
+    stateForPage: @Composable (Int) -> ReaderUiState,
     onOpenPicker: () -> Unit,
-    onPrevChapter: () -> Unit,
-    onNextChapter: () -> Unit,
-    onRetry: () -> Unit,
+    onVerseTapped: (page: Int, verseId: Long) -> Unit,
+    onRetry: (page: Int) -> Unit,
     modifier: Modifier = Modifier,
-    listState: LazyListState = rememberLazyListState(),
-    prevEnabled: Boolean = true,
-    nextEnabled: Boolean = true,
 ) {
-    // A freshly-opened chapter/portion must start at the top: the LazyListState persists across
-    // content swaps (Prev/Next, tap-a-reading, picker), so without this it keeps the prior
-    // chapter's scroll offset and opens part way down. Key on the displayed chapter identity so
-    // the reset fires on every chapter change (and on first load — a no-op at offset 0).
-    val chapterKey =
-        (state as? ReaderUiState.Content)?.blocks?.firstOrNull()?.let { "${it.bookNo}-${it.chapter}" }
-    LaunchedEffect(chapterKey) {
-        if (chapterKey != null) listState.scrollToItem(0)
-    }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
-                    val title = (state as? ReaderUiState.Content)?.title.orEmpty()
+                    val title = (stateForPage(pagerState.currentPage) as? ReaderUiState.Content)?.title.orEmpty()
                     Text(text = title, modifier = Modifier.testTag("reader-title"))
                 },
                 actions = {
@@ -96,47 +92,70 @@ fun ReaderScreen(
                 },
             )
         },
-        // D-V3-14: reserved audio seam — an empty bottom bar slot. Renders nothing in V3.0; V4
-        // audio transport drops in here without restructuring the screen.
+        // D-V3-14: reserved audio seam — an empty bottom bar slot.
         bottomBar = { ReaderAudioSlot() },
     ) { innerPadding ->
-        when (state) {
-            is ReaderUiState.Loading ->
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(modifier = Modifier.testTag("reader-loading")) }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().padding(innerPadding).testTag("reader-pager"),
+        ) { page ->
+            ReaderPage(
+                state = stateForPage(page),
+                onVerseTapped = { verseId -> onVerseTapped(page, verseId) },
+                onRetry = { onRetry(page) },
+            )
+        }
+    }
+}
 
-            is ReaderUiState.Error ->
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(stringResource(R.string.reader_load_failed), modifier = Modifier.testTag("reader-error"))
-                    if (state.canRetry) {
-                        Button(onClick = onRetry, modifier = Modifier.testTag("reader-retry")) {
-                            Text(stringResource(R.string.reader_retry))
-                        }
+@Composable
+private fun ReaderPage(
+    state: ReaderUiState,
+    onVerseTapped: (Long) -> Unit,
+    onRetry: () -> Unit,
+) {
+    when (state) {
+        is ReaderUiState.Loading ->
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(modifier = Modifier.testTag("reader-loading"))
+            }
+
+        is ReaderUiState.Error ->
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(stringResource(R.string.reader_load_failed), modifier = Modifier.testTag("reader-error"))
+                if (state.canRetry) {
+                    Button(onClick = onRetry, modifier = Modifier.testTag("reader-retry")) {
+                        Text(stringResource(R.string.reader_retry))
                     }
                 }
+            }
 
-            is ReaderUiState.Content ->
-                Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxWidth().weight(1f).testTag("reader-list"),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-                    ) {
-                        state.blocks.forEach { block ->
-                            item(key = "hdr-${block.bookNo}-${block.chapter}") { ChapterHeader(block) }
-                            items(block.verses, key = { it.canonicalId }) { verse ->
-                                VerseItem(verse, isActive = verse.canonicalId == state.activeVerseId)
-                            }
-                        }
+        is ReaderUiState.Content -> {
+            val listState = rememberLazyListState()
+            // A freshly-swiped page must open at the top (it is a new composition, but be explicit
+            // so a recomposed/retained page still resets to verse 1 of its chapter).
+            val chapterKey = state.blocks.firstOrNull()?.let { "${it.bookNo}-${it.chapter}" }
+            LaunchedEffect(chapterKey) { if (chapterKey != null) listState.scrollToItem(0) }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().testTag("reader-list"),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+            ) {
+                state.blocks.forEach { block ->
+                    item(key = "hdr-${block.bookNo}-${block.chapter}") { ChapterHeader(block) }
+                    items(block.verses, key = { it.canonicalId }) { verse ->
+                        VerseItem(
+                            verse = verse,
+                            isActive = verse.canonicalId == state.activeVerseId,
+                            onVerseTapped = onVerseTapped,
+                        )
                     }
-                    ChapterNavBar(onPrevChapter, onNextChapter, prevEnabled, nextEnabled)
                 }
+            }
         }
     }
 }
@@ -159,10 +178,12 @@ private fun ChapterHeader(block: ChapterContent) {
 private fun VerseItem(
     verse: VerseText,
     isActive: Boolean,
+    onVerseTapped: (Long) -> Unit,
 ) {
     val rendered = VerseRenderer.render(verse.markup)
     if (verse.isTitle) {
         // D-V3-7 / FR-V3-6: superscription — unnumbered italic heading, never a numbered verse.
+        // A title tap opens verse 1 of the chapter (the URL builder clamps verse 0 -> 1).
         Text(
             text = rendered,
             style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
@@ -170,16 +191,16 @@ private fun VerseItem(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button) { onVerseTapped(verse.canonicalId) }
                     .padding(vertical = 4.dp)
                     .semantics {
                         heading()
-                        // NFR-V3-C: TalkBack speaks the plain title text, never markup tags.
-                        contentDescription = MarkupStripper.strip(verse.markup)
+                        contentDescription = verseTapDescription(verse)
                     }.testTag("reader-title-${verse.canonicalId}"),
         )
         return
     }
-    // A numbered verse: de-emphasized native label (D-V3-4: from the seam, never derived) + body.
     val body =
         buildAnnotatedString {
             withStyle(
@@ -202,32 +223,24 @@ private fun VerseItem(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable(role = Role.Button) { onVerseTapped(verse.canonicalId) }
                 .padding(vertical = 4.dp)
-                .semantics { contentDescription = MarkupStripper.strip(verse.markup) }
+                .semantics { contentDescription = verseTapDescription(verse) }
                 .testTag("reader-verse-${verse.canonicalId}"),
     )
 }
 
-@Composable
-private fun ChapterNavBar(
-    onPrevChapter: () -> Unit,
-    onNextChapter: () -> Unit,
-    prevEnabled: Boolean,
-    nextEnabled: Boolean,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        OutlinedButton(
-            onClick = onPrevChapter,
-            enabled = prevEnabled,
-            modifier = Modifier.testTag("reader-prev-chapter"),
-        ) { Text(stringResource(R.string.reader_prev_chapter)) }
-        OutlinedButton(
-            onClick = onNextChapter,
-            enabled = nextEnabled,
-            modifier = Modifier.testTag("reader-next-chapter"),
-        ) { Text(stringResource(R.string.reader_next_chapter)) }
-    }
+/**
+ * H7 — the spoken label for a tappable verse: "Open <Book> <ch>:<verse>" (a superscription, verse
+ * 0, speaks "verse 1" — the clamp target). Generic wording (not the provider name) keeps the
+ * stateless screen provider-agnostic; the destination app is resolved at tap time by OpenVerseUseCase.
+ */
+private fun verseTapDescription(verse: VerseText): String {
+    val id = verse.canonicalId
+    val book = BookCatalog.books.firstOrNull { it.order == VerseId.book(id) }?.canonicalName ?: ""
+    val ch = VerseId.chapter(id)
+    val v = VerseId.verse(id).coerceAtLeast(1)
+    val plain = MarkupStripper.strip(verse.markup)
+    return "Open $book $ch:$v. $plain"
 }

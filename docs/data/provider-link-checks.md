@@ -198,3 +198,24 @@ control and passed all 132 real checks (each page contained its own book's canon
 | YouVersion | GEN.1 (single-chapter provider) | 2JN.1 (first book) |
 | Bible Gateway | Genesis 1-2 (full range, one URL) | 2 John 1,3 John 1 (both books, one URL) |
 
+
+---
+
+## Verse-level deep links (Sprint H / BACKLOG #5, 2026-06-15)
+
+The in-app reader's per-verse tap-out (`ProviderUrlBuilder.buildVerse`, D-H-5). Verse forms,
+live-checked the Sprint-13 way (real fetches, KJV verse text + reference confirmed; the committed
+suite stays OFFLINE — `ProviderUrlBuilderTest`/`OpenVerseUseCaseTest` pin every shape forever).
+A superscription tap (verse 0) clamps to verse 1.
+
+| Provider | Verse form | Sample checked | Result |
+|---|---|---|---|
+| Blue Letter Bible | `/kjv/{blbAbbrev}/{ch}/{verse}/` | `psa/23/1` (anchored "The LORD is my shepherd"), `phm/1/25` (Philemon benediction) | PASS |
+| Bible Gateway | `?search={Book} {ch}:{verse}&version=KJV` | `Philemon 1:25`, `3 John 1:14` (title "… 1:14 KJV", correct verse) | PASS |
+| YouVersion / Bible.com | `/bible/1/{usfmCode}.{ch}.{verse}.KJV` | `2JN.1.1.KJV` (2 John 1:1), `PSA.119.176.KJV` (Ps 119:176) | PASS |
+| MySword | `https://mysword.info/b?r={order}.{ch}.{verse}` | numeric `19.23.1` — derived from the pinned catalog order (D-S15-1) | App-only; owner on-device pass (as S15) |
+
+Awkward books exercised: Psalms (incl. Ps 119:176, the longest chapter's last verse), Philemon
+(one-chapter book), 2 John / 3 John (one-chapter Johannine epistles). Negative controls not
+re-run for verse level — the chapter-level gates above already proved each provider rejects
+garbage; the verse segment is an additive path coordinate on a verified template.

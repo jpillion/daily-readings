@@ -5,7 +5,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
@@ -42,7 +41,6 @@ class DayContentTest {
     private fun setContent(
         state: DayUiState,
         onToggleReading: (ReadingStatus) -> Unit = {},
-        onMarkWholeDay: () -> Unit = {},
         onReadingTapped: (Portion) -> Unit = {},
         onRetry: () -> Unit = {},
     ) {
@@ -51,7 +49,6 @@ class DayContentTest {
                 DayContent(
                     state = state,
                     onToggleReading = onToggleReading,
-                    onMarkWholeDay = onMarkWholeDay,
                     onReadingTapped = onReadingTapped,
                     onRetry = onRetry,
                 )
@@ -68,9 +65,11 @@ class DayContentTest {
         composeRule.onNodeWithText("Genesis 1–2").assertIsDisplayed()
         composeRule.onNodeWithText("Psalms 1–2").assertIsDisplayed()
         composeRule.onNodeWithText("Matthew 1–2").assertIsDisplayed()
-        // S16: the progress count line is gone — readings + button only.
+        // H2/H3/H4: the count line, the whole-day button, and the "All readings done" badge are all
+        // gone — the three reading cards and their checkboxes are the entire scheduled surface.
         composeRule.onNodeWithText("0 of 3 readings done").assertDoesNotExist()
-        composeRule.onNodeWithTag("whole-day-button").assertExists()
+        composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
+        composeRule.onNodeWithText("All readings done").assertDoesNotExist()
     }
 
     @Test
@@ -92,28 +91,22 @@ class DayContentTest {
     }
 
     @Test
-    fun wholeDayButton_invokesMarkWholeDay_singleTap() {
-        var taps = 0
-        setContent(scheduled(), onMarkWholeDay = { taps++ })
-        composeRule.onNodeWithTag("whole-day-button").performScrollTo().performClick()
-        assertThat(taps).isEqualTo(1)
-    }
-
-    @Test
-    fun completeDay_showsDoneIndicatorAndUnmarkLabel() {
+    fun completeDay_showsNoBadgeAndNoWholeDayButton() {
+        // H4: a fully-read day shows neither the "All readings done" badge nor any whole-day button;
+        // the three checked checkboxes are the only completion cue (owner).
         setContent(scheduled(read = Stream.entries.toSet()))
-        composeRule.onNodeWithText("All readings done").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Unmark whole day").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("All readings done").assertDoesNotExist()
+        composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
+        for (stream in 1..3) composeRule.onNodeWithTag("toggle-$stream").assertIsDisplayed()
     }
 
     @Test
-    fun partialDay_showsNoProgressLineAndNoCompleteBadge() {
-        // S16 (D-S16-2): no count line at any partial state; the complete badge only
-        // appears when all three are read.
+    fun partialDay_showsNoProgressLineNoCompleteBadgeNoButton() {
+        // S16 + H3/H4: no count line, no complete badge, and no whole-day button at any partial state.
         setContent(scheduled(read = setOf(Stream.LAW_AND_HISTORY, Stream.NEW_TESTAMENT)))
         composeRule.onNodeWithText("2 of 3 readings done").assertDoesNotExist()
         composeRule.onNodeWithText("All readings done").assertDoesNotExist()
-        composeRule.onNodeWithText("Mark whole day done").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
     }
 
     @Test

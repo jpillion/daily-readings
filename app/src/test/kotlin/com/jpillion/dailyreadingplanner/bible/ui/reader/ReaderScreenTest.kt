@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
@@ -54,10 +55,12 @@ class ReaderScreenTest {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 ReaderScreen(
-                    state = state,
+                    pagerState =
+                        androidx.compose.foundation.pager
+                            .rememberPagerState(initialPage = 0) { 1 },
+                    stateForPage = { state },
                     onOpenPicker = {},
-                    onPrevChapter = {},
-                    onNextChapter = {},
+                    onVerseTapped = { _, _ -> },
                     onRetry = {},
                 )
             }
@@ -94,7 +97,11 @@ class ReaderScreenTest {
     fun `TalkBack speaks the plain stripped title text, never markup`() {
         setContent()
         val titleId = VerseId.encode(19, 23, 0)
-        composeRule.onNodeWithTag("reader-title-$titleId").assert(contentDescriptionIs("A Psalm of David."))
+        // H7: a tappable superscription speaks "Open <book ch:verse>" then the plain title text
+        // (verse 0 clamps to verse 1); the markup is still stripped, never spoken raw.
+        composeRule
+            .onNodeWithTag("reader-title-$titleId")
+            .assert(contentDescriptionIs("Open Psalms 23:1. A Psalm of David."))
     }
 
     @Test
@@ -103,7 +110,7 @@ class ReaderScreenTest {
         // <a>LORD</a> -> "LORD" kept, tags gone (mutation target: stripping for a11y).
         composeRule
             .onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}")
-            .assert(contentDescriptionIs("The LORD is my shepherd"))
+            .assert(contentDescriptionIs("Open Psalms 23:1. The LORD is my shepherd"))
     }
 
     @Test
@@ -173,33 +180,27 @@ class ReaderScreenTest {
                 ),
             title = "Book $ch",
         )
-        val listState =
-            androidx.compose.foundation.lazy
-                .LazyListState()
         val state = androidx.compose.runtime.mutableStateOf<ReaderUiState>(bigChapter(43, 1))
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 ReaderScreen(
-                    state = state.value,
+                    pagerState =
+                        androidx.compose.foundation.pager
+                            .rememberPagerState(initialPage = 0) { 1 },
+                    stateForPage = { state.value },
                     onOpenPicker = {},
-                    onPrevChapter = {},
-                    onNextChapter = {},
+                    onVerseTapped = { _, _ -> },
                     onRetry = {},
-                    listState = listState,
                 )
             }
         }
         composeRule.onNodeWithTag("reader-list").performScrollToIndex(35)
         composeRule.waitForIdle()
-        com.google.common.truth.Truth
-            .assertThat(listState.firstVisibleItemIndex)
-            .isGreaterThan(0)
-
+        // Changing the page's chapter must snap the page back to the top (LaunchedEffect(chapterKey)).
         state.value = bigChapter(43, 2)
         composeRule.waitForIdle()
-        com.google.common.truth.Truth
-            .assertThat(listState.firstVisibleItemIndex)
-            .isEqualTo(0)
+        composeRule.onNodeWithTag("reader-header-43-2").assertIsDisplayed()
+        composeRule.onNodeWithTag("reader-verse-${VerseId.encode(43, 2, 1)}").assertIsDisplayed()
     }
 
     @Test
@@ -219,5 +220,42 @@ class ReaderScreenTest {
         setContent(ReaderUiState.Error())
         composeRule.onNodeWithTag("reader-error").assertIsDisplayed()
         composeRule.onNodeWithTag("reader-retry").assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping a verse invokes onVerseTapped with that verse's canonicalId`() {
+        var tapped: Long? = null
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                ReaderScreen(
+                    pagerState =
+                        androidx.compose.foundation.pager
+                            .rememberPagerState(initialPage = 0) { 1 },
+                    stateForPage = { content() },
+                    onOpenPicker = {},
+                    onVerseTapped = { _, verseId -> tapped = verseId },
+                    onRetry = {},
+                )
+            }
+        }
+        val id = VerseId.encode(19, 23, 1)
+        composeRule.onNodeWithTag("reader-verse-$id").performClick()
+        composeRule.waitForIdle()
+        com.google.common.truth.Truth
+            .assertThat(tapped)
+            .isEqualTo(id)
+    }
+
+    @Test
+    fun `a tapped verse carries a button role and an Open contentDescription (H7 a11y)`() {
+        setContent()
+        val id = VerseId.encode(19, 23, 1)
+        composeRule.onNodeWithTag("reader-verse-$id").assert(
+            SemanticsMatcher("contentDescription startsWith 'Open Psalms 23:1'") { node ->
+                node.config
+                    .getOrNull(SemanticsProperties.ContentDescription)
+                    ?.any { it.startsWith("Open Psalms 23:1") } == true
+            },
+        )
     }
 }

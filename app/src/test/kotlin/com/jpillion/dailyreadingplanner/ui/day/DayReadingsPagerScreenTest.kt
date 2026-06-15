@@ -5,7 +5,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -39,7 +38,6 @@ class DayReadingsPagerScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val markCalls = mutableListOf<Pair<LocalDate, Boolean>>()
     private val toggleCalls = mutableListOf<Pair<LocalDate, Stream>>()
     private val dayStates = mutableMapOf<LocalDate, MutableStateFlow<DayUiState>>()
 
@@ -97,7 +95,6 @@ class DayReadingsPagerScreenTest {
                     monthCompletionFor = { MutableStateFlow(emptyMap()) },
                     statsPanel = statsPanel,
                     onToggleReading = { date, reading -> toggleCalls += date to reading.portion.stream },
-                    onMarkWholeDay = { date, dayComplete -> markCalls += date to dayComplete },
                     onReadingTapped = onReadingTapped,
                     onRetry = {},
                     onOpenSettings = { openSettingsCalls++ },
@@ -152,13 +149,11 @@ class DayReadingsPagerScreenTest {
     }
 
     @Test
-    fun markCallbacks_carryTheDisplayedDate_notToday() {
+    fun toggleCallbacks_carryTheDisplayedDate_notToday() {
         val today = LocalDate.of(2026, 6, 10)
         setScreen(today)
         swipeToNextDay()
-        composeRule.onNodeWithTag("whole-day-button").performScrollTo().performClick()
         composeRule.onNodeWithTag("toggle-2").performClick()
-        assertThat(markCalls).containsExactly(today.plusDays(1) to false)
         assertThat(toggleCalls).containsExactly(today.plusDays(1) to Stream.PSALMS_AND_PROPHECY)
     }
 
@@ -168,10 +163,10 @@ class DayReadingsPagerScreenTest {
         setScreen(today)
         swipeToNextDay()
         composeRule.onNodeWithText("No scheduled readings for Feb 29th").assertIsDisplayed()
-        composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
+        composeRule.onNodeWithTag("toggle-1").assertDoesNotExist()
         swipeToNextDay()
         composeRule.onNodeWithText("Wednesday, March 1").assertIsDisplayed()
-        composeRule.onNodeWithTag("whole-day-button").assertExists()
+        composeRule.onNodeWithTag("toggle-1").assertExists()
     }
 
     @Test
@@ -181,8 +176,6 @@ class DayReadingsPagerScreenTest {
         swipeToNextDay()
         // D-S16-1: a different year than today's IS shown in the title.
         composeRule.onNodeWithText("Friday, January 1, 2027").assertIsDisplayed()
-        composeRule.onNodeWithTag("whole-day-button").performScrollTo().performClick()
-        assertThat(markCalls).containsExactly(LocalDate.of(2027, 1, 1) to false)
     }
 
     @Test
@@ -275,7 +268,6 @@ class DayReadingsPagerScreenTest {
                     monthCompletionFor = { MutableStateFlow(emptyMap()) },
                     statsPanel = null,
                     onToggleReading = { _, _ -> },
-                    onMarkWholeDay = { _, _ -> },
                     onReadingTapped = {},
                     onRetry = {},
                     onOpenSettings = {},

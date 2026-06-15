@@ -645,6 +645,49 @@ Do not reference or depend on strikelog.
   items:** single-screen fit at default font, cell density / abbreviation legibility on glass,
   Psalms-150 scroll feel — none JVM-provable.
   Handoff: [docs/sprints/sprint-00G-picker-grid.md](docs/sprints/sprint-00G-picker-grid.md).
+- ✅ **Sprint H (reader chapter-swipe + per-verse external links + schedule cleanup — owner UI
+  request, `sprint-00H-reader-swipe-verse-links`) is DONE** (uncommitted in the working tree; no
+  version bump — the main session verifies + commits). Five owner changes:
+  (1) **Reader chapter SWIPE** replaces the Prev/Next buttons — the reader is now a
+  `HorizontalPager` over the WHOLE canon (`GlobalChapterIndex`, **D-H-2**: page == global chapter
+  index, `TOTAL_CHAPTERS` = 1189, Genesis 1 = page 0, Revelation 22 = last). Continuous swipe
+  crosses book boundaries (Genesis 50 → Exodus 1) and is bounded at Gen 1 / Rev 22 for free (the
+  pager can't scroll past the first/last page). Each page renders the existing verse-id-keyed
+  `LazyColumn` (markup, superscriptions, open-at-top reset). **D-H-1:** `GlobalChapterIndex`
+  adjacency is pinned field-by-field against the mutation-pinned `ChapterNavigator` at every
+  index. **D-H-7:** a Schedule reading tap (IN_APP) lands the pager on the portion's FIRST chapter
+  (single-chapter-per-page supersedes the prior multi-block portion render); the `ChapterNavBar`
+  and `ReaderViewModel.openChapter/openPortion/uiState` are gone, replaced by per-page
+  `uiStateForPage(page)`. The reclaimed button row is now text space.
+  (2) **Schedule: whole-day button REMOVED** (`DayContent`/`DayReadingsScreen`) — the three
+  per-reading checkboxes are the only mark affordance. `MarkWholeDayUseCase` + the VM's
+  `onMarkWholeDay` are KEPT (the widget seam); only the button UI is gone.
+  (3) **Schedule: "All readings done" badge REMOVED** at every state (supersedes the D-S16-2 part
+  that kept it) — the checked checkboxes are the only completion cue.
+  (4) **Reader: tap any verse → open that exact book+chapter+VERSE in the user's external Bible
+  app** (BACKLOG #5). Verse-level URLs per provider (`ProviderUrlBuilder.buildVerse`, **D-H-5**,
+  reusing the existing token columns — no new catalog): BLB `/kjv/gen/1/1/`, Bible Gateway
+  `?search=Genesis 1:1&version=KJV`, YouVersion `GEN.1.1.KJV`, MySword numeric `{order}.{ch}.{verse}`.
+  `OpenVerseUseCase` reads the stored provider at tap time and returns the S15 `ReadingDestination`
+  (Web / MySwordApp+BLB-verse fallback). **D-H-4 (IN_APP fallback):** a verse-tap-out has no
+  external target when the user reads in-app, so it falls back to BLB at that verse — the persisted
+  IN_APP choice is NEVER rewritten. **D-H-3:** the verse coordinate is the canonical decode of the
+  `canonicalId` (`VerseId.verse`), NOT the display label. A superscription tap (verse 0) clamps to
+  verse 1. Each verse is a ≥48dp `Role.Button` tap target speaking "Open <Book> <ch>:<verse>. <text>".
+  **Verse URLs live-verified 2026-06-15** across providers and awkward books (Psalms incl.
+  Ps 119:176, Philemon, 2/3 John) — recorded in docs/data/provider-link-checks.md; the committed
+  suite stays OFFLINE (`ProviderUrlBuilderTest`/`OpenVerseUseCaseTest` pin every shape; MySword is
+  the owner's on-device pass per S15). No INTERNET permission.
+  517 tests (net +19; **all three data/Room gates UNTOUCHED — plan = 7, BibleTextVerificationTest =
+  18, BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.2% on domain/data,
+  **5 load-bearing mutations killed** (global-index book-boundary off-by-one, BLB verse segment,
+  IN_APP→BLB fallback, verse-0 clamp, VM canonical-verse decode), each restored in place.
+  **Orphaned strings** (now unused in main, left in place — removable debt): `mark_whole_day_done`,
+  `unmark_whole_day`, `day_progress`. **Device-pass items (NOT JVM-provable):** chapter-swipe feel
+  across book boundaries + at the Gen-1/Rev-22 bounds; the reclaimed-space reader layout; verse-tap
+  on glass (target accuracy, the right external app opening at the right verse, MySword in-app).
+  Strings for tone sign-off: the verse-tap spoken label "Open <Book> <ch>:<verse>. <text>".
+  Handoff: [docs/sprints/sprint-00H-reader-swipe-verse-links.md](docs/sprints/sprint-00H-reader-swipe-verse-links.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

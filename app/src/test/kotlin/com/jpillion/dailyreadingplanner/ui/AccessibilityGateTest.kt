@@ -84,7 +84,6 @@ class AccessibilityGateTest {
                             dayComplete = false,
                         ),
                     onToggleReading = {},
-                    onMarkWholeDay = {},
                     onReadingTapped = {},
                     onRetry = {},
                 )
@@ -93,7 +92,6 @@ class AccessibilityGateTest {
         for (stream in 1..3) {
             composeRule.onNodeWithTag("toggle-$stream").assertTouchTargetAtLeast(48.dp)
         }
-        composeRule.onNodeWithTag("whole-day-button").performScrollTo().assertTouchTargetAtLeast(48.dp)
     }
 
     @Test
@@ -302,46 +300,49 @@ class AccessibilityGateTest {
     }
 
     @Test
-    fun `reader Prev and Next controls meet 48dp touch targets`() {
+    fun `reader tappable verses and picker action meet 48dp touch targets`() {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
-                ReaderScreen(
-                    state =
-                        ReaderUiState.Content(
-                            blocks =
-                                listOf(
-                                    ChapterContent(
-                                        bookNo = 19,
-                                        bookName = "Psalms",
-                                        chapter = 23,
-                                        verses =
-                                            listOf(
-                                                VerseText(
-                                                    VerseId.encode(19, 23, 0),
-                                                    "",
-                                                    isTitle = true,
-                                                    markup = "A Psalm of David.",
-                                                ),
-                                                VerseText(
-                                                    VerseId.encode(19, 23, 1),
-                                                    "1",
-                                                    isTitle = false,
-                                                    markup = "The <a>LORD</a> is my shepherd",
-                                                ),
+                val state =
+                    ReaderUiState.Content(
+                        blocks =
+                            listOf(
+                                ChapterContent(
+                                    bookNo = 19,
+                                    bookName = "Psalms",
+                                    chapter = 23,
+                                    verses =
+                                        listOf(
+                                            VerseText(
+                                                VerseId.encode(19, 23, 0),
+                                                "",
+                                                isTitle = true,
+                                                markup = "A Psalm of David.",
                                             ),
-                                    ),
+                                            VerseText(
+                                                VerseId.encode(19, 23, 1),
+                                                "1",
+                                                isTitle = false,
+                                                markup = "The <a>LORD</a> is my shepherd",
+                                            ),
+                                        ),
                                 ),
-                            title = "Psalms 23",
-                        ),
+                            ),
+                        title = "Psalms 23",
+                    )
+                ReaderScreen(
+                    pagerState =
+                        androidx.compose.foundation.pager
+                            .rememberPagerState(initialPage = 0) { 1 },
+                    stateForPage = { state },
                     onOpenPicker = {},
-                    onPrevChapter = {},
-                    onNextChapter = {},
+                    onVerseTapped = { _, _ -> },
                     onRetry = {},
                 )
             }
         }
-        composeRule.onNodeWithTag("reader-prev-chapter").assertTouchTargetAtLeast(48.dp)
-        composeRule.onNodeWithTag("reader-next-chapter").assertTouchTargetAtLeast(48.dp)
+        // H7: each tappable verse is a >=48dp target (and the picker action stays a target).
+        composeRule.onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}").assertTouchTargetAtLeast(48.dp)
         composeRule.onNodeWithTag("reader-open-picker").assertTouchTargetAtLeast(48.dp)
         // The superscription carries heading semantics and speaks the plain (stripped) title.
         composeRule
