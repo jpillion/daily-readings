@@ -463,12 +463,51 @@ Do not reference or depend on strikelog.
   Sprint 1 gate untouched), full pipeline green; Kover floor met. **No reader UI** (Sprint B+).
   Device-pass items: real `createFromAsset` copy + asset-version re-copy on a device.
   Handoff: [docs/sprints/sprint-00A-bible-data-foundation.md](docs/sprints/sprint-00A-bible-data-foundation.md).
-- Next up: **V3 Sprint B — the spine: seam, resolver, Portion bridge**
-  (`sprint-00B-spine-resolver-bridge`): `BibleTextSource` + `RoomBibleTextSource` + the
-  `VerseId`/`VerseRef`(verse ∈ [0,999])/`ReferenceResolver`(clean-fail)/`PortionVerseBridge`
-  spine over the now-trusted asset; pure-JVM-testable, no UI. (V2.x release prep — version
-  bump past 1.3.5/10305, S9 + S12–S20 device pass, S12–S20 string tone sign-offs incl. the
-  D-S20-1 "Missed"-vs-"Not read" flag, tag-to-Play rollout — remains queued, owner-scheduled
+- ✅ **V3 Sprint B (the spine: seam, resolver, Portion bridge) is DONE** (uncommitted in the
+  working tree; the main session verifies and commits; version untouched). Pure-JVM, NO UI.
+  "Given a `Portion` or a reference string, here are the verse_id ranges and the verse text" is
+  now callable and exhaustively tested through ONE seam. (1) **The seam is bound and live:**
+  `bible/domain/BibleTextSource` (`getVerses(VerseRange): List<VerseText>`) + `VerseText`
+  (`canonicalId`/`nativeLabel`/`isTitle`/`markup` — reads `native_label` from the row, D-V3-4,
+  never derives the display number); `bible/data/RoomBibleTextSource` maps `VerseDao.getVerses`
+  onto it; `di/BibleModule` now binds `RoomBibleTextSource → BibleTextSource` (new abstract
+  `BibleBindsModule`). The domain injects the seam ALONE; Room types stay in `bible/data`.
+  (2) **`VerseId`** (`encode`/`book`/`chapter`/`verse`/`chapterRange`/`bookRange`, `Long` ids,
+  `chapterRange` starts at verse 0 so titles are covered) + **`VerseRange`** (inclusive,
+  rejects reversed). (3) **`VerseRef`** with the **verse ∈ [0,999]** invariant (D-V3-9) — the
+  `require(verse >= 1)` Psalm-title trap is mutation-pinned (verse-0 title test goes red on the
+  regression). (4) **`ReferenceResolver`** (clean-fail, D-V3-10): parses string + OSIS-dotted +
+  same-chapter ranges + whole-chapter/whole-book; a 60+-entry alias table (lowercased canonical
+  names, numbered-book forms "1john"/"i john", "Psalm"/"Ps", USFM/common abbrevs); **bare "John"
+  is always the Gospel, never a numbered John**; ANY malformed input → `null`, never a
+  plausible-but-wrong range. **Cross-chapter ranges are NOT supported in V3.0** (no consumer; a
+  verse-count-aware end-of-chapter resolution is out of scope) — they clean-fail to `null`
+  (pinned). `formatOsis` is a reserved V3.x stub. (5) **`ConsecutiveChapterRuns`** lifted to
+  `bible/domain` (D-V3-10): `ProviderUrlBuilder` now delegates to it (its private
+  `consecutiveRuns` deleted), so external egress and internal nav share ONE grouping and cannot
+  drift; the same-book guard is mutation-pinned (Jude 1 + Rev 2 must not merge). (6)
+  **`PortionVerseBridge.rangesFor`** maps each `Reference` INDEPENDENTLY (never assumes a shared
+  book), so the Jun 19/Dec 19 two-book portion (2 John + 3 John) yields two ranges across two
+  books for free; **`GetChapterUseCase`** ((book,chapter) → `ChapterContent`) and
+  **`GetPortionTextUseCase`** (`Portion` → ordered `PortionContent` blocks, M-V3-4 whole-portion
+  render incl. the two-book portion) consume the seam. 421/421 tests (46 new; **both data gates
+  untouched — the 7-test Sprint-1 plan gate AND the 18-assertion `BibleTextVerificationTest`**),
+  **5 mutations killed** (verse∈[0,999] trap, resolver reversed-range clean-fail, resolver
+  out-of-range-chapter clean-fail, bridge shared-book assumption, consecutiveRuns cross-book
+  merge), each by its intended test, restored in place; Kover 96.2% on domain/data; full
+  pipeline green. No UI, no new runtime deps, no manifest/DataStore/Room-schema change. Known
+  debt carried forward: the `BibleAssetVersion` startup hook (still deferred to Sprint E device
+  pass) and the `exportBookCatalog` Gradle-task wrapping (Jordan follow-up).
+  Handoff: [docs/sprints/sprint-00B-spine-resolver-bridge.md](docs/sprints/sprint-00B-spine-resolver-bridge.md).
+- Next up: **V3 Sprint C — the reader UI** (`sprint-00C-reader-ui`): `ReaderRoute`/`ReaderScreen`/
+  `ReaderViewModel`; the verse-id-keyed `LazyColumn` (D-V3-12); `VerseRenderer` (closed-tag →
+  `AnnotatedString`, `<a>`→italic) + verse-0 superscription as unnumbered `heading()`-semantic
+  heading; two-step book→chapter picker; `HorizontalPager` chapter nav + Prev/Next; `fontScale`
+  reuse; in-session last-read (`SavedStateHandle`); the EMPTY audio seam (D-V3-14);
+  accessibility-gate extension. Consumes the Sprint B surface: inject `GetChapterUseCase` /
+  `GetPortionTextUseCase` (suspend → `ChapterContent`/`PortionContent`), key list items by
+  `VerseText.canonicalId`, render `VerseText.markup`, label with `VerseText.nativeLabel`, branch
+  the superscription on `VerseText.isTitle`. (V2.x release prep remains queued, owner-scheduled
   independently of the V3 line.)
 ## The reading plan
 

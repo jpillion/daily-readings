@@ -3,7 +3,10 @@ package com.jpillion.dailyreadingplanner.di
 import android.content.Context
 import androidx.room.Room
 import com.jpillion.dailyreadingplanner.bible.data.BibleDatabase
+import com.jpillion.dailyreadingplanner.bible.data.RoomBibleTextSource
 import com.jpillion.dailyreadingplanner.bible.data.VerseDao
+import com.jpillion.dailyreadingplanner.bible.domain.BibleTextSource
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -44,4 +47,18 @@ object BibleModule {
 
     @Provides
     fun provideVerseDao(database: BibleDatabase): VerseDao = database.verseDao()
+}
+
+/**
+ * VB-T2 — binds the seam. Separate abstract module because [BibleModule] is an `object`
+ * (provides) and `@Binds` requires an abstract method. [RoomBibleTextSource] is the only
+ * implementation; the domain layer injects [BibleTextSource] alone (the Room types stay in
+ * `bible/data`).
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class BibleBindsModule {
+    @Binds
+    @Singleton
+    abstract fun bindBibleTextSource(impl: RoomBibleTextSource): BibleTextSource
 }

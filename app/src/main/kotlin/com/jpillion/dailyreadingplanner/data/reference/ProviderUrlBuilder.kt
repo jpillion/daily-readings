@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.data.reference
 
+import com.jpillion.dailyreadingplanner.bible.domain.ConsecutiveChapterRuns
 import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
@@ -60,7 +61,7 @@ class ProviderUrlBuilder
          */
         private fun bibleGatewayUrl(portion: Portion): String {
             val search =
-                consecutiveRuns(portion.refs).joinToString(",") { run ->
+                ConsecutiveChapterRuns.group(portion.refs).joinToString(",") { run ->
                     val book = run.first().book.canonicalName
                     if (run.size == 1) {
                         "$book ${run.first().chapter}"
@@ -70,24 +71,5 @@ class ProviderUrlBuilder
                 }
             val encoded = URLEncoder.encode(search, Charsets.UTF_8.name())
             return "https://www.biblegateway.com/passage/?search=$encoded&version=KJV"
-        }
-
-        /**
-         * Runs of the same book with consecutive ascending chapters, order-preserving — the
-         * same grouping ReadingFormatter renders, kept here separately because the data layer
-         * cannot depend on ui (equivalence on the two-book portion is pinned in tests).
-         */
-        private fun consecutiveRuns(refs: List<Reference>): List<List<Reference>> {
-            val runs = mutableListOf<MutableList<Reference>>()
-            for (ref in refs) {
-                val current = runs.lastOrNull()
-                val previous = current?.last()
-                if (previous != null && previous.book == ref.book && previous.chapter + 1 == ref.chapter) {
-                    current += ref
-                } else {
-                    runs += mutableListOf(ref)
-                }
-            }
-            return runs
         }
     }
