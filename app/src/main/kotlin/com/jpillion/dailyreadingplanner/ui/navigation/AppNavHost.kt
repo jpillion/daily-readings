@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -48,7 +49,7 @@ object Routes {
  * NavHost (and retires the Sprint-C temporary reader push).
  */
 @Composable
-fun RootScaffold() {
+fun RootScaffold(rootViewModel: RootViewModel = hiltViewModel()) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -64,7 +65,12 @@ fun RootScaffold() {
                 )
                 NavigationBarItem(
                     selected = currentDestination.isInGraph(Graph.BIBLE),
-                    onClick = { navController.switchTab(Graph.BIBLE) },
+                    onClick = {
+                        // D-I-2 (OQ-A): tapping the Bible tab always means single-chapter Browse —
+                        // reset the reader before switching (a reading tap uses the other handoff path).
+                        rootViewModel.onBibleTabSelected()
+                        navController.switchTab(Graph.BIBLE)
+                    },
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_bible_book),

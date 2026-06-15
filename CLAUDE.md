@@ -766,6 +766,47 @@ Do not reference or depend on strikelog.
   on glass (target accuracy, the right external app opening at the right verse, MySword in-app).
   Strings for tone sign-off: the verse-tap spoken label "Open <Book> <ch>:<verse>. <text>".
   Handoff: [docs/sprints/sprint-00H-reader-swipe-verse-links.md](docs/sprints/sprint-00H-reader-swipe-verse-links.md).
+- ✅ **Sprint I (reading-portion view — Phase 1, multi-chapter combined page) is DONE**
+  (uncommitted in the working tree; the main session verifies + commits; version untouched at
+  1.3.5/10305 — needs a bump to ship). **Phase 1 only** per docs/features/reader-portion-view.md;
+  the Psalm-119 verse-range track (Phase 2, a plan-data change) is OUT of scope and the plan
+  data/schema were NOT touched. **Tapping a multi-chapter reading on the Schedule now opens it as
+  ONE combined page in the reader, and swiping out and back is consistent.** The reader now has
+  TWO contexts (D-I-1, sealed `bible/ui/reader/ReaderContext`): **Browse** (Bible tab / picker) =
+  the Sprint-H single-chapter swipe over `GlobalChapterIndex` (1189 pages, UNCHANGED); **Reading**
+  (a Schedule reading tap) = a portion-anchored pager over the new pure
+  `bible/ui/reader/ReadingPagerIndex(portion)` — the portion's contiguous global-chapter span
+  `[first…last]` COLLAPSES to ONE atomic page at index `first`, flanked by the single chapters
+  before (pages `0..first-1`, identity) and after (pages shifted left by `collapsedSpan = last-first`
+  so the collapsed chapters never reappear); `pageCount = TOTAL_CHAPTERS - collapsedSpan`, Gen-1/
+  Rev-22 bounds free. The portion page renders the WHOLE portion as ordered blocks via the revived
+  `GetPortionTextUseCase` (`ReaderViewModel` re-injects it). Single-chapter readings (776 of the
+  plan) are `collapsedSpan == 0` = behaves exactly like Browse. **Two-book Jun 19/Dec 19 (2 John +
+  3 John) are globally adjacent → one contiguous page for free.** **Consistency (the owner's core
+  ask, pinned):** swipe right from the portion → the next single chapter after `last` (James 4–5 →
+  1 Peter 1 since James ends at ch 5; James 1–2 → James 3); swipe back left → the SAME combined
+  portion page (never the portion's last chapter alone), because the portion is one fixed page
+  index. **D-I-2 (OQ-A, owner-resolved):** tapping the Bible **tab** always resets to single-chapter
+  Browse at the last-read chapter; only a Schedule reading tap enters Reading; the picker also forces
+  Browse. Implemented via two mutually-exclusive signals on the shared `@ActivityRetainedScoped`
+  `ReaderHandoff` — `request(portion)` (→ Reading, the existing D-D-1 path) vs the new
+  `requestBrowse()` (→ Browse), the latter raised by a new `ui/navigation/RootViewModel` from the
+  nav bar's Bible-tab click; a reading tap supersedes a stale browse request and vice-versa. The
+  route rebuilds the `PagerState` per context via `key(...)` so the page-index spaces never collide.
+  **Per-verse external tap-out (Sprint H) works UNCHANGED inside the combined page** — each verse
+  keeps its canonical id (James 2:3 in the James 1–2 page taps out to jas/2/3, not the first
+  chapter). Supersedes D-H-7 (reading-tap-lands-on-first-chapter) for the Reading context. New:
+  `ReadingPagerIndex`, `ReaderContext`, `RootViewModel`; changed: `ReaderViewModel` (two contexts +
+  per-context page cache cleared on switch + last-read tracks the underlying single chapter, D-I-4),
+  `ReaderRoute` (context-driven pager), `ReaderHandoff` (+browse signal), `RootScaffold` (Bible-tab
+  reset). NO plan-data/schema, Room, DataStore, manifest, or new-dependency changes. 568 tests
+  (net +21; **all three data/Room gates UNTOUCHED — plan = 7, BibleTextVerificationTest = 18,
+  BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.3% on domain/data, a11y gate
+  green (7/7), **5 load-bearing mutations killed** (flank shift dropped, page-count not shrunk,
+  combined-render branch disabled, resetToBrowse no-op, portionLastGlobal from first ref), each
+  restored in place. **Device-pass items (NOT JVM-provable):** combined-page scroll feel for 3–5-
+  chapter portions; the swipe-out-and-back feel on glass; the tab-reset-to-Browse behaviour.
+  Handoff: [docs/sprints/sprint-00I-reading-portion-view.md](docs/sprints/sprint-00I-reading-portion-view.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

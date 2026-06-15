@@ -4,6 +4,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -19,10 +20,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
- * H2 (D-H-2) — stateful reader entry. Owns [ReaderViewModel], the chapter [rememberPagerState] over
- * the whole canon ([GlobalChapterIndex.TOTAL_CHAPTERS] pages), the picker sheet, and the verse-tap
- * launch side-effect. The pager opens on the VM's [ReaderViewModel.initialPage] (in-session last-read,
- * or a Schedule-tap portion handoff — D-H-7); the picker jumps the pager to the chosen chapter's page.
+ * I3 (D-I-1 / D-I-2) — stateful reader entry, two-context aware. Owns [ReaderViewModel], the
+ * chapter [rememberPagerState], the picker sheet, and the verse-tap launch side-effect.
+ *
+ * The pager is built for the VM's CURRENT [ReaderViewModel.context] — Browse over the whole canon
+ * ([GlobalChapterIndex.TOTAL_CHAPTERS] pages), or Reading over the portion-anchored
+ * [ReadingPagerIndex] ([ReaderContext.pageCount] pages with the portion collapsed to one page). A
+ * context switch (a Schedule reading tap → Reading; a Bible-tab tap / picker jump → Browse)
+ * rebuilds the [androidx.compose.foundation.pager.PagerState] from scratch via [keyForContext], so
+ * the page-index space and initial page are always those of the active context.
+ *
+ * The picker forces Browse and jumps the pager to the chosen chapter's global page (D-I-2).
  */
 @Composable
 fun ReaderRoute(
@@ -31,17 +39,21 @@ fun ReaderRoute(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScopeForRoute()
+    val readerContext by viewModel.context.collectAsStateWithLifecycle()
     val initialPage by viewModel.initialPage.collectAsStateWithLifecycle()
-    val pagerState = rememberPagerState(initialPage = initialPage) { GlobalChapterIndex.TOTAL_CHAPTERS }
+
+    // A fresh PagerState per context (and per portion / initial page): switching Browse <-> Reading
+    // changes the page-index space, so the pager must be rebuilt — wrapped in key(...) on the
+    // context identity so a switch discards the old state (rememberPagerState has no key param).
+    val pagerState =
+        key(keyForContext(readerContext, initialPage)) {
+            rememberPagerState(initialPage = initialPage) { readerContext.pageCount }
+        }
+
     var showPicker by remember { mutableStateOf(false) }
 
-    // A portion handoff arriving while the reader is alive bumps initialPage: animate there.
-    LaunchedEffect(initialPage) {
-        if (pagerState.currentPage != initialPage) pagerState.animateScrollToPage(initialPage)
-    }
-
     // Record the settled page as the in-session last-read.
-    LaunchedEffect(pagerState) {
+    LaunchedEffect(pagerState, readerContext) {
         snapshotFlow { pagerState.currentPage }.distinctUntilChanged().collect(viewModel::onPageSettled)
     }
 
@@ -65,12 +77,29 @@ fun ReaderRoute(
         BookChapterPickerSheet(
             onChapterSelected = { book, chapter ->
                 showPicker = false
+                // D-I-2: a picker jump is a Browse action — leave any Reading context first, then
+                // jump the (rebuilt) Browse pager to the chosen chapter.
+                viewModel.resetToBrowse()
                 scope.launch { pagerState.animateScrollToPage(GlobalChapterIndex.indexOf(book, chapter)) }
             },
             onDismiss = { showPicker = false },
         )
     }
 }
+
+/**
+ * A stable identity for a context: Browse is one key; each Reading session is keyed by its portion
+ * page so re-entering a different reading rebuilds the pager. The initial page is folded in so an
+ * in-session restore to a different page rebuilds too.
+ */
+private fun keyForContext(
+    context: ReaderContext,
+    initialPage: Int,
+): Any =
+    when (context) {
+        ReaderContext.Browse -> "browse:$initialPage"
+        is ReaderContext.Reading -> "reading:${context.index.portionFirstGlobal}-${context.index.portionLastGlobal}"
+    }
 
 @Composable
 private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectAsStateValue(): T {
