@@ -213,13 +213,31 @@ class SettingsRepositoryImplTest {
             assertThat(repository.showStreaks.first()).isTrue()
         }
 
+    // --- S21 persistent notification; default flipped ON in S22 (owner, amends D-S22-5). ---
+
     @Test
-    fun `persistent notification defaults to off and round-trips both ways`() =
+    fun `persistent notification defaults to on when nothing is stored - on-by-default`() =
         themeTest { repository, _ ->
+            // Mutation target: the absent-key default (true). A fresh install is on by default
+            // so the day's readings sit in the tray without the user opting in.
+            assertThat(repository.persistentNotificationEnabled.first()).isTrue()
+        }
+
+    @Test
+    fun `an explicitly stored false survives the S22 default flip`() =
+        themeTest { repository, dataStore ->
+            // Mutation target: a deliberate OFF must not be overridden by the new on-by-default.
+            // A user who turned it off keeps it off across launches.
+            dataStore.edit { it[booleanPreferencesKey("persistent_notification_enabled")] = false }
+            assertThat(repository.persistentNotificationEnabled.first()).isFalse()
+        }
+
+    @Test
+    fun `persistent notification round-trips both ways`() =
+        themeTest { repository, _ ->
+            repository.setPersistentNotificationEnabled(false)
             assertThat(repository.persistentNotificationEnabled.first()).isFalse()
             repository.setPersistentNotificationEnabled(true)
             assertThat(repository.persistentNotificationEnabled.first()).isTrue()
-            repository.setPersistentNotificationEnabled(false)
-            assertThat(repository.persistentNotificationEnabled.first()).isFalse()
         }
 }

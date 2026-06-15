@@ -94,10 +94,16 @@ class SettingsRepositoryImpl
             }
         }
 
-        /** S21: absent key = false — the persistent notification is opt-in. */
+        /**
+         * S22 (owner, amends D-S22-5): absent key = true — the persistent notification is ON by
+         * default. A user who explicitly toggled it keeps their stored value (normal DataStore
+         * behavior); only never-touched installs see the new on-by-default. The launch-time
+         * POST_NOTIFICATIONS request (see ShouldRequestNotificationPermissionOnLaunchUseCase)
+         * makes on-by-default actually post on a fresh API 33+ install.
+         */
         override val persistentNotificationEnabled: Flow<Boolean> =
             dataStore.data.map { preferences ->
-                preferences[PERSISTENT_NOTIFICATION_ENABLED_KEY] ?: false
+                preferences[PERSISTENT_NOTIFICATION_ENABLED_KEY] ?: true
             }
 
         override suspend fun setPersistentNotificationEnabled(enabled: Boolean) {

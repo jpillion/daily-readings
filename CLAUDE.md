@@ -480,6 +480,32 @@ Do not reference or depend on strikelog.
   strings need owner tone sign-off (table in the handoff). Device-pass: real 01:00 fire,
   reboot persistence, tray ranking/expansion, ongoing non-dismissibility.
   Handoff: [docs/sprints/sprint-0022-persistent-notification.md](docs/sprints/sprint-0022-persistent-notification.md).
+- ✅ **Persistent notification ON by default (owner tweak to S22, `2026-06-15`) is DONE**
+  (uncommitted in the working tree; version untouched — the main session verifies + commits).
+  **D-S22-5 amended: default flipped off → on.** The persistent tray notification
+  (Settings → "Keep readings in the tray") is now ON for fresh/never-touched installs;
+  `SettingsRepositoryImpl.persistentNotificationEnabled` reads `?: true` (was `?: false`,
+  same absent-key idiom as the S18 `show_streaks` flip) — an explicitly stored OFF survives,
+  never re-defaulted. **The permission wrinkle:** on-by-default needs POST_NOTIFICATIONS
+  (API 33+), ungranted on a fresh install. New `domain/ShouldRequestNotificationPermission
+  OnLaunchUseCase` (JVM-tested) returns true iff persistent-enabled AND permission missing
+  (reuses the S12 `NotificationPermissionChecker`, always-granted below API 33 so no prompt
+  there — it just posts). `MainActivity.onCreate` hosts the `RequestPermission` launcher and,
+  after `rescheduleAlarms()`, fires the system prompt **once per launch** when the use case
+  says yes; on grant it re-runs `rescheduleAlarms()` so the notification posts immediately, on
+  denial nothing changes (setting stays on, simply can't post — no crash, no nag; mirrors the
+  S12 reminder's denial). **Sequencing:** the OS permission dialog is its own surface (not a
+  third in-app dialog), fired after the alarm reschedule — deliberately NOT chained behind the
+  day screen's tracking-start + reading-destination first-run dialogs. Disabling still cancels
+  the 01:00 alarm + dismisses the notification; 01:00 refresh, boot/launch re-arm, Feb-29 body,
+  BigText readings — all unchanged. No new permissions/receivers/Room/manifest changes. 547/547
+  tests (net +5; the three data/Room gates untouched — plan 7, BibleText 18, RoomOpen 5),
+  **4 mutations killed** (default `?:true`→`?:false`; read-body ignores-stored; drop
+  persistent-enabled gate; drop !granted gate), each by its intended test, restored in place;
+  Kover 95.1% on domain/data; full pipeline green. Version untouched. **Device-pass:** fresh
+  API 33+ install shows the prompt at first launch and posts the notification after granting
+  POST_NOTIFICATIONS (and no crash / toggle still on after denying).
+  Addendum in the handoff: [docs/sprints/sprint-0022-persistent-notification.md](docs/sprints/sprint-0022-persistent-notification.md).
 - ✅ **V3 Sprint A (Bible data foundation — the HARD GATE) is DONE** (uncommitted in the
   working tree; the main session verifies the gate and commits; version untouched at
   1.3.5/10305 — V3 WIP). **The project's second core-IP asset exists and is provably

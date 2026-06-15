@@ -65,9 +65,12 @@ interface SettingsRepository {
     suspend fun setReminderTime(time: LocalTime)
 
     /**
-     * Persistent (ongoing) tray notification opt-in (S21): off by default. When on, a silent,
-     * non-dismissible notification listing today's three readings sits in the tray and refreshes
-     * to the new day at 01:00 local time. Separate from [reminderEnabled] (the popup reminder).
+     * Persistent (ongoing) tray notification opt-in (S21; default flipped ON in S22 per the owner,
+     * amending D-S22-5). When on, a silent, non-dismissible notification listing today's three
+     * readings sits in the tray and refreshes to the new day at 01:00 local time. Separate from
+     * [reminderEnabled] (the popup reminder). Absent key = true (fresh installs are on); an
+     * explicitly stored choice survives. On a fresh API 33+ install the launch-time
+     * POST_NOTIFICATIONS request is what lets the on-by-default notification actually post.
      */
     val persistentNotificationEnabled: Flow<Boolean>
 

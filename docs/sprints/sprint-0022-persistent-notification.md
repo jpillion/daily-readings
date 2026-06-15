@@ -158,3 +158,74 @@ guilt/urgency vocabulary. Title duplicates the S12 reminder title intentionally 
   tone sign-off.
 - Standing debt unchanged: Robolectric pinned `@Config(sdk = [34])`; JVM-untested MainActivity/
   receiver hooks; CLI agent credentials expired.
+
+
+---
+
+## Amendment — persistent notification ON by default (owner request, 2026-06-15)
+
+**Working tree (uncommitted) follow-up to S22; version untouched; the main session verifies + commits.**
+
+**The change.** The owner asked for the persistent tray notification (Settings → "Keep readings
+in the tray") to be **ON by default** instead of off. **D-S22-5 is amended: default flipped
+off → on**, with a launch-time permission request so on-by-default actually posts.
+
+**What changed:**
+
+1. **Absent-key default flipped off → on.** `SettingsRepositoryImpl.persistentNotificationEnabled`
+   now reads `?: true` (was `?: false`). A fresh / never-touched install is on; a device where the
+   user explicitly toggled it keeps its stored value (normal DataStore behavior — an explicit OFF
+   survives, never re-defaulted). This is the same absent-key-default idiom as the S18 `show_streaks`
+   flip. Pinned by two tests in `SettingsRepositoryImplTest`: *"persistent notification defaults to on
+   when nothing is stored"* and *"an explicitly stored false survives the S22 default flip"*.
+
+2. **Launch-time POST_NOTIFICATIONS request (the permission wrinkle).** A default-on notification
+   needs POST_NOTIFICATIONS (API 33+), which a fresh install hasn't granted. New
+   `domain/ShouldRequestNotificationPermissionOnLaunchUseCase` owns the *should we ask* rule
+   (JVM-tested): returns true iff `persistentNotificationEnabled` is on AND the runtime permission
+   is missing (reusing the S12 `NotificationPermissionChecker` seam, which is always-granted below
+   API 33 — so the use case returns false there and no prompt shows; the notification just posts).
+   `MainActivity` hosts the actual `RequestPermission` launcher (the only place that can): in
+   `onCreate`, after `rescheduleAlarms()`, if the use case says yes it launches the system prompt
+   **once per launch**. On **grant** → MainActivity re-runs `rescheduleAlarms()` →
+   `RefreshPersistentNotificationUseCase` posts the notification immediately. On **denial** → nothing
+   changes: the setting stays on, simply can't post (no crash, no nag loop); the notification appears
+   if/when the user later grants notifications. This mirrors how the S12 reminder handles denial
+   (a denial never disables the feature).
+
+3. **First-run sequencing decision.** The first run already shows the tracking-start prompt and the
+   reading-destination prompt (both in-app Compose `Dialog`s rendered by the day screen's ViewModel,
+   D-S19-2). The notification-permission request is the **OS's own surface**, not a third in-app
+   dialog, so it does not visually stack with those two. Decision: fire it from `onCreate` **after**
+   the alarm reschedule, as a single one-shot per launch — the standard first-launch notification
+   prompt every app shows. We deliberately did **not** chain it behind the in-app dialogs
+   (that would need cross-ViewModel coordination for no real benefit) and we never re-prompt within a
+   session. The OS itself rate-limits repeat system prompts across launches.
+
+4. **Unchanged:** disabling in Settings still cancels the 01:00 alarm + dismisses the notification;
+   the 01:00 refresh, boot/launch re-arm, Feb-29 "No readings scheduled today" body, BigText three
+   references, and the shared S12 permission prompt (`PendingPermissionFeature`) are all untouched.
+   No new permissions (POST_NOTIFICATIONS already declared in S12), no new receivers, no Room/manifest
+   changes. The `FakeSettingsRepository` in-memory default stays `false` (a neutral starting point for
+   behavior tests; the real absent-key default is pinned by the repository test only).
+
+**Verification.** 547/547 tests (net +5: removed 1 combined repo test, added 3 repo tests +
+3 `ShouldRequest…` tests; the three data/Room gates untouched — plan 7, BibleTextVerificationTest 18,
+BibleDatabaseRoomOpenTest 5). **4 mutations killed, each by its intended test, restored in place:**
+(1) `?: true` → `?: false` → *"defaults to on"* RED; (2) read body → `true` (ignore stored) →
+*"explicitly stored false survives"* RED; (3) drop the `persistentEnabled` gate → *"disabled - never
+requests"* RED; (4) drop the `!granted` gate → *"granted - does not request"* RED. Full pipeline green
+(`spotlessCheck lintDebug assembleDebug testDebugUnitTest koverXmlReportAppDebug koverVerifyAppDebug`);
+Kover 95.1% instruction / 95.3% line on domain/data (floor 70%). Version untouched.
+
+**Device-pass item added:** on a fresh API 33+ install, confirm the POST_NOTIFICATIONS prompt appears
+at first launch and, after **granting**, the persistent notification posts (the day's three readings)
+without revisiting Settings; after **denying**, the app does not crash and the Settings toggle still
+reads on (and the notification appears later if the user grants notifications via system settings).
+The MainActivity launcher + post-grant re-post path is thin and JVM-untested as wiring.
+
+**Files touched:** `data/prefs/SettingsRepository.kt` (interface doc),
+`data/prefs/SettingsRepositoryImpl.kt` (`?: true` + doc), new
+`domain/ShouldRequestNotificationPermissionOnLaunchUseCase.kt`, `MainActivity.kt` (launcher + hook),
+`data/prefs/SettingsRepositoryImplTest.kt` (rewritten persistent tests), new
+`domain/ShouldRequestNotificationPermissionOnLaunchUseCaseTest.kt`.
