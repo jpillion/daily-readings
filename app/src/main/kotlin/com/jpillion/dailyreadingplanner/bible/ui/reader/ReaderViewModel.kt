@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.bible.domain.GetChapterUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
+import com.jpillion.dailyreadingplanner.bible.domain.GetTranslationsUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
@@ -62,6 +63,7 @@ class ReaderViewModel
     constructor(
         private val getChapter: GetChapterUseCase,
         private val getPortionText: GetPortionTextUseCase,
+        private val getTranslations: GetTranslationsUseCase,
         private val openVerse: OpenVerseUseCase,
         private val savedStateHandle: SavedStateHandle,
         private val readerHandoff: ReaderHandoff,
@@ -89,6 +91,16 @@ class ReaderViewModel
         private val _initialPage = MutableStateFlow(restoredBrowsePage())
         val initialPage: StateFlow<Int> = _initialPage.asStateFlow()
 
+        /**
+         * D-N-1 / D-N-3 — the bundled text versions and the selected one, for the reader top-bar
+         * version control. Sourced from the asset's `translation` table via the seam (never a
+         * hardcoded literal); today exactly one row (KJV), so [ReaderVersionSelector] renders it as a
+         * static title. Loaded once in [init]; [selectVersion] is a no-op placeholder until a second
+         * version is bundled (V4 multi-translation work — NOT built here).
+         */
+        private val _versionState = MutableStateFlow(ReaderVersionState())
+        val versionState: StateFlow<ReaderVersionState> = _versionState.asStateFlow()
+
         init {
             // VD-T5 (D-D-1) / I2 (D-I-1): a Schedule reading tap hands off a portion to read in-app —
             // enter the Reading context anchored on that portion and open on the combined portion
@@ -106,6 +118,11 @@ class ReaderViewModel
                     readerHandoff.consumeBrowseRequest()
                     resetToBrowse()
                 }
+            }
+            // D-N-1: load the bundled versions once for the top-bar version control.
+            viewModelScope.launch {
+                val versions = runCatching { getTranslations() }.getOrDefault(emptyList())
+                _versionState.value = ReaderVersionState(available = versions, selected = versions.firstOrNull())
             }
         }
 
@@ -183,6 +200,15 @@ class ReaderViewModel
             viewModelScope.launch {
                 openDestinationChannel.send(openVerse(Reference(book, chapter), verse))
             }
+        }
+
+        /**
+         * D-N-3 — select a version. A no-op placeholder: today exactly one version is bundled, so
+         * the selector renders a static title and never calls this. When a second translation is
+         * bundled (V4), this becomes the switch point; version-switching machinery is NOT built here.
+         */
+        fun selectVersion(translation: com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation) {
+            _versionState.value = _versionState.value.copy(selected = translation)
         }
 
         /** Retry a failed page load in the current context. */

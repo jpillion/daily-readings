@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.bible.domain.FakeBibleTextSource
 import com.jpillion.dailyreadingplanner.bible.domain.GetChapterUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
+import com.jpillion.dailyreadingplanner.bible.domain.GetTranslationsUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.PortionVerseBridge
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
@@ -39,6 +40,7 @@ class ReaderViewModelTest {
     private val source = FakeBibleTextSource()
     private val getChapter = GetChapterUseCase(source)
     private val getPortionText = GetPortionTextUseCase(PortionVerseBridge(), source)
+    private val getTranslations = GetTranslationsUseCase(source)
     private val settings = FakeSettingsRepository()
     private val openVerse = OpenVerseUseCase(settings, ProviderUrlBuilder())
     private val handoff = ReaderHandoff()
@@ -51,7 +53,7 @@ class ReaderViewModelTest {
     private val psalms23Page = GlobalChapterIndex.indexOf(psalms, 23)
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
-        ReaderViewModel(getChapter, getPortionText, openVerse, handle, handoff, settings)
+        ReaderViewModel(getChapter, getPortionText, getTranslations, openVerse, handle, handoff, settings)
 
     private fun nt(vararg refs: Reference) = Portion(Stream.NEW_TESTAMENT, refs.toList())
 
@@ -269,5 +271,26 @@ class ReaderViewModelTest {
             advanceUntilIdle()
             assertThat(model.externalApp.value).isEqualTo(ExternalBibleApp.MYSWORD)
             job.cancel()
+        }
+
+    @Test
+    fun `versionState exposes the bundled versions from the seam (D-N-1)`() =
+        runTest {
+            // The fake seam returns the single KJV row; the VM surfaces it as the available versions
+            // and the selected one, so the top-bar version control sources its label from the data.
+            val model = vm()
+            advanceUntilIdle()
+            assertThat(
+                model.versionState.value.available
+                    .map { it.code },
+            ).containsExactly("KJV")
+            assertThat(
+                model.versionState.value.selected
+                    ?.code,
+            ).isEqualTo("KJV")
+            assertThat(
+                model.versionState.value.selected
+                    ?.name,
+            ).isEqualTo("King James Version")
         }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -15,7 +16,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,7 +77,9 @@ fun ReaderScreen(
     pagerState: PagerState,
     stateForPage: @Composable (Int) -> ReaderUiState,
     externalApp: ExternalBibleApp,
+    versionState: ReaderVersionState,
     onOpenPicker: () -> Unit,
+    onSelectVersion: (com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation) -> Unit,
     onVerseTapped: (page: Int, verseId: Long) -> Unit,
     onRetry: (page: Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -86,16 +89,27 @@ fun ReaderScreen(
         topBar = {
             TopAppBar(
                 title = {
+                    // Owner request (Priya): the pencil (open the book/chapter picker) sits in the
+                    // title slot, INLINE and to the LEFT of the chapter heading. The version control
+                    // lives on the right (actions). The pencil keeps the prior reader-open-picker tag
+                    // + onOpenPicker callback (the a11y gate pins that tag at a 48dp target).
                     val title = (stateForPage(pagerState.currentPage) as? ReaderUiState.Content)?.title.orEmpty()
-                    Text(text = title, modifier = Modifier.testTag("reader-title"))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onOpenPicker, modifier = Modifier.testTag("reader-open-picker")) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = stringResource(R.string.reader_pick_chapter),
+                            )
+                        }
+                        Text(text = title, modifier = Modifier.testTag("reader-title"))
+                    }
                 },
                 actions = {
-                    IconButton(onClick = onOpenPicker, modifier = Modifier.testTag("reader-open-picker")) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.List,
-                            contentDescription = stringResource(R.string.reader_pick_chapter),
-                        )
-                    }
+                    ReaderVersionSelector(
+                        versions = versionState.available,
+                        selected = versionState.selected,
+                        onSelect = onSelectVersion,
+                    )
                 },
             )
         },

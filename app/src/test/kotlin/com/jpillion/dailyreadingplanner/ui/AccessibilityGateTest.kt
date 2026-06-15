@@ -358,6 +358,18 @@ class AccessibilityGateTest {
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { state },
                     externalApp = com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp.BLB,
+                    versionState =
+                        com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderVersionState(
+                            available =
+                                listOf(
+                                    com.jpillion.dailyreadingplanner.bible.domain.model
+                                        .BibleTranslation("KJV", "King James Version"),
+                                ),
+                            selected =
+                                com.jpillion.dailyreadingplanner.bible.domain.model
+                                    .BibleTranslation("KJV", "King James Version"),
+                        ),
+                    onSelectVersion = {},
                     onOpenPicker = {},
                     onVerseTapped = { _, _ -> },
                     onRetry = {},

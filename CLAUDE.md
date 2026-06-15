@@ -976,6 +976,39 @@ Do not reference or depend on strikelog.
   sign-off. Device-pass (needs a real Play internal track): minor-bump surfaces the flow, DOWNLOADED →
   Restart installs, resume re-surface, patch-only stays silent.
   Handoff: [docs/sprints/sprint-0023-in-app-update.md](docs/sprints/sprint-0023-in-app-update.md).
+- ✅ **Reader top-bar redesign (owner UI request, `sprint-00N-reader-version-topbar`) is DONE**
+  (uncommitted in the working tree; the main session verifies + commits; no version bump —
+  display/structure-only, stays 1.4.2/10402). The in-app reader top bar now reads as the owner
+  asked: **a PENCIL (`Icons.Filled.Edit`, present in the frozen material-icons-core 1.7.8 — no
+  custom drawable, D-N-4) sits INLINE to the LEFT of the chapter heading and opens the book/chapter
+  picker** (replacing the `AutoMirrored.Filled.List` action; keeps `onOpenPicker`, the
+  `reader-open-picker` tag, the `reader_pick_chapter` contentDescription, ≥48dp), and **the bundled
+  version sits on the RIGHT.** **D-N-3:** `bible/ui/reader/ReaderVersionSelector` — ONE version
+  (today) renders the **code "KJV"** as a static `labelLarge`/onSurfaceVariant title (NOT a control;
+  tag `reader-version-title`), MORE than one renders the M3 `DropdownMenu` switch idiom (tags
+  `reader-version-dropdown`/`reader-version-option-<code>`) — the dropdown branch is built + tested
+  but UNEXERCISED in prod (version-switching machinery / second artifact / versification are the
+  deferred V4 work, NOT built). **D-N-2:** the visible label is the compact CODE; TalkBack hears the
+  unabbreviated NAME ("King James Version"). **D-N-1 (version sourced from data, NO Room-schema
+  change):** `BibleTextSource.translations()` reads the asset's existing `translation` table via a
+  raw `SimpleSQLiteQuery` on `database.openHelper.readableDatabase` (off-main) — deliberately NOT a
+  Room `@Entity`, so the pinned `room_master_table` identity hash (sprint-00F) is untouched;
+  `RoomBibleTextSource` injects `BibleDatabase` (its only ctor change). New: `BibleTranslation`,
+  `GetTranslationsUseCase`, `ReaderVersionState`/`ReaderVersionSelector`; `ReaderViewModel` exposes
+  `versionState` (loaded once from the seam) + a no-op `selectVersion` placeholder. New string
+  `reader_version_dropdown_description` (multi-version dropdown only). New `RoomBibleTextSourceTranslationsTest`
+  opens the REAL asset via the same Room `createFromAsset` builder and proves `translations()`
+  returns the KJV row (SEPARATE from the 5-test `BibleDatabaseRoomOpenTest` gate, whose count +
+  content are unchanged). 651 tests (net +7; **all three data/Room gates UNTOUCHED — plan = 11,
+  BibleTextVerificationTest = 18, BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.8%
+  on domain/data, a11y gate 8/8, **5 mutations killed** (static-title branch disabled → single-version
+  pins red; static-title forced always → dropdown pin red; pencil onClick no-op → picker pin red;
+  `translations()` wrong code → real-asset pin red; VM drops the available list → versionState pin
+  red), each restored in place. No manifest/Room-schema/asset/plan-data/DataStore/dependency change.
+  Device-pass: pencil + heading + version on one top-bar line at default/large font (no overflow),
+  pencil tap accuracy, version-title alignment/contrast in light + dark. String sign-off:
+  `reader_version_dropdown_description`; the visible-"KJV" / spoken-"King James Version" choice.
+  Handoff: [docs/sprints/sprint-00N-reader-version-topbar.md](docs/sprints/sprint-00N-reader-version-topbar.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

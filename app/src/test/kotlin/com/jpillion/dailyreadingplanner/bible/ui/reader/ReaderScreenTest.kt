@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
@@ -55,9 +56,13 @@ class ReaderScreenTest {
 
     private fun content() = ReaderUiState.Content(blocks = listOf(psalm23()), title = "Psalm 23")
 
+    private val kjv = BibleTranslation("KJV", "King James Version")
+
     private fun setContent(
         state: ReaderUiState = content(),
         externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
+        versionState: ReaderVersionState = ReaderVersionState(available = listOf(kjv), selected = kjv),
+        onOpenPicker: () -> Unit = {},
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -67,7 +72,9 @@ class ReaderScreenTest {
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { state },
                     externalApp = externalApp,
-                    onOpenPicker = {},
+                    versionState = versionState,
+                    onSelectVersion = {},
+                    onOpenPicker = onOpenPicker,
                     onVerseTapped = { _, _ -> },
                     onRetry = {},
                 )
@@ -197,6 +204,18 @@ class ReaderScreenTest {
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { state.value },
                     externalApp = ExternalBibleApp.BLB,
+                    versionState =
+                        com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderVersionState(
+                            available =
+                                listOf(
+                                    com.jpillion.dailyreadingplanner.bible.domain.model
+                                        .BibleTranslation("KJV", "King James Version"),
+                                ),
+                            selected =
+                                com.jpillion.dailyreadingplanner.bible.domain.model
+                                    .BibleTranslation("KJV", "King James Version"),
+                        ),
+                    onSelectVersion = {},
                     onOpenPicker = {},
                     onVerseTapped = { _, _ -> },
                     onRetry = {},
@@ -252,6 +271,18 @@ class ReaderScreenTest {
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { content() },
                     externalApp = ExternalBibleApp.BLB,
+                    versionState =
+                        com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderVersionState(
+                            available =
+                                listOf(
+                                    com.jpillion.dailyreadingplanner.bible.domain.model
+                                        .BibleTranslation("KJV", "King James Version"),
+                                ),
+                            selected =
+                                com.jpillion.dailyreadingplanner.bible.domain.model
+                                    .BibleTranslation("KJV", "King James Version"),
+                        ),
+                    onSelectVersion = {},
                     onOpenPicker = {},
                     onVerseTapped = { _, verseId -> tapped = verseId },
                     onRetry = {},
@@ -347,5 +378,57 @@ class ReaderScreenTest {
         composeRule.onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}").assertIsDisplayed()
         composeRule.onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 2)}").assertIsDisplayed()
         composeRule.onNodeWithTag("reader-footer-hint").assertIsDisplayed()
+    }
+
+    // --- Owner reader top-bar redesign: pencil (left, opens the picker) + version (right). ---
+
+    @Test
+    fun `the pencil action opens the picker (onOpenPicker fires) and keeps the reader-open-picker tag`() {
+        // The picker affordance moved from the actions list-icon to a pencil in the title slot, but
+        // keeps the reader-open-picker tag + onOpenPicker callback (the a11y gate pins that tag).
+        var opened = false
+        setContent(onOpenPicker = { opened = true })
+        composeRule.onNodeWithTag("reader-open-picker").performClick()
+        composeRule.waitForIdle()
+        com.google.common.truth.Truth
+            .assertThat(opened)
+            .isTrue()
+    }
+
+    @Test
+    fun `the chapter heading still renders beside the pencil`() {
+        // The pencil is INLINE to the left of the chapter heading in the title slot — the heading
+        // ("Psalm 23") still shows and is still tagged reader-title.
+        setContent()
+        composeRule.onNodeWithTag("reader-title").assertTextEquals("Psalm 23")
+    }
+
+    @Test
+    fun `with one bundled version the version renders as a static title KJV (not a dropdown)`() {
+        // D-N-3 single-version branch: a static title shows the version CODE; the dropdown row does
+        // not exist. (Mutation target: forcing the dropdown branch with one version reddens this.)
+        setContent()
+        composeRule.onNodeWithTag("reader-version-title").assertTextEquals("KJV")
+        composeRule.onNodeWithTag("reader-version-dropdown").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the single-version title speaks the unabbreviated name to TalkBack (D-N-2)`() {
+        // The visible label is "KJV" but TalkBack announces the full "King James Version".
+        setContent()
+        composeRule
+            .onNodeWithTag("reader-version-title")
+            .assert(contentDescriptionIs("King James Version"))
+    }
+
+    @Test
+    fun `with more than one bundled version the version renders as a dropdown (D-N-3, mutation pin)`() {
+        // D-N-3 multi-version branch: forces the OTHER branch — the static title must NOT exist and a
+        // selectable dropdown must. (Mutation target: collapsing the size check to always-title, or
+        // always-dropdown, reddens exactly one of these two version-shape tests.)
+        val esv = BibleTranslation("ESV", "English Standard Version")
+        setContent(versionState = ReaderVersionState(available = listOf(kjv, esv), selected = kjv))
+        composeRule.onNodeWithTag("reader-version-dropdown").assertIsDisplayed()
+        composeRule.onNodeWithTag("reader-version-title").assertDoesNotExist()
     }
 }

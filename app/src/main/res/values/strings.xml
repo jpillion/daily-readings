@@ -133,6 +133,10 @@
     <string name="reader_next_chapter">Next chapter</string>
     <string name="reader_load_failed">Couldn\'t load this chapter</string>
     <string name="reader_retry">Retry</string>
+    <!-- Owner reader top-bar redesign: the version control on the right of the reader top bar.
+         When more than one version is bundled it becomes a dropdown; %1$s = the selected
+         version name ("King James Version"). With one version today it renders as a static title. -->
+    <string name="reader_version_dropdown_description">Bible version, %1$s</string>
     <!-- V3 Sprint K (reader footer hint): an always-shown italic footer at the END of the
          reading pane keying the verse-tap-out to the user's chosen external Bible app
          (read-here / study-there bridge). %1$s = the external app display name. Per-provider

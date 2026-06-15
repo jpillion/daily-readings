@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.bible.domain
 
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseRange
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
@@ -14,9 +15,14 @@ import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
  * requested range actually includes verse 0 (so a body window like [1..40] never spuriously gains a
  * title). A whole-chapter range [(…,0)…(…,999)] yields title + verses 1..SYNTHETIC_CHAPTER_LENGTH,
  * preserving every existing ordering/block/title assertion.
+ *
+ * [translations] returns [translationRows] (the single bundled KJV row by default; a test may set
+ * more than one to exercise the multi-version dropdown branch — D-N-3).
  */
 class FakeBibleTextSource : BibleTextSource {
     val rangesRequested = mutableListOf<VerseRange>()
+
+    var translationRows: List<BibleTranslation> = listOf(BibleTranslation("KJV", "King James Version"))
 
     override suspend fun getVerses(range: VerseRange): List<VerseText> {
         rangesRequested.add(range)
@@ -49,6 +55,8 @@ class FakeBibleTextSource : BibleTextSource {
         }
         return out
     }
+
+    override suspend fun translations(): List<BibleTranslation> = translationRows
 
     private companion object {
         const val SYNTHETIC_CHAPTER_LENGTH = 176
