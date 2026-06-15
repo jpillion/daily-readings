@@ -2,7 +2,7 @@ package com.jpillion.dailyreadingplanner.data.reference
 
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.domain.model.Stream
@@ -28,23 +28,23 @@ class ProviderUrlBuilderTest {
     fun `blb builds the documented url shape for all 66 books, first and last chapter`() {
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)
-                .that(builder.build(BibleProvider.BLB, portion(book.canonicalName to 1)))
+                .that(builder.build(ExternalBibleApp.BLB, portion(book.canonicalName to 1)))
                 .isEqualTo("https://www.blueletterbible.org/kjv/${book.blbAbbrev}/1/")
             assertWithMessage("${book.canonicalName} last chapter")
-                .that(builder.build(BibleProvider.BLB, portion(book.canonicalName to book.chapterCount)))
+                .that(builder.build(ExternalBibleApp.BLB, portion(book.canonicalName to book.chapterCount)))
                 .isEqualTo("https://www.blueletterbible.org/kjv/${book.blbAbbrev}/${book.chapterCount}/")
         }
     }
 
     @Test
     fun `blb opens the first chapter of a multi-chapter portion`() {
-        assertThat(builder.build(BibleProvider.BLB, portion("Genesis" to 1, "Genesis" to 2)))
+        assertThat(builder.build(ExternalBibleApp.BLB, portion("Genesis" to 1, "Genesis" to 2)))
             .isEqualTo("https://www.blueletterbible.org/kjv/gen/1/")
     }
 
     @Test
     fun `blb opens the first book of the two-book portion`() {
-        assertThat(builder.build(BibleProvider.BLB, portion("2 John" to 1, "3 John" to 1)))
+        assertThat(builder.build(ExternalBibleApp.BLB, portion("2 John" to 1, "3 John" to 1)))
             .isEqualTo("https://www.blueletterbible.org/kjv/2jo/1/")
     }
 
@@ -54,12 +54,12 @@ class ProviderUrlBuilderTest {
     fun `youversion builds the documented url shape for all 66 books, first and last chapter`() {
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)
-                .that(builder.build(BibleProvider.YOUVERSION, portion(book.canonicalName to 1)))
+                .that(builder.build(ExternalBibleApp.YOUVERSION, portion(book.canonicalName to 1)))
                 .isEqualTo("https://www.bible.com/bible/1/${book.usfmCode}.1.KJV")
             assertWithMessage("${book.canonicalName} last chapter")
                 .that(
                     builder.build(
-                        BibleProvider.YOUVERSION,
+                        ExternalBibleApp.YOUVERSION,
                         portion(book.canonicalName to book.chapterCount),
                     ),
                 ).isEqualTo("https://www.bible.com/bible/1/${book.usfmCode}.${book.chapterCount}.KJV")
@@ -68,23 +68,23 @@ class ProviderUrlBuilderTest {
 
     @Test
     fun `youversion uses the awkward usfm codes a derivation would get wrong`() {
-        assertThat(builder.build(BibleProvider.YOUVERSION, portion("Philippians" to 4)))
+        assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("Philippians" to 4)))
             .isEqualTo("https://www.bible.com/bible/1/PHP.4.KJV")
-        assertThat(builder.build(BibleProvider.YOUVERSION, portion("Philemon" to 1)))
+        assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("Philemon" to 1)))
             .isEqualTo("https://www.bible.com/bible/1/PHM.1.KJV")
-        assertThat(builder.build(BibleProvider.YOUVERSION, portion("Ezekiel" to 48)))
+        assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("Ezekiel" to 48)))
             .isEqualTo("https://www.bible.com/bible/1/EZK.48.KJV")
-        assertThat(builder.build(BibleProvider.YOUVERSION, portion("Psalms" to 119)))
+        assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("Psalms" to 119)))
             .isEqualTo("https://www.bible.com/bible/1/PSA.119.KJV")
-        assertThat(builder.build(BibleProvider.YOUVERSION, portion("Jude" to 1)))
+        assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("Jude" to 1)))
             .isEqualTo("https://www.bible.com/bible/1/JUD.1.KJV")
     }
 
     @Test
     fun `youversion is single-chapter - first chapter of a range, first book of the two-book portion`() {
-        assertThat(builder.build(BibleProvider.YOUVERSION, portion("Genesis" to 1, "Genesis" to 2)))
+        assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("Genesis" to 1, "Genesis" to 2)))
             .isEqualTo("https://www.bible.com/bible/1/GEN.1.KJV")
-        assertThat(builder.build(BibleProvider.YOUVERSION, portion("2 John" to 1, "3 John" to 1)))
+        assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("2 John" to 1, "3 John" to 1)))
             .isEqualTo("https://www.bible.com/bible/1/2JN.1.KJV")
     }
 
@@ -92,19 +92,19 @@ class ProviderUrlBuilderTest {
 
     @Test
     fun `bible gateway builds a single-chapter passage search`() {
-        assertThat(builder.build(BibleProvider.BIBLE_GATEWAY, portion("Matthew" to 5)))
+        assertThat(builder.build(ExternalBibleApp.BIBLE_GATEWAY, portion("Matthew" to 5)))
             .isEqualTo("https://www.biblegateway.com/passage/?search=Matthew+5&version=KJV")
     }
 
     @Test
     fun `bible gateway collapses a consecutive range into one segment`() {
-        assertThat(builder.build(BibleProvider.BIBLE_GATEWAY, portion("Genesis" to 1, "Genesis" to 2)))
+        assertThat(builder.build(ExternalBibleApp.BIBLE_GATEWAY, portion("Genesis" to 1, "Genesis" to 2)))
             .isEqualTo("https://www.biblegateway.com/passage/?search=Genesis+1-2&version=KJV")
     }
 
     @Test
     fun `bible gateway carries the whole two-book portion in one url`() {
-        assertThat(builder.build(BibleProvider.BIBLE_GATEWAY, portion("2 John" to 1, "3 John" to 1)))
+        assertThat(builder.build(ExternalBibleApp.BIBLE_GATEWAY, portion("2 John" to 1, "3 John" to 1)))
             .isEqualTo(
                 "https://www.biblegateway.com/passage/?search=2+John+1%2C3+John+1&version=KJV",
             )
@@ -112,7 +112,7 @@ class ProviderUrlBuilderTest {
 
     @Test
     fun `bible gateway url-encodes multi-word book names`() {
-        assertThat(builder.build(BibleProvider.BIBLE_GATEWAY, portion("Song of Solomon" to 8)))
+        assertThat(builder.build(ExternalBibleApp.BIBLE_GATEWAY, portion("Song of Solomon" to 8)))
             .isEqualTo(
                 "https://www.biblegateway.com/passage/?search=Song+of+Solomon+8&version=KJV",
             )
@@ -121,7 +121,7 @@ class ProviderUrlBuilderTest {
     @Test
     fun `bible gateway range collapse includes the last chapter - no off-by-one`() {
         val threeChapters = portion("Psalms" to 120, "Psalms" to 121, "Psalms" to 122)
-        assertThat(builder.build(BibleProvider.BIBLE_GATEWAY, threeChapters))
+        assertThat(builder.build(ExternalBibleApp.BIBLE_GATEWAY, threeChapters))
             .isEqualTo("https://www.biblegateway.com/passage/?search=Psalms+120-122&version=KJV")
     }
 
@@ -131,25 +131,25 @@ class ProviderUrlBuilderTest {
     fun `mysword builds the numeric vendor form for all 66 books, first and last chapter`() {
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)
-                .that(builder.build(BibleProvider.MYSWORD, portion(book.canonicalName to 1)))
+                .that(builder.build(ExternalBibleApp.MYSWORD, portion(book.canonicalName to 1)))
                 .isEqualTo("https://mysword.info/b?r=${book.order}.1")
             assertWithMessage("${book.canonicalName} last chapter")
-                .that(builder.build(BibleProvider.MYSWORD, portion(book.canonicalName to book.chapterCount)))
+                .that(builder.build(ExternalBibleApp.MYSWORD, portion(book.canonicalName to book.chapterCount)))
                 .isEqualTo("https://mysword.info/b?r=${book.order}.${book.chapterCount}")
         }
     }
 
     @Test
     fun `mysword is single-chapter - first chapter of a range, first book of the two-book portion`() {
-        assertThat(builder.build(BibleProvider.MYSWORD, portion("Genesis" to 1, "Genesis" to 2)))
+        assertThat(builder.build(ExternalBibleApp.MYSWORD, portion("Genesis" to 1, "Genesis" to 2)))
             .isEqualTo("https://mysword.info/b?r=1.1")
-        assertThat(builder.build(BibleProvider.MYSWORD, portion("2 John" to 1, "3 John" to 1)))
+        assertThat(builder.build(ExternalBibleApp.MYSWORD, portion("2 John" to 1, "3 John" to 1)))
             .isEqualTo("https://mysword.info/b?r=63.1")
     }
 
     @Test
     fun `bible gateway does not collapse non-consecutive chapters of one book`() {
-        assertThat(builder.build(BibleProvider.BIBLE_GATEWAY, portion("Psalms" to 1, "Psalms" to 5)))
+        assertThat(builder.build(ExternalBibleApp.BIBLE_GATEWAY, portion("Psalms" to 1, "Psalms" to 5)))
             .isEqualTo(
                 "https://www.biblegateway.com/passage/?search=Psalms+1%2CPsalms+5&version=KJV",
             )
@@ -164,56 +164,56 @@ class ProviderUrlBuilderTest {
 
     @Test
     fun `blb verse url appends the verse segment`() {
-        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Genesis", 1), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.BLB, ref("Genesis", 1), 1))
             .isEqualTo("https://www.blueletterbible.org/kjv/gen/1/1/")
         // Awkward books: Psalms, Philemon, 2/3 John.
-        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Psalms", 119), 176))
+        assertThat(builder.buildVerse(ExternalBibleApp.BLB, ref("Psalms", 119), 176))
             .isEqualTo("https://www.blueletterbible.org/kjv/psa/119/176/")
-        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Philemon", 1), 25))
+        assertThat(builder.buildVerse(ExternalBibleApp.BLB, ref("Philemon", 1), 25))
             .isEqualTo("https://www.blueletterbible.org/kjv/phm/1/25/")
-        assertThat(builder.buildVerse(BibleProvider.BLB, ref("2 John", 1), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.BLB, ref("2 John", 1), 1))
             .isEqualTo("https://www.blueletterbible.org/kjv/2jo/1/1/")
-        assertThat(builder.buildVerse(BibleProvider.BLB, ref("3 John", 1), 14))
+        assertThat(builder.buildVerse(ExternalBibleApp.BLB, ref("3 John", 1), 14))
             .isEqualTo("https://www.blueletterbible.org/kjv/3jo/1/14/")
     }
 
     @Test
     fun `youversion verse url uses usfm code chapter verse`() {
-        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Genesis", 1), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.YOUVERSION, ref("Genesis", 1), 1))
             .isEqualTo("https://www.bible.com/bible/1/GEN.1.1.KJV")
-        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Psalms", 23), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.YOUVERSION, ref("Psalms", 23), 1))
             .isEqualTo("https://www.bible.com/bible/1/PSA.23.1.KJV")
-        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Philemon", 1), 25))
+        assertThat(builder.buildVerse(ExternalBibleApp.YOUVERSION, ref("Philemon", 1), 25))
             .isEqualTo("https://www.bible.com/bible/1/PHM.1.25.KJV")
-        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("2 John", 1), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.YOUVERSION, ref("2 John", 1), 1))
             .isEqualTo("https://www.bible.com/bible/1/2JN.1.1.KJV")
     }
 
     @Test
     fun `mysword verse url is numeric order chapter verse`() {
-        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("Genesis", 1), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.MYSWORD, ref("Genesis", 1), 1))
             .isEqualTo("https://mysword.info/b?r=1.1.1")
-        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("Psalms", 23), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.MYSWORD, ref("Psalms", 23), 1))
             .isEqualTo("https://mysword.info/b?r=19.23.1")
-        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("3 John", 1), 14))
+        assertThat(builder.buildVerse(ExternalBibleApp.MYSWORD, ref("3 John", 1), 14))
             .isEqualTo("https://mysword.info/b?r=64.1.14")
     }
 
     @Test
     fun `bible gateway verse url carries book chapter colon verse`() {
-        assertThat(builder.buildVerse(BibleProvider.BIBLE_GATEWAY, ref("Genesis", 1), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.BIBLE_GATEWAY, ref("Genesis", 1), 1))
             .isEqualTo("https://www.biblegateway.com/passage/?search=Genesis+1%3A1&version=KJV")
-        assertThat(builder.buildVerse(BibleProvider.BIBLE_GATEWAY, ref("2 John", 1), 1))
+        assertThat(builder.buildVerse(ExternalBibleApp.BIBLE_GATEWAY, ref("2 John", 1), 1))
             .isEqualTo("https://www.biblegateway.com/passage/?search=2+John+1%3A1&version=KJV")
     }
 
     @Test
     fun `a superscription tap - verse 0 - clamps to verse 1 across providers`() {
-        assertThat(builder.buildVerse(BibleProvider.BLB, ref("Psalms", 23), 0))
+        assertThat(builder.buildVerse(ExternalBibleApp.BLB, ref("Psalms", 23), 0))
             .isEqualTo("https://www.blueletterbible.org/kjv/psa/23/1/")
-        assertThat(builder.buildVerse(BibleProvider.YOUVERSION, ref("Psalms", 23), 0))
+        assertThat(builder.buildVerse(ExternalBibleApp.YOUVERSION, ref("Psalms", 23), 0))
             .isEqualTo("https://www.bible.com/bible/1/PSA.23.1.KJV")
-        assertThat(builder.buildVerse(BibleProvider.MYSWORD, ref("Psalms", 23), 0))
+        assertThat(builder.buildVerse(ExternalBibleApp.MYSWORD, ref("Psalms", 23), 0))
             .isEqualTo("https://mysword.info/b?r=19.23.1")
     }
 }

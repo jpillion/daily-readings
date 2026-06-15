@@ -6,8 +6,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.threePortions
@@ -44,7 +45,8 @@ class DayContentTest {
         onToggleReading: (ReadingStatus) -> Unit = {},
         onReadingTapped: (Portion) -> Unit = {},
         onRetry: () -> Unit = {},
-        provider: BibleProvider = BibleProvider.BLB,
+        destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
+        externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -53,7 +55,8 @@ class DayContentTest {
                     onToggleReading = onToggleReading,
                     onReadingTapped = onReadingTapped,
                     onRetry = onRetry,
-                    provider = provider,
+                    destinationMode = destinationMode,
+                    externalApp = externalApp,
                 )
             }
         }
@@ -129,40 +132,56 @@ class DayContentTest {
         assertThat(retries).isEqualTo(1)
     }
 
-    // Owner fix: the per-tile hint text reflects the *selected* "Open readings in" provider, with a
-    // natural preposition per destination. Expectations are LITERAL strings (never computed from the
-    // production mapping) so a wrong provider -> hint mapping reddens exactly the offending pin.
+    // Sprint K (D-23-1): the per-tile hint reflects the EFFECTIVE destination — the in-app reader
+    // for in-app mode, otherwise the chosen external app, with a natural preposition. Expectations are
+    // LITERAL strings (never computed from the production mapping) so a wrong destination -> hint
+    // mapping reddens exactly the offending pin.
     @Test
-    fun blbProvider_hintReadsOnBlueLetterBible() {
-        setContent(scheduled(), provider = BibleProvider.BLB)
+    fun blbApp_hintReadsOnBlueLetterBible() {
+        setContent(scheduled(), destinationMode = ReadingDestinationMode.EXTERNAL, externalApp = ExternalBibleApp.BLB)
         composeRule.onNodeWithText("Opens Genesis 1–2 on Blue Letter Bible").assertIsDisplayed()
     }
 
     @Test
-    fun inAppProvider_hintReadsInThisApp() {
-        setContent(scheduled(), provider = BibleProvider.IN_APP)
+    fun inAppMode_hintReadsInThisApp() {
+        // MUTATION (reader-hint provider mapping): in-app MODE reads "in this app" regardless of the
+        // remembered external app — here MySword is stored but the hint must ignore it. A mutation
+        // that maps in-app mode to an external hint reddens here.
+        setContent(scheduled(), destinationMode = ReadingDestinationMode.IN_APP, externalApp = ExternalBibleApp.MYSWORD)
         composeRule.onNodeWithText("Opens Genesis 1–2 in this app").assertIsDisplayed()
-        // The default BLB wording must NOT leak through when in-app is selected.
         composeRule.onNodeWithText("Opens Genesis 1–2 on Blue Letter Bible").assertDoesNotExist()
+        composeRule.onNodeWithText("Opens Genesis 1–2 in MySword").assertDoesNotExist()
     }
 
     @Test
-    fun bibleGatewayProvider_hintReadsOnBibleGateway() {
-        setContent(scheduled(), provider = BibleProvider.BIBLE_GATEWAY)
+    fun bibleGatewayApp_hintReadsOnBibleGateway() {
+        setContent(
+            scheduled(),
+            destinationMode = ReadingDestinationMode.EXTERNAL,
+            externalApp = ExternalBibleApp.BIBLE_GATEWAY,
+        )
         composeRule.onNodeWithText("Opens Genesis 1–2 on Bible Gateway").assertIsDisplayed()
     }
 
     @Test
-    fun youVersionProvider_hintReadsOnYouVersion() {
-        setContent(scheduled(), provider = BibleProvider.YOUVERSION)
+    fun youVersionApp_hintReadsOnYouVersion() {
+        setContent(
+            scheduled(),
+            destinationMode = ReadingDestinationMode.EXTERNAL,
+            externalApp = ExternalBibleApp.YOUVERSION,
+        )
         composeRule.onNodeWithText("Opens Genesis 1–2 on YouVersion").assertIsDisplayed()
     }
 
     @Test
-    fun mySwordProvider_hintReadsInMySword() {
+    fun mySwordApp_hintReadsInMySword() {
         // The hint mirrors the *setting*, not install-aware tap-time resolution: even when MySword
-        // isn't installed (tap falls back to BLB), the selected-provider hint still reads MySword.
-        setContent(scheduled(), provider = BibleProvider.MYSWORD)
+        // isn't installed (tap falls back to BLB), the selected external-app hint still reads MySword.
+        setContent(
+            scheduled(),
+            destinationMode = ReadingDestinationMode.EXTERNAL,
+            externalApp = ExternalBibleApp.MYSWORD,
+        )
         composeRule.onNodeWithText("Opens Genesis 1–2 in MySword").assertIsDisplayed()
     }
 }

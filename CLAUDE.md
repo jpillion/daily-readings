@@ -915,6 +915,36 @@ Do not reference or depend on strikelog.
   Room/manifest/DataStore change. Note: docs/features/tile-hint-provider.md. **Owner tone sign-off:**
   the five hint strings (esp. "in this app" vs "Reads … in this app"). Device-pass: the live update
   when switching provider in Settings.
+- ✅ **Reader footer hint (owner UI request, `sprint-00K-reader-footer-hint`) is DONE** (uncommitted
+  in the working tree; the main session verifies + commits; no version bump — display-only; built
+  on the Sprint K settings split that renamed `BibleProvider` → `ExternalBibleApp` +
+  `ReadingDestinationMode`). The first Sprint-K pass shipped the *day-tile* hint but missed the
+  owner's PRIMARY ask: a hint at the **bottom of the reading pane** (the reader), in the empty band
+  below the chapter text. Now the reader's verse `LazyColumn` ends with an always-shown italic
+  footer — "Tap a verse to open it on Blue Letter Bible" / "…on Bible Gateway" / "…on YouVersion" /
+  "…in MySword" (`bodySmall`/italic/`onSurfaceVariant`, ~24dp top / 16dp bottom, start-aligned under
+  the 20dp verse padding) keying the verse-tap-out to the user's chosen external app — the
+  read-here / study-there bridge, shown **regardless of reading destination** (most useful when
+  reading IN_APP) and **reactive** (`ReaderViewModel.externalApp` = `SettingsRepository.externalBibleApp`
+  `stateIn`'d; the Route collects + passes it to `ReaderScreen`; change "Open readings in" in
+  Settings and the hint updates live). **D-K-HINT-1 (one home, no drift):** the reader-hint +
+  external-app-name `when(externalApp)` mappings (`readerVerseTapHintRes`/`externalBibleAppNameRes`)
+  live beside the day-tile `readingOpenHintRes` in `DayContent.kt`; the reader hint is the
+  external-app axis ALONE (no in-app/external branch). **D-K-HINT-2:** the footer is the last verse
+  `LazyColumn` item, NOT the `bottomBar`/`ReaderAudioSlot` (that stays reserved for V4 audio).
+  **D-K-HINT-3:** `clearAndSetSemantics{}` skips it from TalkBack (every verse already speaks
+  "Open <Book> <ch>:<verse>…") — the `testTag` is re-declared inside the clear block so it stays
+  test-findable while speaking nothing. 627 tests (net +7: 4 LITERAL per-app wording pins resolved
+  through the string resources + 1 a11y-silence/render pin + 1 verse-keyed coexistence pin in
+  `ReaderScreenTest`, 1 reactivity pin in `ReaderViewModelTest`; **all three data/Room gates
+  UNTOUCHED — plan = 11, BibleTextVerificationTest = 18, BibleDatabaseRoomOpenTest = 5**), full
+  pipeline green, Kover 95.8% on domain/data, **3 mutations killed** (external-app name mapping,
+  MySword "in" preposition template, VM `externalApp` ignoring the stored setting), each restored in
+  place. New strings (`reader_verse_tap_hint_*`, `external_app_name_*`) await owner tone sign-off.
+  No new deps/permissions, no Room/manifest/DataStore change. Device-pass: footer placement in the
+  circled empty band on a short chapter, end-of-scroll reach on a long chapter, live update on a
+  provider change. Handoff:
+  [docs/sprints/sprint-00K-reader-footer-hint.md](docs/sprints/sprint-00K-reader-footer-hint.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

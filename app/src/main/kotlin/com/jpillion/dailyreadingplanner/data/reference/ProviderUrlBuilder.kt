@@ -1,7 +1,7 @@
 package com.jpillion.dailyreadingplanner.data.reference
 
 import com.jpillion.dailyreadingplanner.bible.domain.ConsecutiveChapterRuns
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import java.net.URLEncoder
@@ -23,16 +23,14 @@ class ProviderUrlBuilder
     @Inject
     constructor() {
         fun build(
-            provider: BibleProvider,
+            app: ExternalBibleApp,
             portion: Portion,
         ): String =
-            when (provider) {
-                BibleProvider.BLB -> blbUrl(portion.firstRef)
-                BibleProvider.YOUVERSION -> youVersionUrl(portion.firstRef)
-                BibleProvider.BIBLE_GATEWAY -> bibleGatewayUrl(portion)
-                BibleProvider.MYSWORD -> mySwordUrl(portion.firstRef)
-                BibleProvider.IN_APP ->
-                    error("IN_APP has no URL; OpenReferenceUseCase must branch before building a URL")
+            when (app) {
+                ExternalBibleApp.BLB -> blbUrl(portion.firstRef)
+                ExternalBibleApp.YOUVERSION -> youVersionUrl(portion.firstRef)
+                ExternalBibleApp.BIBLE_GATEWAY -> bibleGatewayUrl(portion)
+                ExternalBibleApp.MYSWORD -> mySwordUrl(portion.firstRef)
             }
 
         /**
@@ -44,31 +42,30 @@ class ProviderUrlBuilder
          *
          * Verse forms live-verified 2026-06-15 across providers and awkward books (Psalms, Philemon,
          * 2/3 John) — docs/data/provider-link-checks.md; pinned field-by-field in ProviderUrlBuilderTest.
-         * [BibleProvider.IN_APP] has no external verse target and is resolved BEFORE this is called
-         * (OpenVerseUseCase maps IN_APP -> BLB, D-H-4); reaching it here is a programming error.
+         * There is no in-app arm here by construction (Sprint K, D-23-1): the in-app destination is a
+         * [ReadingDestinationMode], not an [ExternalBibleApp]; OpenVerseUseCase maps in-app mode to
+         * BLB (D-H-4) before calling this, so every value here builds a real external URL.
          */
         fun buildVerse(
-            provider: BibleProvider,
+            app: ExternalBibleApp,
             reference: Reference,
             verse: Int,
         ): String {
             val v = verse.coerceAtLeast(1)
             val book = reference.book
             val ch = reference.chapter
-            return when (provider) {
-                BibleProvider.BLB ->
+            return when (app) {
+                ExternalBibleApp.BLB ->
                     "https://www.blueletterbible.org/kjv/${book.blbAbbrev}/$ch/$v/"
-                BibleProvider.YOUVERSION ->
+                ExternalBibleApp.YOUVERSION ->
                     "https://www.bible.com/bible/1/${book.usfmCode}.$ch.$v.KJV"
-                BibleProvider.MYSWORD ->
+                ExternalBibleApp.MYSWORD ->
                     "https://mysword.info/b?r=${book.order}.$ch.$v"
-                BibleProvider.BIBLE_GATEWAY -> {
+                ExternalBibleApp.BIBLE_GATEWAY -> {
                     val search = "${book.canonicalName} $ch:$v"
                     val encoded = URLEncoder.encode(search, Charsets.UTF_8.name())
                     "https://www.biblegateway.com/passage/?search=$encoded&version=KJV"
                 }
-                BibleProvider.IN_APP ->
-                    error("IN_APP has no verse URL; OpenVerseUseCase maps IN_APP -> BLB before building")
             }
         }
 

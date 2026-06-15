@@ -1,7 +1,8 @@
 package com.jpillion.dailyreadingplanner.testing
 
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,16 +81,26 @@ class FakeSettingsRepository(
         storedPersistentEnabled.value = enabled
     }
 
-    // --- S13: bible provider. ---
+    // --- Sprint K (D-23-1): reading-destination mode + external app. ---
 
-    val storedBibleProvider = MutableStateFlow(BibleProvider.DEFAULT)
-    val bibleProviderCalls = mutableListOf<BibleProvider>()
+    val storedDestinationMode = MutableStateFlow(ReadingDestinationMode.DEFAULT)
+    val destinationModeCalls = mutableListOf<ReadingDestinationMode>()
 
-    override val bibleProvider: Flow<BibleProvider> = storedBibleProvider
+    override val readingDestinationMode: Flow<ReadingDestinationMode> = storedDestinationMode
 
-    override suspend fun setBibleProvider(provider: BibleProvider) {
-        bibleProviderCalls += provider
-        storedBibleProvider.value = provider
+    override suspend fun setReadingDestinationMode(mode: ReadingDestinationMode) {
+        destinationModeCalls += mode
+        storedDestinationMode.value = mode
+    }
+
+    val storedExternalBibleApp = MutableStateFlow(ExternalBibleApp.DEFAULT)
+    val externalBibleAppCalls = mutableListOf<ExternalBibleApp>()
+
+    override val externalBibleApp: Flow<ExternalBibleApp> = storedExternalBibleApp
+
+    override suspend fun setExternalBibleApp(app: ExternalBibleApp) {
+        externalBibleAppCalls += app
+        storedExternalBibleApp.value = app
     }
 
     // --- S15: streak visibility. ---

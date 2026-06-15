@@ -9,7 +9,8 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -164,28 +165,92 @@ class SettingsRepositoryImplTest {
             assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
         }
 
-    // --- S13: bible provider. ---
+    // --- Sprint K (D-23-1): reading-destination mode + external app + legacy migration. ---
 
     @Test
-    fun `bible provider defaults to blue letter bible when nothing is stored`() =
+    fun `destination mode defaults to external when nothing is stored`() =
         themeTest { repository, _ ->
-            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BLB)
+            // A clean install reads in an external app (the historical BLB-in-browser default).
+            assertThat(repository.readingDestinationMode.first())
+                .isEqualTo(ReadingDestinationMode.EXTERNAL)
         }
 
     @Test
-    fun `set bible provider persists and is observable`() =
+    fun `set destination mode persists and is observable`() =
         themeTest { repository, _ ->
-            repository.setBibleProvider(BibleProvider.YOUVERSION)
-            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.YOUVERSION)
-            repository.setBibleProvider(BibleProvider.BIBLE_GATEWAY)
-            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BIBLE_GATEWAY)
+            repository.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
+            assertThat(repository.readingDestinationMode.first())
+                .isEqualTo(ReadingDestinationMode.IN_APP)
+            repository.setReadingDestinationMode(ReadingDestinationMode.EXTERNAL)
+            assertThat(repository.readingDestinationMode.first())
+                .isEqualTo(ReadingDestinationMode.EXTERNAL)
         }
 
     @Test
-    fun `an unrecognized stored provider id degrades to the default instead of crashing`() =
+    fun `MUTATION legacy IN_APP bible_provider migrates to in-app mode plus BLB external app`() =
+        themeTest { repository, dataStore ->
+            // A pre-Sprint-K user who chose the in-app reader stored bible_provider == "IN_APP"
+            // (no new reading_destination_mode key). They must read IN-APP, and their external
+            // app degrades to BLB (the safe default). Mutation target: the legacy-value comparison.
+            dataStore.edit { it[stringPreferencesKey("bible_provider")] = "IN_APP" }
+            assertThat(repository.readingDestinationMode.first())
+                .isEqualTo(ReadingDestinationMode.IN_APP)
+            assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.BLB)
+        }
+
+    @Test
+    fun `legacy external bible_provider migrates to external mode preserving the app`() =
+        themeTest { repository, dataStore ->
+            // A pre-Sprint-K user on YouVersion keeps YouVersion in external mode — zero behavior
+            // change. No new mode key is present; the migration infers EXTERNAL.
+            dataStore.edit { it[stringPreferencesKey("bible_provider")] = "YOUVERSION" }
+            assertThat(repository.readingDestinationMode.first())
+                .isEqualTo(ReadingDestinationMode.EXTERNAL)
+            assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.YOUVERSION)
+        }
+
+    @Test
+    fun `an explicit new mode key wins over the legacy bible_provider value`() =
+        themeTest { repository, dataStore ->
+            // Once the new key is written, the legacy value no longer drives the mode.
+            dataStore.edit { it[stringPreferencesKey("bible_provider")] = "IN_APP" }
+            repository.setReadingDestinationMode(ReadingDestinationMode.EXTERNAL)
+            assertThat(repository.readingDestinationMode.first())
+                .isEqualTo(ReadingDestinationMode.EXTERNAL)
+        }
+
+    @Test
+    fun `external app defaults to blue letter bible when nothing is stored`() =
+        themeTest { repository, _ ->
+            assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.BLB)
+        }
+
+    @Test
+    fun `set external app persists and is observable`() =
+        themeTest { repository, _ ->
+            repository.setExternalBibleApp(ExternalBibleApp.YOUVERSION)
+            assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.YOUVERSION)
+            repository.setExternalBibleApp(ExternalBibleApp.BIBLE_GATEWAY)
+            assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.BIBLE_GATEWAY)
+        }
+
+    @Test
+    fun `an unrecognized stored external app id degrades to the default instead of crashing`() =
         themeTest { repository, dataStore ->
             dataStore.edit { it[stringPreferencesKey("bible_provider")] = "ESV_DOT_ORG" }
-            assertThat(repository.bibleProvider.first()).isEqualTo(BibleProvider.BLB)
+            assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.BLB)
+        }
+
+    @Test
+    fun `setting external app does not touch the destination mode and vice versa`() =
+        themeTest { repository, _ ->
+            // The two axes are independent: switching the external app while in-app mode is set
+            // does not flip the mode back to external (the remembered-app guarantee).
+            repository.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
+            repository.setExternalBibleApp(ExternalBibleApp.YOUVERSION)
+            assertThat(repository.readingDestinationMode.first())
+                .isEqualTo(ReadingDestinationMode.IN_APP)
+            assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.YOUVERSION)
         }
 
     // --- S15: streak visibility (D-S15-5); default flipped off in S18 (owner). ---

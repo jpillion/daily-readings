@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.jpillion.dailyreadingplanner.R
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 
 /**
  * VD-T7 (D-V3-19) — the first-run reading-destination question for a fresh install: read in the
@@ -19,7 +19,7 @@ import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
  */
 @Composable
 internal fun ReadingDestinationPromptDialog(
-    onChoose: (BibleProvider) -> Unit,
+    onChoose: (ReadingDestinationMode) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -34,12 +34,12 @@ internal fun ReadingDestinationPromptDialog(
                 PromptOptionRow(
                     text = stringResource(R.string.reading_destination_prompt_inapp),
                     tag = "reading-destination-prompt-inapp",
-                    onClick = { onChoose(BibleProvider.IN_APP) },
+                    onClick = { onChoose(ReadingDestinationMode.IN_APP) },
                 )
                 PromptOptionRow(
                     text = stringResource(R.string.reading_destination_prompt_external),
                     tag = "reading-destination-prompt-external",
-                    onClick = { onChoose(BibleProvider.BLB) },
+                    onClick = { onChoose(ReadingDestinationMode.EXTERNAL) },
                 )
             }
         },

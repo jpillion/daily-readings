@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
 import org.junit.Test
@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 
 /**
  * VD-T7 (D-V3-19): the first-run reading-destination question — two equal, explicit choices, with
- * in-app NEVER silently pre-selected. Each tap reports the matching provider.
+ * in-app NEVER silently pre-selected. Each tap reports the matching destination mode.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -23,7 +23,7 @@ class ReadingDestinationPromptDialogTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val chosen = mutableListOf<BibleProvider>()
+    private val chosen = mutableListOf<ReadingDestinationMode>()
 
     private fun setDialog() {
         composeRule.setContent {
@@ -42,16 +42,16 @@ class ReadingDestinationPromptDialogTest {
     }
 
     @Test
-    fun `choosing in-app reports the in-app provider`() {
+    fun `choosing in-app reports the in-app mode`() {
         setDialog()
         composeRule.onNodeWithTag("reading-destination-prompt-inapp").performClick()
-        assertThat(chosen).containsExactly(BibleProvider.IN_APP)
+        assertThat(chosen).containsExactly(ReadingDestinationMode.IN_APP)
     }
 
     @Test
-    fun `choosing external reports an external provider`() {
+    fun `choosing external reports the external mode`() {
         setDialog()
         composeRule.onNodeWithTag("reading-destination-prompt-external").performClick()
-        assertThat(chosen).containsExactly(BibleProvider.BLB)
+        assertThat(chosen).containsExactly(ReadingDestinationMode.EXTERNAL)
     }
 }

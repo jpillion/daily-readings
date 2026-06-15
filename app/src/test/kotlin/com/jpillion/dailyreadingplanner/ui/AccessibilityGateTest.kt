@@ -19,7 +19,8 @@ import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
 import com.jpillion.dailyreadingplanner.bible.ui.picker.BookChapterPicker
 import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderScreen
 import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderUiState
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.Stream
@@ -100,7 +101,8 @@ class AccessibilityGateTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 SettingsScreen(
                     selectedMode = ThemeMode.SYSTEM,
-                    selectedProvider = BibleProvider.BLB,
+                    destinationMode = ReadingDestinationMode.EXTERNAL,
+                    externalBibleApp = ExternalBibleApp.BLB,
                     mySwordInstalled = false,
                     showStreaks = true,
                     fontScale = 1f,
@@ -111,7 +113,8 @@ class AccessibilityGateTest {
                     persistentNotificationEnabled = true,
                     showReminderPermissionRationale = false,
                     onThemeModeSelected = {},
-                    onBibleProviderSelected = {},
+                    onDestinationModeSelected = {},
+                    onExternalBibleAppSelected = {},
                     onShowStreaksToggled = {},
                     onRequestApp = {},
                     onFontScaleChanged = {},
@@ -161,23 +164,30 @@ class AccessibilityGateTest {
             .assert(hasAnyContentDescription())
         // S12: the reminder rows are authored controls -> 48dp; the toggle row exposes
         // switch semantics and the time row speaks label+value.
-        // S13 (S14: dropdown): the provider dropdown row and the request-an-app row are
-        // authored controls -> 48dp; menu items (incl. the disabled coming-soon teaser,
-        // which TalkBack must still reach and announce) verified open.
+        // Sprint K (D-23-1): the destination-mode segmented toggle and the "My Bible app" dropdown
+        // are authored controls -> 48dp. The toggle row speaks "Open readings in, <value>" and each
+        // segment carries RadioButton selection semantics; the dropdown row speaks "My Bible app, …".
+        composeRule
+            .onNodeWithTag("destination-mode-toggle")
+            .performScrollTo()
+            .assertTouchTargetAtLeast(48.dp)
+            .assertContentDescriptionContains("Open readings in", substring = true)
+        for (tag in listOf("destination-mode-inapp", "destination-mode-external")) {
+            composeRule.onNodeWithTag(tag).assertTouchTargetAtLeast(48.dp)
+        }
         composeRule
             .onNodeWithTag("provider-dropdown")
             .performScrollTo()
             .assertTouchTargetAtLeast(48.dp)
-            .assertContentDescriptionContains("Open readings in", substring = true)
+            .assertContentDescriptionContains("My Bible app", substring = true)
             .performClick()
-        // S15/VD-T6: every provider item — including the now-enabled in-app option and the
-        // install-gated MySword item — must be reachable with a 48dp touch target for TalkBack.
+        // S15: every external-app item — including the install-gated MySword item (here disabled,
+        // which TalkBack must still reach and announce) — must be reachable with a 48dp touch target.
         for (tag in listOf(
             "provider-option-blb",
             "provider-option-biblegateway",
             "provider-option-youversion",
             "provider-option-mysword",
-            "provider-option-inapp",
         )) {
             composeRule.onNodeWithTag(tag).assertTouchTargetAtLeast(48.dp)
         }
@@ -341,6 +351,7 @@ class AccessibilityGateTest {
                         androidx.compose.foundation.pager
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { state },
+                    externalApp = com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp.BLB,
                     onOpenPicker = {},
                     onVerseTapped = { _, _ -> },
                     onRetry = {},

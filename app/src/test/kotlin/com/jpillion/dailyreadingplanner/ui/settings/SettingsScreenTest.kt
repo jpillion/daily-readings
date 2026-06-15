@@ -3,7 +3,6 @@ package com.jpillion.dailyreadingplanner.ui.settings
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
@@ -17,7 +16,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
@@ -42,7 +42,8 @@ class SettingsScreenTest {
     val composeRule = createComposeRule()
 
     private val selections = mutableListOf<ThemeMode>()
-    private val providerSelections = mutableListOf<BibleProvider>()
+    private val modeSelections = mutableListOf<ReadingDestinationMode>()
+    private val externalAppSelections = mutableListOf<ExternalBibleApp>()
     private var requestAppCalls = 0
     private val fontScaleChanges = mutableListOf<Float>()
     private val trackingStartChanges = mutableListOf<LocalDate?>()
@@ -58,7 +59,8 @@ class SettingsScreenTest {
 
     private fun setScreen(
         selectedMode: ThemeMode,
-        selectedProvider: BibleProvider = BibleProvider.BLB,
+        destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
+        externalBibleApp: ExternalBibleApp = ExternalBibleApp.BLB,
         mySwordInstalled: Boolean = false,
         showStreaks: Boolean = true,
         fontScale: Float = 1f,
@@ -72,7 +74,8 @@ class SettingsScreenTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 SettingsScreen(
                     selectedMode = selectedMode,
-                    selectedProvider = selectedProvider,
+                    destinationMode = destinationMode,
+                    externalBibleApp = externalBibleApp,
                     mySwordInstalled = mySwordInstalled,
                     showStreaks = showStreaks,
                     fontScale = fontScale,
@@ -83,7 +86,8 @@ class SettingsScreenTest {
                     persistentNotificationEnabled = persistentNotificationEnabled,
                     showReminderPermissionRationale = showReminderPermissionRationale,
                     onThemeModeSelected = { selections += it },
-                    onBibleProviderSelected = { providerSelections += it },
+                    onDestinationModeSelected = { modeSelections += it },
+                    onExternalBibleAppSelected = { externalAppSelections += it },
                     onShowStreaksToggled = { showStreaksToggles += it },
                     onRequestApp = { requestAppCalls++ },
                     onFontScaleChanged = { fontScaleChanges += it },
@@ -288,15 +292,55 @@ class SettingsScreenTest {
         assertThat(rationaleDismissals).isEqualTo(1)
     }
 
-    // --- S13 (S14: dropdown): "Open readings in" provider selector + request-an-app row. ---
+    // --- Sprint K (D-23-1): destination-mode segmented toggle + "My Bible app" dropdown. ---
 
     @Test
-    fun providerDropdown_showsTheStoredChoice_andMarksItSelectedInTheMenu() {
-        setScreen(ThemeMode.SYSTEM, selectedProvider = BibleProvider.YOUVERSION)
+    fun destinationModeToggle_showsBothSegments_andMarksTheStoredModeSelected() {
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.IN_APP)
         composeRule.onNodeWithText("Open readings in").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("destination-mode-toggle").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("destination-mode-inapp").assertIsSelected()
+        composeRule.onNodeWithTag("destination-mode-external").assertIsNotSelected()
+    }
+
+    @Test
+    fun destinationModeToggle_defaultsToExternal() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("destination-mode-external").performScrollTo().assertIsSelected()
+        composeRule.onNodeWithTag("destination-mode-inapp").assertIsNotSelected()
+    }
+
+    @Test
+    fun tappingTheInAppSegment_reportsTheInAppMode() {
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL)
+        composeRule.onNodeWithTag("destination-mode-inapp").performScrollTo().performClick()
+        assertThat(modeSelections).containsExactly(ReadingDestinationMode.IN_APP)
+    }
+
+    @Test
+    fun tappingTheExternalSegment_reportsTheExternalMode() {
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.IN_APP)
+        composeRule.onNodeWithTag("destination-mode-external").performScrollTo().performClick()
+        assertThat(modeSelections).containsExactly(ReadingDestinationMode.EXTERNAL)
+    }
+
+    @Test
+    fun externalAppDropdown_isHidden_whenModeIsInApp() {
+        // The "My Bible app" dropdown is only relevant in external mode.
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.IN_APP)
+        composeRule.onNodeWithTag("provider-dropdown").assertDoesNotExist()
+    }
+
+    @Test
+    fun externalAppDropdown_showsTheStoredChoice_andMarksItSelectedInTheMenu() {
+        setScreen(
+            ThemeMode.SYSTEM,
+            destinationMode = ReadingDestinationMode.EXTERNAL,
+            externalBibleApp = ExternalBibleApp.YOUVERSION,
+        )
         composeRule
             .onNodeWithTag("provider-dropdown")
-            .assertContentDescriptionEquals("Open readings in, YouVersion / Bible.com")
+            .assertContentDescriptionEquals("My Bible app, YouVersion / Bible.com")
             .performScrollTo()
             .performClick()
         composeRule.onNodeWithTag("provider-option-blb").assertIsNotSelected()
@@ -305,48 +349,34 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun providerDropdown_defaultsToBlueLetterBible() {
-        setScreen(ThemeMode.SYSTEM)
+    fun externalAppDropdown_defaultsToBlueLetterBible() {
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL)
         composeRule
             .onNodeWithTag("provider-dropdown")
             .performScrollTo()
-            .assertContentDescriptionEquals("Open readings in, Blue Letter Bible (default)")
+            .assertContentDescriptionEquals("My Bible app, Blue Letter Bible (default)")
             .performClick()
         composeRule.onNodeWithTag("provider-option-blb").assertIsSelected()
     }
 
     @Test
-    fun pickingAProviderFromTheMenu_reportsThatProvider() {
-        setScreen(ThemeMode.SYSTEM)
+    fun pickingAnExternalAppFromTheMenu_reportsThatApp() {
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL)
         composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
         composeRule.onNodeWithTag("provider-option-biblegateway").performClick()
         composeRule.onNodeWithTag("provider-dropdown").performClick()
         composeRule.onNodeWithTag("provider-option-youversion").performClick()
-        assertThat(providerSelections)
-            .containsExactly(BibleProvider.BIBLE_GATEWAY, BibleProvider.YOUVERSION)
+        assertThat(externalAppSelections)
+            .containsExactly(ExternalBibleApp.BIBLE_GATEWAY, ExternalBibleApp.YOUVERSION)
             .inOrder()
     }
 
-    @Test
-    fun inAppOption_isSelectable_andReportsTheInAppProvider() {
-        // VD-T6 (D-V3-18): the Sprint-14 disabled teaser is now a real, selectable provider —
-        // tapping it persists BibleProvider.IN_APP (in-app reading is on, no app required).
-        setScreen(ThemeMode.SYSTEM)
-        composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
-        composeRule
-            .onNodeWithTag("provider-option-inapp")
-            .assertIsDisplayed()
-            .assertIsEnabled()
-            .performClick()
-        assertThat(providerSelections).containsExactly(BibleProvider.IN_APP)
-    }
-
-    // --- S15: MySword install-detected provider option (D-S15-2) ---
+    // --- S15: MySword install-detected app option (D-S15-2) ---
 
     @Test
     fun mySwordOption_whenNotInstalled_isVisibleButDisabled_withTheNotInstalledLabel() {
         // Owner UX: mirror the S14 teaser idiom — discoverable, never a dead tap.
-        setScreen(ThemeMode.SYSTEM, mySwordInstalled = false)
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL, mySwordInstalled = false)
         composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
         composeRule
             .onNodeWithTag("provider-option-mysword")
@@ -354,24 +384,29 @@ class SettingsScreenTest {
             .assertIsNotEnabled()
             .performClick()
         composeRule.onNodeWithText("MySword (app not installed)").assertIsDisplayed()
-        assertThat(providerSelections).isEmpty()
+        assertThat(externalAppSelections).isEmpty()
     }
 
     @Test
-    fun mySwordOption_whenInstalled_isSelectable_andReportsTheProvider() {
-        setScreen(ThemeMode.SYSTEM, mySwordInstalled = true)
+    fun mySwordOption_whenInstalled_isSelectable_andReportsTheApp() {
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL, mySwordInstalled = true)
         composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
         composeRule.onNodeWithTag("provider-option-mysword").assertIsDisplayed().performClick()
-        assertThat(providerSelections).containsExactly(BibleProvider.MYSWORD)
+        assertThat(externalAppSelections).containsExactly(ExternalBibleApp.MYSWORD)
     }
 
     @Test
     fun mySwordChoice_showsInTheRow_whenSelected() {
-        setScreen(ThemeMode.SYSTEM, selectedProvider = BibleProvider.MYSWORD, mySwordInstalled = true)
+        setScreen(
+            ThemeMode.SYSTEM,
+            destinationMode = ReadingDestinationMode.EXTERNAL,
+            externalBibleApp = ExternalBibleApp.MYSWORD,
+            mySwordInstalled = true,
+        )
         composeRule
             .onNodeWithTag("provider-dropdown")
             .performScrollTo()
-            .assertContentDescriptionEquals("Open readings in, MySword")
+            .assertContentDescriptionEquals("My Bible app, MySword")
             .performClick()
         composeRule.onNodeWithTag("provider-option-mysword").assertIsSelected()
     }

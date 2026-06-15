@@ -7,9 +7,11 @@ import com.jpillion.dailyreadingplanner.bible.domain.GetChapterUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
+import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.data.reference.Book
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.OpenVerseUseCase
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.Reference
@@ -19,11 +21,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -61,8 +65,21 @@ class ReaderViewModel
         private val openVerse: OpenVerseUseCase,
         private val savedStateHandle: SavedStateHandle,
         private val readerHandoff: ReaderHandoff,
+        settingsRepository: SettingsRepository,
     ) : ViewModel() {
         private var pageStates = mutableMapOf<Int, MutableStateFlow<ReaderUiState>>()
+
+        /**
+         * Sprint K (reader footer hint) — the user's chosen external Bible app, surfaced reactively
+         * so the reader's footer hint ("Tap a verse to open it on <app>") reflects the current
+         * setting and updates live when the user changes it in Settings. This is the SAME setting the
+         * verse-tap-out resolves at tap time (via [OpenVerseUseCase]); here it is display copy only.
+         * It is shown REGARDLESS of the reading destination — most useful when reading IN_APP (the
+         * read-here / study-there bridge). Seeds with the default so the hint never flickers wrong.
+         */
+        val externalApp: StateFlow<ExternalBibleApp> =
+            settingsRepository.externalBibleApp
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExternalBibleApp.DEFAULT)
 
         /** The active reader context (Browse or Reading); the route reads this to build the pager. */
         private val _context = MutableStateFlow<ReaderContext>(ReaderContext.Browse)

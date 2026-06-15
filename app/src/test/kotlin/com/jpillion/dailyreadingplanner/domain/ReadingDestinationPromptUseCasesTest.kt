@@ -1,7 +1,8 @@
 package com.jpillion.dailyreadingplanner.domain
 
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
@@ -15,8 +16,8 @@ import java.time.LocalDate
  *  - in-app is NEVER a silent default: resolving the prompt persists nothing;
  *  - the prompt shows ONLY for a fresh install (no marks), the note ONLY for an upgrader (marks);
  *  - the two gates are mutually exclusive;
- *  - an answer writes the provider + the completed marker; the note preserves the existing choice
- *    unless the user opts in.
+ *  - an answer writes the destination MODE + the completed marker; the note preserves the existing
+ *    choice (mode + external app) unless the user opts in.
  */
 class ReadingDestinationPromptUseCasesTest {
     private val settings = FakeSettingsRepository()
@@ -42,8 +43,9 @@ class ReadingDestinationPromptUseCasesTest {
         runTest {
             resolvePrompt()
             assertThat(settings.readingDestinationPromptCompletedCalls).isEqualTo(0)
-            assertThat(settings.bibleProviderCalls).isEmpty()
-            assertThat(settings.storedBibleProvider.value).isEqualTo(BibleProvider.BLB)
+            assertThat(settings.destinationModeCalls).isEmpty()
+            assertThat(settings.externalBibleAppCalls).isEmpty()
+            assertThat(settings.storedDestinationMode.value).isEqualTo(ReadingDestinationMode.EXTERNAL)
         }
 
     @Test
@@ -56,23 +58,23 @@ class ReadingDestinationPromptUseCasesTest {
     @Test
     fun `once answered the question never shows again`() =
         runTest {
-            completePrompt(BibleProvider.IN_APP)
+            completePrompt(ReadingDestinationMode.IN_APP)
             assertThat(resolvePrompt()).isFalse()
         }
 
     @Test
     fun `answering writes the chosen provider and the completed marker`() =
         runTest {
-            completePrompt(BibleProvider.IN_APP)
-            assertThat(settings.bibleProvider.first()).isEqualTo(BibleProvider.IN_APP)
+            completePrompt(ReadingDestinationMode.IN_APP)
+            assertThat(settings.readingDestinationMode.first()).isEqualTo(ReadingDestinationMode.IN_APP)
             assertThat(settings.readingDestinationPromptCompletedCalls).isEqualTo(1)
         }
 
     @Test
-    fun `answering external keeps an external provider`() =
+    fun `answering external keeps the external mode`() =
         runTest {
-            completePrompt(BibleProvider.BLB)
-            assertThat(settings.bibleProvider.first()).isEqualTo(BibleProvider.BLB)
+            completePrompt(ReadingDestinationMode.EXTERNAL)
+            assertThat(settings.readingDestinationMode.first()).isEqualTo(ReadingDestinationMode.EXTERNAL)
         }
 
     // --- the one-time upgrade note (existing user) ---
@@ -107,20 +109,29 @@ class ReadingDestinationPromptUseCasesTest {
         }
 
     @Test
-    fun `dismissing the note preserves the existing provider`() =
+    fun `MUTATION dismissing the note preserves the existing external choice - mode and app`() =
         runTest {
-            settings.storedBibleProvider.value = BibleProvider.YOUVERSION
+            // upgrade-note-preserves-B: an existing user on YouVersion in external mode keeps BOTH
+            // axes when they dismiss. A mutation that writes a mode on dismiss reddens here.
+            settings.storedDestinationMode.value = ReadingDestinationMode.EXTERNAL
+            settings.storedExternalBibleApp.value = ExternalBibleApp.YOUVERSION
+            settings.destinationModeCalls.clear()
             completeNote(switchToInApp = false)
-            assertThat(settings.bibleProvider.first()).isEqualTo(BibleProvider.YOUVERSION)
+            assertThat(settings.readingDestinationMode.first()).isEqualTo(ReadingDestinationMode.EXTERNAL)
+            assertThat(settings.externalBibleApp.first()).isEqualTo(ExternalBibleApp.YOUVERSION)
+            assertThat(settings.destinationModeCalls).isEmpty()
             assertThat(settings.upgradeNoteShownCalls).isEqualTo(1)
         }
 
     @Test
-    fun `using the in-app reader from the note switches the provider`() =
+    fun `using the in-app reader from the note switches the mode and keeps the remembered app`() =
         runTest {
-            settings.storedBibleProvider.value = BibleProvider.YOUVERSION
+            settings.storedDestinationMode.value = ReadingDestinationMode.EXTERNAL
+            settings.storedExternalBibleApp.value = ExternalBibleApp.YOUVERSION
             completeNote(switchToInApp = true)
-            assertThat(settings.bibleProvider.first()).isEqualTo(BibleProvider.IN_APP)
+            assertThat(settings.readingDestinationMode.first()).isEqualTo(ReadingDestinationMode.IN_APP)
+            // The external app B is remembered through the switch (round-trip back to external).
+            assertThat(settings.externalBibleApp.first()).isEqualTo(ExternalBibleApp.YOUVERSION)
             assertThat(settings.upgradeNoteShownCalls).isEqualTo(1)
         }
 

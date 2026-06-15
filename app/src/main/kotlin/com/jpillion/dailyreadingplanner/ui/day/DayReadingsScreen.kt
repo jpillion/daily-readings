@@ -36,9 +36,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.ui.browser.launchReadingDestination
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
@@ -89,7 +90,8 @@ fun DayReadingsRoute(
         viewModel.openReaderEvents.collect { onOpenInApp() }
     }
     val statsPanel by viewModel.statsPanel.collectAsStateWithLifecycle()
-    val selectedProvider by viewModel.selectedProvider.collectAsStateWithLifecycle()
+    val destinationMode by viewModel.destinationMode.collectAsStateWithLifecycle()
+    val externalApp by viewModel.externalApp.collectAsStateWithLifecycle()
     val showTrackingStartPrompt by viewModel.showTrackingStartPrompt.collectAsStateWithLifecycle()
     val showReadingDestinationPrompt by viewModel.showReadingDestinationPrompt.collectAsStateWithLifecycle()
     val showUpgradeNote by viewModel.showUpgradeNote.collectAsStateWithLifecycle()
@@ -98,7 +100,8 @@ fun DayReadingsRoute(
         uiStateFor = viewModel::uiStateFor,
         monthCompletionFor = viewModel::monthCompletionFor,
         statsPanel = statsPanel,
-        selectedProvider = selectedProvider,
+        destinationMode = destinationMode,
+        externalApp = externalApp,
         onToggleReading = viewModel::onToggleReading,
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
@@ -129,9 +132,10 @@ fun DayReadingsPagerScreen(
     uiStateFor: (LocalDate) -> StateFlow<DayUiState>,
     monthCompletionFor: (YearMonth) -> StateFlow<Map<LocalDate, DayCompletion>>,
     statsPanel: StatsPanelUiState?,
-    // The selected "Open readings in" provider drives the per-tile hint text (owner fix);
-    // default BLB keeps non-prompt/test callers on the historical wording.
-    selectedProvider: BibleProvider = BibleProvider.BLB,
+    // Sprint K (D-23-1): the effective destination drives the per-tile hint text; defaults keep
+    // non-prompt/test callers on the historical BLB-in-browser wording.
+    destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
+    externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
     onToggleReading: (LocalDate, ReadingStatus) -> Unit,
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
@@ -145,7 +149,7 @@ fun DayReadingsPagerScreen(
     // VD-T7/T10: the V3 first-run reading-destination question (fresh installs) and the one-time
     // upgrade note (existing users); both default off so non-prompt callers are unchanged.
     showReadingDestinationPrompt: Boolean = false,
-    onReadingDestinationChosen: (BibleProvider) -> Unit = {},
+    onReadingDestinationChosen: (ReadingDestinationMode) -> Unit = {},
     onReadingDestinationPromptDismissed: () -> Unit = {},
     showUpgradeNote: Boolean = false,
     onUpgradeNoteDismissed: (Boolean) -> Unit = {},
@@ -231,7 +235,8 @@ fun DayReadingsPagerScreen(
                         onToggleReading = { reading -> onToggleReading(date, reading) },
                         onReadingTapped = onReadingTapped,
                         onRetry = onRetry,
-                        provider = selectedProvider,
+                        destinationMode = destinationMode,
+                        externalApp = externalApp,
                     )
                 }
                 if (statsPanel != null) {

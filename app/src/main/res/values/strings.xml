@@ -112,6 +112,11 @@
     <string name="provider_mysword_not_installed">MySword (app not installed)</string>
     <string name="provider_inapp">Read in this app</string>
     <string name="provider_dropdown_description">Open readings in, %1$s</string>
+    <!-- Sprint K (D-23-1): destination mode is a segmented toggle; the external app is a separate dropdown. -->
+    <string name="destination_mode_inapp">In this app</string>
+    <string name="destination_mode_external">My Bible app</string>
+    <string name="destination_mode_row_description">Open readings in, %1$s</string>
+    <string name="external_app_dropdown_description">My Bible app, %1$s</string>
     <string name="request_app_title">Request another app or site</string>
     <string name="request_app_subject">Daily Reading Planner — Bible app request</string>
     <string name="request_app_body">I would like my readings to open in: </string>
@@ -128,6 +133,19 @@
     <string name="reader_next_chapter">Next chapter</string>
     <string name="reader_load_failed">Couldn\'t load this chapter</string>
     <string name="reader_retry">Retry</string>
+    <!-- V3 Sprint K (reader footer hint): an always-shown italic footer at the END of the
+         reading pane keying the verse-tap-out to the user's chosen external Bible app
+         (read-here / study-there bridge). %1$s = the external app display name. Per-provider
+         preposition mirrors the day-tile reading_open_hint_* set; mapped in DayContent
+         (readerVerseTapHintRes) so the two surfaces can't drift. Strings await owner tone sign-off. -->
+    <string name="reader_verse_tap_hint_blb">Tap a verse to open it on %1$s</string>
+    <string name="reader_verse_tap_hint_gateway">Tap a verse to open it on %1$s</string>
+    <string name="reader_verse_tap_hint_youversion">Tap a verse to open it on %1$s</string>
+    <string name="reader_verse_tap_hint_mysword">Tap a verse to open it in %1$s</string>
+    <string name="external_app_name_blb">Blue Letter Bible</string>
+    <string name="external_app_name_gateway">Bible Gateway</string>
+    <string name="external_app_name_youversion">YouVersion</string>
+    <string name="external_app_name_mysword">MySword</string>
     <string name="picker_testament_ot">Old Testament</string>
     <string name="picker_testament_nt">New Testament</string>
     <string name="picker_back_to_books">All books</string>

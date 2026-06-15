@@ -4,7 +4,8 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.testing.FakeNotificationPermissionChecker
@@ -250,14 +251,24 @@ class SettingsViewModelTest {
             assertThat(reminderScheduler.scheduledTimes).isEmpty()
         }
 
-    // --- S13: bible provider. ---
+    // --- Sprint K (D-23-1): destination mode (segmented toggle) + external app (dropdown). ---
 
     @Test
-    fun `selecting a provider persists it`() =
+    fun `selecting the destination mode persists it`() =
         runTest {
-            viewModel.onBibleProviderSelected(BibleProvider.YOUVERSION)
-            assertThat(repository.bibleProviderCalls).containsExactly(BibleProvider.YOUVERSION)
-            assertThat(repository.storedBibleProvider.value).isEqualTo(BibleProvider.YOUVERSION)
+            viewModel.onDestinationModeSelected(ReadingDestinationMode.IN_APP)
+            assertThat(repository.destinationModeCalls).containsExactly(ReadingDestinationMode.IN_APP)
+            assertThat(repository.storedDestinationMode.value).isEqualTo(ReadingDestinationMode.IN_APP)
+        }
+
+    @Test
+    fun `selecting an external app persists it without touching the mode`() =
+        runTest {
+            viewModel.onExternalBibleAppSelected(ExternalBibleApp.YOUVERSION)
+            assertThat(repository.externalBibleAppCalls).containsExactly(ExternalBibleApp.YOUVERSION)
+            assertThat(repository.storedExternalBibleApp.value).isEqualTo(ExternalBibleApp.YOUVERSION)
+            // The two axes are independent: the mode was not written.
+            assertThat(repository.destinationModeCalls).isEmpty()
         }
 
     // --- S15: MySword install detection (D-S15-2) + show-streaks (D-S15-5). ---

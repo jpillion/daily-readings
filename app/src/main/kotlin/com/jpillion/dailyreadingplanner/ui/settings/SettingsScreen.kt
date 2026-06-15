@@ -31,6 +31,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -51,6 +54,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -59,7 +63,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import java.time.LocalDate
 import java.time.LocalTime
@@ -74,7 +79,8 @@ fun SettingsRoute(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-    val bibleProvider by viewModel.bibleProvider.collectAsStateWithLifecycle()
+    val destinationMode by viewModel.destinationMode.collectAsStateWithLifecycle()
+    val externalBibleApp by viewModel.externalBibleApp.collectAsStateWithLifecycle()
     val showStreaks by viewModel.showStreaks.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val trackingStartDate by viewModel.trackingStartDate.collectAsStateWithLifecycle()
@@ -100,7 +106,8 @@ fun SettingsRoute(
     val requestAppBody = stringResource(R.string.request_app_body)
     SettingsScreen(
         selectedMode = themeMode,
-        selectedProvider = bibleProvider,
+        destinationMode = destinationMode,
+        externalBibleApp = externalBibleApp,
         mySwordInstalled = viewModel.mySwordInstalled,
         showStreaks = showStreaks,
         fontScale = fontScale,
@@ -111,7 +118,8 @@ fun SettingsRoute(
         persistentNotificationEnabled = persistentNotificationEnabled,
         showReminderPermissionRationale = showPermissionRationale,
         onThemeModeSelected = viewModel::onThemeModeSelected,
-        onBibleProviderSelected = viewModel::onBibleProviderSelected,
+        onDestinationModeSelected = viewModel::onDestinationModeSelected,
+        onExternalBibleAppSelected = viewModel::onExternalBibleAppSelected,
         onShowStreaksToggled = viewModel::onShowStreaksToggled,
         onRequestApp = {
             // Spec §7: an outbound mailto intent — the same intent class as a reading link;
@@ -155,7 +163,8 @@ fun SettingsRoute(
 @Composable
 fun SettingsScreen(
     selectedMode: ThemeMode,
-    selectedProvider: BibleProvider,
+    destinationMode: ReadingDestinationMode,
+    externalBibleApp: ExternalBibleApp,
     mySwordInstalled: Boolean,
     showStreaks: Boolean,
     fontScale: Float,
@@ -166,7 +175,8 @@ fun SettingsScreen(
     persistentNotificationEnabled: Boolean,
     showReminderPermissionRationale: Boolean,
     onThemeModeSelected: (ThemeMode) -> Unit,
-    onBibleProviderSelected: (BibleProvider) -> Unit,
+    onDestinationModeSelected: (ReadingDestinationMode) -> Unit,
+    onExternalBibleAppSelected: (ExternalBibleApp) -> Unit,
     onShowStreaksToggled: (Boolean) -> Unit,
     onRequestApp: () -> Unit,
     onFontScaleChanged: (Float) -> Unit,
@@ -220,11 +230,20 @@ fun SettingsScreen(
             TextSizeSlider(fontScale = fontScale, onFontScaleChanged = onFontScaleChanged)
 
             SectionTitle(stringResource(R.string.provider_section_title))
-            ProviderDropdown(
-                selectedProvider = selectedProvider,
-                mySwordInstalled = mySwordInstalled,
-                onBibleProviderSelected = onBibleProviderSelected,
+            // Sprint K (D-23-1): the destination MODE is a segmented toggle ("In this app" |
+            // "My Bible app"); WHICH external app is a separate dropdown shown when the mode is
+            // external. The external choice is remembered while in-app is selected.
+            DestinationModeToggle(
+                destinationMode = destinationMode,
+                onDestinationModeSelected = onDestinationModeSelected,
             )
+            if (destinationMode == ReadingDestinationMode.EXTERNAL) {
+                ExternalAppDropdown(
+                    selectedApp = externalBibleApp,
+                    mySwordInstalled = mySwordInstalled,
+                    onExternalBibleAppSelected = onExternalBibleAppSelected,
+                )
+            }
             Row(
                 modifier =
                     Modifier
@@ -679,31 +698,84 @@ private fun ThemeDropdown(
 }
 
 /**
- * S14: the S13 provider selector as the same compact dropdown (`provider-option-*` tags
- * carry over), plus a visible-but-disabled "Read in this app (coming soon)" teaser row.
- * The teaser is render-layer ONLY — deliberately not a [BibleProvider] entry, so no tap
- * can ever persist it; `enabled = false` gives proper disabled semantics for TalkBack.
+ * Sprint K (D-23-1): the destination-MODE selector — a single-choice segmented toggle
+ * ("In this app" | "My Bible app") under the "Open readings in" heading. The whole row carries
+ * the spoken label and each segment exposes [Role.RadioButton] selection semantics so TalkBack
+ * announces "In this app, selected" / "My Bible app". Tags: `destination-mode-toggle` (row),
+ * `destination-mode-inapp` / `destination-mode-external` (segments).
  */
 @Composable
-private fun ProviderDropdown(
-    selectedProvider: BibleProvider,
+private fun DestinationModeToggle(
+    destinationMode: ReadingDestinationMode,
+    onDestinationModeSelected: (ReadingDestinationMode) -> Unit,
+) {
+    val inAppLabel = stringResource(R.string.destination_mode_inapp)
+    val externalLabel = stringResource(R.string.destination_mode_external)
+    val rowDescription =
+        stringResource(
+            R.string.destination_mode_row_description,
+            if (destinationMode == ReadingDestinationMode.IN_APP) inAppLabel else externalLabel,
+        )
+    SingleChoiceSegmentedButtonRow(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 16.dp)
+                .testTag("destination-mode-toggle")
+                .semantics { contentDescription = rowDescription },
+    ) {
+        SegmentedButton(
+            selected = destinationMode == ReadingDestinationMode.IN_APP,
+            onClick = { onDestinationModeSelected(ReadingDestinationMode.IN_APP) },
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            modifier =
+                Modifier
+                    .testTag("destination-mode-inapp")
+                    .semantics {
+                        role = Role.RadioButton
+                        selected = destinationMode == ReadingDestinationMode.IN_APP
+                    },
+        ) { Text(text = inAppLabel) }
+        SegmentedButton(
+            selected = destinationMode == ReadingDestinationMode.EXTERNAL,
+            onClick = { onDestinationModeSelected(ReadingDestinationMode.EXTERNAL) },
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            modifier =
+                Modifier
+                    .testTag("destination-mode-external")
+                    .semantics {
+                        role = Role.RadioButton
+                        selected = destinationMode == ReadingDestinationMode.EXTERNAL
+                    },
+        ) { Text(text = externalLabel) }
+    }
+}
+
+/**
+ * Sprint K (D-23-1): the "My Bible app" dropdown — WHICH external app/site reading taps open
+ * when the mode is EXTERNAL. The four external apps (BLB default, Bible Gateway, YouVersion,
+ * MySword). MySword mirrors the S15 install-gating idiom: a visible-but-disabled
+ * "app not installed" item when absent (discoverable, never a dead tap). The `provider-option-*`
+ * and `provider-dropdown` test tags carry over from the retired single dropdown.
+ */
+@Composable
+private fun ExternalAppDropdown(
+    selectedApp: ExternalBibleApp,
     mySwordInstalled: Boolean,
-    onBibleProviderSelected: (BibleProvider) -> Unit,
+    onExternalBibleAppSelected: (ExternalBibleApp) -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val options =
         listOf(
-            // VD-T6 (D-V3-18, OQ-1 emphasis): the in-app reader is a real, selectable provider at
-            // the top of the list — the Sprint-14 disabled teaser is retired.
-            Triple(BibleProvider.IN_APP, stringResource(R.string.provider_inapp), "provider-option-inapp"),
-            Triple(BibleProvider.BLB, stringResource(R.string.provider_blb), "provider-option-blb"),
+            Triple(ExternalBibleApp.BLB, stringResource(R.string.provider_blb), "provider-option-blb"),
             Triple(
-                BibleProvider.BIBLE_GATEWAY,
+                ExternalBibleApp.BIBLE_GATEWAY,
                 stringResource(R.string.provider_biblegateway),
                 "provider-option-biblegateway",
             ),
             Triple(
-                BibleProvider.YOUVERSION,
+                ExternalBibleApp.YOUVERSION,
                 stringResource(R.string.provider_youversion),
                 "provider-option-youversion",
             ),
@@ -715,40 +787,37 @@ private fun ProviderDropdown(
             stringResource(R.string.provider_mysword_not_installed)
         }
     val valueText =
-        if (selectedProvider == BibleProvider.MYSWORD) {
+        if (selectedApp == ExternalBibleApp.MYSWORD) {
             mySwordLabel
         } else {
-            options.first { it.first == selectedProvider }.second
+            options.first { it.first == selectedApp }.second
         }
     SettingsDropdownRow(
         valueText = valueText,
-        rowDescription = stringResource(R.string.provider_dropdown_description, valueText),
+        rowDescription = stringResource(R.string.external_app_dropdown_description, valueText),
         testTag = "provider-dropdown",
         expanded = expanded,
         onExpandedChange = { expanded = it },
     ) {
-        options.forEach { (provider, label, tag) ->
+        options.forEach { (app, label, tag) ->
             SelectableMenuItem(
                 label = label,
-                selected = provider == selectedProvider,
+                selected = app == selectedApp,
                 testTag = tag,
                 onClick = {
                     expanded = false
-                    onBibleProviderSelected(provider)
+                    onExternalBibleAppSelected(app)
                 },
             )
         }
-        // S15 (D-S15-2, owner UX): MySword mirrors the S14 teaser idiom when absent —
-        // visible but disabled with an "app not installed" label, so the option is
-        // discoverable without ever being selectable into a dead tap.
         if (mySwordInstalled) {
             SelectableMenuItem(
                 label = mySwordLabel,
-                selected = selectedProvider == BibleProvider.MYSWORD,
+                selected = selectedApp == ExternalBibleApp.MYSWORD,
                 testTag = "provider-option-mysword",
                 onClick = {
                     expanded = false
-                    onBibleProviderSelected(BibleProvider.MYSWORD)
+                    onExternalBibleAppSelected(ExternalBibleApp.MYSWORD)
                 },
             )
         } else {

@@ -3,17 +3,19 @@ package com.jpillion.dailyreadingplanner.domain
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 /**
- * H6 (BACKLOG #5) — a verse tap resolves to an external destination at the exact (book, ch, verse)
- * for the user's CHOSEN provider, read at tap time. D-H-4: IN_APP has no external verse target, so
- * the tap falls back to BLB without ever rewriting the stored IN_APP choice.
+ * H6 (BACKLOG #5) + Sprint K (D-23-1) — a verse tap ALWAYS resolves to an EXTERNAL destination at
+ * the exact (book, ch, verse) for the user's CHOSEN external app, read at tap time, INDEPENDENT of
+ * the destination mode (the in-app reader is never a verse-tap target). In-app mode keeps the
+ * remembered external app (default BLB) and never rewrites the stored choice.
  */
 class OpenVerseUseCaseTest {
     private val settings = FakeSettingsRepository()
@@ -23,7 +25,7 @@ class OpenVerseUseCaseTest {
     private val psalms = BookCatalog.requireByName("Psalms")
 
     @Test
-    fun `default provider opens the verse at blb`() =
+    fun `default external app opens the verse at blb`() =
         runTest {
             assertThat(useCase(Reference(genesis, 1), 1))
                 .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/gen/1/1/"))
@@ -32,7 +34,7 @@ class OpenVerseUseCaseTest {
     @Test
     fun `youversion verse url is read at tap time`() =
         runTest {
-            settings.setBibleProvider(BibleProvider.YOUVERSION)
+            settings.setExternalBibleApp(ExternalBibleApp.YOUVERSION)
             assertThat(useCase(Reference(psalms, 23), 1))
                 .isEqualTo(ReadingDestination.Web("https://www.bible.com/bible/1/PSA.23.1.KJV"))
         }
@@ -40,7 +42,7 @@ class OpenVerseUseCaseTest {
     @Test
     fun `bible gateway verse url carries book chapter verse`() =
         runTest {
-            settings.setBibleProvider(BibleProvider.BIBLE_GATEWAY)
+            settings.setExternalBibleApp(ExternalBibleApp.BIBLE_GATEWAY)
             assertThat(useCase(Reference(genesis, 1), 1))
                 .isEqualTo(
                     ReadingDestination.Web(
@@ -52,7 +54,7 @@ class OpenVerseUseCaseTest {
     @Test
     fun `mysword resolves to an app destination with a BLB verse fallback`() =
         runTest {
-            settings.setBibleProvider(BibleProvider.MYSWORD)
+            settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
             assertThat(useCase(Reference(psalms, 23), 1))
                 .isEqualTo(
                     ReadingDestination.MySwordApp(
@@ -63,15 +65,32 @@ class OpenVerseUseCaseTest {
         }
 
     @Test
-    fun `IN_APP falls back to BLB for the verse tap-out and never rewrites the stored choice`() =
+    fun `MUTATION verse tap is always external - in-app mode still opens an external verse url`() =
         runTest {
-            settings.setBibleProvider(BibleProvider.IN_APP)
-            assertThat(useCase(Reference(genesis, 1), 1))
+            // Load-bearing rule (verse-tap-always-external): the verse resolution depends ONLY on
+            // the external app and NEVER on the mode. With the mode IN_APP and the default app BLB,
+            // the tap-out still opens BLB externally — never an InApp destination. A mutation that
+            // reintroduces a mode branch (e.g. returning InApp, or short-circuiting) reddens here.
+            settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
+            val result = useCase(Reference(genesis, 1), 1)
+            assertThat(result)
                 .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/gen/1/1/"))
-            // D-H-4: resolving a tap-out NEVER writes the provider — the only call is the test's
-            // own setup, and the stored value is still IN_APP.
-            assertThat(settings.storedBibleProvider.value).isEqualTo(BibleProvider.IN_APP)
-            assertThat(settings.bibleProviderCalls).containsExactly(BibleProvider.IN_APP)
+        }
+
+    @Test
+    fun `in-app mode honours the remembered external app and never rewrites it`() =
+        runTest {
+            // The remembered external app (here YouVersion) is what a verse tap-out uses even while
+            // the mode is in-app; nothing is written by resolving.
+            settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
+            settings.setExternalBibleApp(ExternalBibleApp.YOUVERSION)
+            settings.externalBibleAppCalls.clear()
+            settings.destinationModeCalls.clear()
+            assertThat(useCase(Reference(psalms, 23), 1))
+                .isEqualTo(ReadingDestination.Web("https://www.bible.com/bible/1/PSA.23.1.KJV"))
+            assertThat(settings.storedExternalBibleApp.value).isEqualTo(ExternalBibleApp.YOUVERSION)
+            assertThat(settings.externalBibleAppCalls).isEmpty()
+            assertThat(settings.destinationModeCalls).isEmpty()
         }
 
     @Test

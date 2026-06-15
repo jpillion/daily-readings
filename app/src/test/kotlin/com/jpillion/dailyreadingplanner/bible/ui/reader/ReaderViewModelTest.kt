@@ -10,7 +10,7 @@ import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
 import com.jpillion.dailyreadingplanner.domain.OpenVerseUseCase
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.Reference
@@ -51,7 +51,7 @@ class ReaderViewModelTest {
     private val psalms23Page = GlobalChapterIndex.indexOf(psalms, 23)
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
-        ReaderViewModel(getChapter, getPortionText, openVerse, handle, handoff)
+        ReaderViewModel(getChapter, getPortionText, openVerse, handle, handoff, settings)
 
     private fun nt(vararg refs: Reference) = Portion(Stream.NEW_TESTAMENT, refs.toList())
 
@@ -238,7 +238,7 @@ class ReaderViewModelTest {
     @Test
     fun `a verse tap inside the portion page emits an external destination at canonical coords`() =
         runTest {
-            settings.setBibleProvider(BibleProvider.BLB)
+            settings.setExternalBibleApp(ExternalBibleApp.BLB)
             val model = vm()
             handoff.request(nt(Reference(james, 1), Reference(james, 2)))
             advanceUntilIdle()
@@ -251,6 +251,23 @@ class ReaderViewModelTest {
             assertThat(results).containsExactly(
                 ReadingDestination.Web("https://www.blueletterbible.org/kjv/jas/2/3/"),
             )
+            job.cancel()
+        }
+
+    @Test
+    fun `externalApp reflects the stored setting and updates reactively (Sprint K footer hint)`() =
+        runTest {
+            // Seeds with the default, then mirrors a Settings change live (the footer hint is driven
+            // by this flow). A collector keeps the WhileSubscribed stateIn hot.
+            settings.setExternalBibleApp(ExternalBibleApp.BLB)
+            val model = vm()
+            val seen = mutableListOf<ExternalBibleApp>()
+            val job = launch { model.externalApp.collect { seen += it } }
+            advanceUntilIdle()
+            assertThat(model.externalApp.value).isEqualTo(ExternalBibleApp.BLB)
+            settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
+            advanceUntilIdle()
+            assertThat(model.externalApp.value).isEqualTo(ExternalBibleApp.MYSWORD)
             job.cancel()
         }
 }

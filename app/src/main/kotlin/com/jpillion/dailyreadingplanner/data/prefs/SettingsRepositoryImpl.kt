@@ -8,7 +8,8 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -110,14 +111,44 @@ class SettingsRepositoryImpl
             dataStore.edit { preferences -> preferences[PERSISTENT_NOTIFICATION_ENABLED_KEY] = enabled }
         }
 
-        /** Stored as the enum name; [BibleProvider.fromStored] absorbs unknown/corrupt ids. */
-        override val bibleProvider: Flow<BibleProvider> =
+        /**
+         * Sprint K (D-23-1) destination mode. New key `reading_destination_mode`; when ABSENT,
+         * migrate from the legacy `bible_provider`: a stored "IN_APP" (the old in-app member) ⇒
+         * [ReadingDestinationMode.IN_APP]; anything else, including absent, ⇒
+         * [ReadingDestinationMode.EXTERNAL] (the historical BLB-in-browser default). Once the new
+         * key is written, the legacy value no longer influences the mode. A corrupt new-key value
+         * degrades to [ReadingDestinationMode.DEFAULT].
+         */
+        override val readingDestinationMode: Flow<ReadingDestinationMode> =
             dataStore.data.map { preferences ->
-                BibleProvider.fromStored(preferences[BIBLE_PROVIDER_KEY])
+                val stored = preferences[READING_DESTINATION_MODE_KEY]
+                if (stored != null) {
+                    ReadingDestinationMode.fromStored(stored)
+                } else if (preferences[BIBLE_PROVIDER_KEY] == LEGACY_IN_APP_VALUE) {
+                    ReadingDestinationMode.IN_APP
+                } else {
+                    ReadingDestinationMode.EXTERNAL
+                }
             }
 
-        override suspend fun setBibleProvider(provider: BibleProvider) {
-            dataStore.edit { preferences -> preferences[BIBLE_PROVIDER_KEY] = provider.name }
+        override suspend fun setReadingDestinationMode(mode: ReadingDestinationMode) {
+            dataStore.edit { preferences -> preferences[READING_DESTINATION_MODE_KEY] = mode.name }
+        }
+
+        /**
+         * Sprint K (D-23-1) external app, on the legacy `bible_provider` key. The four external
+         * names round-trip unchanged from before Sprint K (R-V3-4). The legacy in-app value
+         * ("IN_APP") is no longer an [ExternalBibleApp] member, so [ExternalBibleApp.fromStored]
+         * degrades it to the default (BLB) — exactly the external app a legacy in-app user falls
+         * back to. Unknown/corrupt ids likewise degrade to the default.
+         */
+        override val externalBibleApp: Flow<ExternalBibleApp> =
+            dataStore.data.map { preferences ->
+                ExternalBibleApp.fromStored(preferences[BIBLE_PROVIDER_KEY])
+            }
+
+        override suspend fun setExternalBibleApp(app: ExternalBibleApp) {
+            dataStore.edit { preferences -> preferences[BIBLE_PROVIDER_KEY] = app.name }
         }
 
         override val readingDestinationPromptCompleted: Flow<Boolean> =
@@ -155,6 +186,10 @@ class SettingsRepositoryImpl
         private companion object {
             val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
             val BIBLE_PROVIDER_KEY = stringPreferencesKey("bible_provider")
+            val READING_DESTINATION_MODE_KEY = stringPreferencesKey("reading_destination_mode")
+
+            /** The pre-Sprint-K `bible_provider` value that meant "read in the app". */
+            const val LEGACY_IN_APP_VALUE = "IN_APP"
             val FONT_SCALE_KEY = floatPreferencesKey("font_scale")
             val TRACKING_START_EPOCH_DAY_KEY = longPreferencesKey("tracking_start_epoch_day")
             val TRACKING_START_INITIALIZED_KEY = booleanPreferencesKey("tracking_start_initialized")

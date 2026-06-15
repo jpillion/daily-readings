@@ -22,9 +22,10 @@ import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUs
 import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
@@ -263,7 +264,7 @@ class DayReadingsViewModelTest {
             // S15 (D-S15-1/3): numeric vendor form for the intent URL; BLB as the
             // uninstalled-fallback so a dead tap can never land on the mysword.info stub.
             val settings = FakeSettingsRepository()
-            settings.setBibleProvider(BibleProvider.MYSWORD)
+            settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
             val vm = viewModel(settings = settings)
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
@@ -287,7 +288,7 @@ class DayReadingsViewModelTest {
             // publishes the portion to the handoff seam and raises openReaderEvents; it must NOT
             // emit on openDestinationEvents (the Web/MySword OS-launch path).
             val settings = FakeSettingsRepository()
-            settings.setBibleProvider(BibleProvider.IN_APP)
+            settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
             val vm = viewModel(settings = settings)
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
@@ -303,7 +304,7 @@ class DayReadingsViewModelTest {
     fun `an in-app tap does not emit on the OS-launch destination channel`() =
         runTest {
             val settings = FakeSettingsRepository()
-            settings.setBibleProvider(BibleProvider.IN_APP)
+            settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
             val vm = viewModel(settings = settings)
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
@@ -371,17 +372,22 @@ class DayReadingsViewModelTest {
         }
 
     @Test
-    fun `selectedProvider reflects the stored provider reactively`() =
+    fun `destinationMode and externalApp reflect the stored settings reactively`() =
         runTest {
             val settings = FakeSettingsRepository()
             val vm = viewModel(settings = settings)
-            // Default install: Blue Letter Bible.
-            assertThat(vm.selectedProvider.first()).isEqualTo(BibleProvider.BLB)
+            // Default install: external mode, Blue Letter Bible.
+            assertThat(vm.destinationMode.first()).isEqualTo(ReadingDestinationMode.EXTERNAL)
+            assertThat(vm.externalApp.first()).isEqualTo(ExternalBibleApp.BLB)
             // A Settings change is reflected live (the reading-tile hint follows it).
-            settings.setBibleProvider(BibleProvider.IN_APP)
+            settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
             assertThat(
-                vm.selectedProvider.first { it == BibleProvider.IN_APP },
-            ).isEqualTo(BibleProvider.IN_APP)
+                vm.destinationMode.first { it == ReadingDestinationMode.IN_APP },
+            ).isEqualTo(ReadingDestinationMode.IN_APP)
+            settings.setExternalBibleApp(ExternalBibleApp.YOUVERSION)
+            assertThat(
+                vm.externalApp.first { it == ExternalBibleApp.YOUVERSION },
+            ).isEqualTo(ExternalBibleApp.YOUVERSION)
         }
 
     // --- Sprint 7: opportunistic widget refresh on progress change (D9, ESpec §7) ---

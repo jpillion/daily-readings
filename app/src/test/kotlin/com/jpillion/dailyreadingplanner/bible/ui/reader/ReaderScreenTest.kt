@@ -14,6 +14,9 @@ import androidx.compose.ui.test.performScrollToIndex
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.ui.day.externalBibleAppNameRes
+import com.jpillion.dailyreadingplanner.ui.day.readerVerseTapHintRes
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
 import org.junit.Test
@@ -52,7 +55,10 @@ class ReaderScreenTest {
 
     private fun content() = ReaderUiState.Content(blocks = listOf(psalm23()), title = "Psalm 23")
 
-    private fun setContent(state: ReaderUiState = content()) {
+    private fun setContent(
+        state: ReaderUiState = content(),
+        externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
+    ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 ReaderScreen(
@@ -60,6 +66,7 @@ class ReaderScreenTest {
                         androidx.compose.foundation.pager
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { state },
+                    externalApp = externalApp,
                     onOpenPicker = {},
                     onVerseTapped = { _, _ -> },
                     onRetry = {},
@@ -189,6 +196,7 @@ class ReaderScreenTest {
                         androidx.compose.foundation.pager
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { state.value },
+                    externalApp = ExternalBibleApp.BLB,
                     onOpenPicker = {},
                     onVerseTapped = { _, _ -> },
                     onRetry = {},
@@ -243,6 +251,7 @@ class ReaderScreenTest {
                         androidx.compose.foundation.pager
                             .rememberPagerState(initialPage = 0) { 1 },
                     stateForPage = { content() },
+                    externalApp = ExternalBibleApp.BLB,
                     onOpenPicker = {},
                     onVerseTapped = { _, verseId -> tapped = verseId },
                     onRetry = {},
@@ -268,5 +277,75 @@ class ReaderScreenTest {
                     ?.any { it.startsWith("Open Psalm 23:1") } == true
             },
         )
+    }
+
+    // --- Sprint K: reader footer hint (owner request, read-here / study-there bridge). ---
+    //
+    // The hint TEXT is intentionally hidden from TalkBack via clearAndSetSemantics (every verse
+    // already speaks its "Open …" affordance), which also removes the visible Text from the
+    // semantics tree — so the literal wording is pinned through the resolved string resources
+    // (`hintString` below), and the rendered node is pinned for existence + a11y silence.
+
+    private fun hintString(app: ExternalBibleApp): String {
+        val ctx =
+            androidx.test.core.app.ApplicationProvider
+                .getApplicationContext<android.content.Context>()
+        val name = ctx.getString(externalBibleAppNameRes(app))
+        return ctx.getString(readerVerseTapHintRes(app), name)
+    }
+
+    @Test
+    fun `footer hint wording is the BLB phrasing for BLB (LITERAL, mutation-pins the mapping)`() {
+        // LITERAL expected string (NOT computed via the prod mapping): a wrong external-app -> hint
+        // mapping or a wrong app-name mapping reddens this pin.
+        com.google.common.truth.Truth
+            .assertThat(hintString(ExternalBibleApp.BLB))
+            .isEqualTo("Tap a verse to open it on Blue Letter Bible")
+    }
+
+    @Test
+    fun `footer hint wording is the MySword phrasing with the in preposition (LITERAL)`() {
+        // MySword takes "in", proving the per-provider preposition mapping is not flattened.
+        com.google.common.truth.Truth
+            .assertThat(hintString(ExternalBibleApp.MYSWORD))
+            .isEqualTo("Tap a verse to open it in MySword")
+    }
+
+    @Test
+    fun `footer hint wording is the Bible Gateway phrasing (LITERAL)`() {
+        com.google.common.truth.Truth
+            .assertThat(hintString(ExternalBibleApp.BIBLE_GATEWAY))
+            .isEqualTo("Tap a verse to open it on Bible Gateway")
+    }
+
+    @Test
+    fun `footer hint wording is the YouVersion phrasing (LITERAL)`() {
+        com.google.common.truth.Truth
+            .assertThat(hintString(ExternalBibleApp.YOUVERSION))
+            .isEqualTo("Tap a verse to open it on YouVersion")
+    }
+
+    @Test
+    fun `footer hint renders and is hidden from TalkBack (no text, no contentDescription)`() {
+        // The footer is present (findable by tag), but clearAndSetSemantics strips its spoken text
+        // and any description so TalkBack does not restate the affordance every verse already speaks.
+        setContent(externalApp = ExternalBibleApp.BLB)
+        composeRule.onNodeWithTag("reader-footer-hint").assertIsDisplayed()
+        composeRule.onNodeWithTag("reader-footer-hint").assert(
+            SemanticsMatcher("no text and no contentDescription (skipped from TalkBack)") { node ->
+                node.config.getOrNull(SemanticsProperties.Text).isNullOrEmpty() &&
+                    node.config.getOrNull(SemanticsProperties.ContentDescription).isNullOrEmpty()
+            },
+        )
+    }
+
+    @Test
+    fun `footer hint does not break verse-keyed items (D-V3-12)`() {
+        // The footer is an extra LazyColumn item; the verse items must still be addressable by their
+        // canonicalId and the footer coexists with them on the same page.
+        setContent(externalApp = ExternalBibleApp.BLB)
+        composeRule.onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}").assertIsDisplayed()
+        composeRule.onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 2)}").assertIsDisplayed()
+        composeRule.onNodeWithTag("reader-footer-hint").assertIsDisplayed()
     }
 }

@@ -5,8 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.data.apps.AppInstallChecker
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
@@ -77,16 +78,35 @@ class SettingsViewModel
             viewModelScope.launch { settingsRepository.setThemeMode(mode) }
         }
 
-        /** S13: the KJV destination reading taps open; applies to the very next tap. */
-        val bibleProvider: StateFlow<BibleProvider> =
-            settingsRepository.bibleProvider.stateIn(
+        /**
+         * Sprint K (D-23-1): WHERE reading taps go — the in-app reader vs. an external app/site.
+         * The segmented toggle in Settings writes this; applies to the very next tap.
+         */
+        val destinationMode: StateFlow<ReadingDestinationMode> =
+            settingsRepository.readingDestinationMode.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = BibleProvider.DEFAULT,
+                initialValue = ReadingDestinationMode.DEFAULT,
             )
 
-        fun onBibleProviderSelected(provider: BibleProvider) {
-            viewModelScope.launch { settingsRepository.setBibleProvider(provider) }
+        fun onDestinationModeSelected(mode: ReadingDestinationMode) {
+            viewModelScope.launch { settingsRepository.setReadingDestinationMode(mode) }
+        }
+
+        /**
+         * Sprint K (D-23-1): WHICH external app/site is used when the mode is EXTERNAL (S13).
+         * The "My Bible app" dropdown writes this; the choice is remembered while the mode is
+         * in-app, so it is offered/shown independently of the toggle.
+         */
+        val externalBibleApp: StateFlow<ExternalBibleApp> =
+            settingsRepository.externalBibleApp.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = ExternalBibleApp.DEFAULT,
+            )
+
+        fun onExternalBibleAppSelected(app: ExternalBibleApp) {
+            viewModelScope.launch { settingsRepository.setExternalBibleApp(app) }
         }
 
         /**

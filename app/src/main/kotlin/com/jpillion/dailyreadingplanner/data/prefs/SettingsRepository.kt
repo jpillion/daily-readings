@@ -1,6 +1,7 @@
 package com.jpillion.dailyreadingplanner.data.prefs
 
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -77,13 +78,29 @@ interface SettingsRepository {
     suspend fun setPersistentNotificationEnabled(enabled: Boolean)
 
     /**
-     * The KJV destination reading taps open (S13, docs/features/bible-app-links.md).
-     * Defaults to [BibleProvider.DEFAULT] (Blue Letter Bible) — existing users see zero
-     * behavior change; unknown stored ids degrade to the default, never crash.
+     * WHERE a reading tap goes (Sprint K, D-23-1): the in-app reader vs. an external Bible
+     * app/site — the orthogonal axis to [externalBibleApp]. Stored under the new
+     * `reading_destination_mode` key. Pre-Sprint-K installs are migrated from the legacy
+     * `bible_provider` value: a stored `IN_APP` ⇒ [ReadingDestinationMode.IN_APP], anything
+     * else (incl. absent) ⇒ [ReadingDestinationMode.EXTERNAL] (BLB-in-browser, the historical
+     * default) — so existing users see zero behavior change. Corrupt ⇒ [ReadingDestinationMode.DEFAULT].
      */
-    val bibleProvider: Flow<BibleProvider>
+    val readingDestinationMode: Flow<ReadingDestinationMode>
 
-    suspend fun setBibleProvider(provider: BibleProvider)
+    suspend fun setReadingDestinationMode(mode: ReadingDestinationMode)
+
+    /**
+     * WHICH external Bible app/site a reading tap opens when the mode is
+     * [ReadingDestinationMode.EXTERNAL] (S13, docs/features/bible-app-links.md). Stored under
+     * the legacy `bible_provider` key (so the four external names round-trip unchanged from
+     * before Sprint K). Defaults to [ExternalBibleApp.DEFAULT] (Blue Letter Bible). The legacy
+     * `IN_APP` value (no longer a member) is read as the default here — the in-app destination
+     * lives entirely in [readingDestinationMode], so the remembered external app survives a
+     * round-trip through the in-app mode. Unknown stored ids degrade to the default, never crash.
+     */
+    val externalBibleApp: Flow<ExternalBibleApp>
+
+    suspend fun setExternalBibleApp(app: ExternalBibleApp)
 
     /**
      * Whether the first-run reading-destination question has been answered (V3, D-V3-19).

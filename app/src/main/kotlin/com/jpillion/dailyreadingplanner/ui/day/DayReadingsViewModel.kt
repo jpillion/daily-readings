@@ -16,11 +16,12 @@ import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUs
 import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
@@ -138,10 +139,10 @@ class DayReadingsViewModel
             }
         }
 
-        /** The fresh-install reading-destination answer (VD-T7): persist the provider, never ask again. */
-        fun onReadingDestinationChosen(provider: BibleProvider) {
+        /** The fresh-install reading-destination answer (VD-T7): persist the mode, never ask again. */
+        fun onReadingDestinationChosen(mode: ReadingDestinationMode) {
             showReadingDestinationPromptState.value = false
-            viewModelScope.launch { completeReadingDestinationPrompt(provider) }
+            viewModelScope.launch { completeReadingDestinationPrompt(mode) }
         }
 
         /**
@@ -229,16 +230,21 @@ class DayReadingsViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         /**
-         * The user's selected "Open readings in" provider (S13), surfaced reactively so the
-         * reading-tile hint text reflects the current setting and updates live when the user
-         * changes it in Settings. The value drives display copy only — the actual tap-time
-         * destination is still resolved by [OpenReferenceUseCase] (which re-reads the setting and
-         * applies the MySword-not-installed fallback). Seeds with [BibleProvider.DEFAULT] so the
-         * hint never flickers through a wrong provider before the first emission.
+         * The user's effective reading destination (Sprint K, D-23-1), surfaced reactively so the
+         * reading-tile hint reflects the current setting and updates live when the user changes it
+         * in Settings. Two flows: the [ReadingDestinationMode] (in-app vs. external) and, for
+         * external mode, the chosen [ExternalBibleApp]. Display copy only — the actual tap-time
+         * destination is still resolved by [OpenReferenceUseCase] (which re-reads both axes and
+         * applies the MySword-not-installed fallback). Seeds with the historical defaults so the
+         * hint never flickers through a wrong destination before the first emission.
          */
-        val selectedProvider: StateFlow<BibleProvider> =
-            settingsRepository.bibleProvider
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BibleProvider.DEFAULT)
+        val destinationMode: StateFlow<ReadingDestinationMode> =
+            settingsRepository.readingDestinationMode
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReadingDestinationMode.DEFAULT)
+
+        val externalApp: StateFlow<ExternalBibleApp> =
+            settingsRepository.externalBibleApp
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExternalBibleApp.DEFAULT)
 
         private val openDestinationChannel = Channel<ReadingDestination>(Channel.BUFFERED)
 

@@ -41,6 +41,7 @@ fun ReaderRoute(
     val scope = rememberCoroutineScopeForRoute()
     val readerContext by viewModel.context.collectAsStateWithLifecycle()
     val initialPage by viewModel.initialPage.collectAsStateWithLifecycle()
+    val externalApp by viewModel.externalApp.collectAsStateWithLifecycle()
 
     // A fresh PagerState per context (and per portion / initial page): switching Browse <-> Reading
     // changes the page-index space, so the pager must be rebuilt — wrapped in key(...) on the
@@ -67,6 +68,7 @@ fun ReaderRoute(
     ReaderScreen(
         pagerState = pagerState,
         stateForPage = { page -> viewModel.uiStateForPage(page).collectAsStateValue() },
+        externalApp = externalApp,
         onOpenPicker = { showPicker = true },
         onVerseTapped = { _, verseId -> viewModel.onVerseTapped(verseId) },
         onRetry = { page -> viewModel.retry(page) },

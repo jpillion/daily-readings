@@ -26,8 +26,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
-import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
+import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 
 /**
@@ -48,9 +49,11 @@ fun DayContent(
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    // The selected "Open readings in" provider drives the per-tile hint text. Default BLB
-    // keeps previews/tests that don't care about the hint on the historical wording.
-    provider: BibleProvider = BibleProvider.BLB,
+    // Sprint K (D-23-1): the per-tile hint reflects the effective destination — the in-app
+    // reader when the mode is IN_APP, otherwise the chosen external app. Defaults keep
+    // previews/tests that don't care about the hint on the historical BLB-in-browser wording.
+    destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
+    externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (state) {
@@ -60,7 +63,8 @@ fun DayContent(
                     state = state,
                     onToggleReading = onToggleReading,
                     onReadingTapped = onReadingTapped,
-                    provider = provider,
+                    destinationMode = destinationMode,
+                    externalApp = externalApp,
                 )
             is DayUiState.NoScheduledReadings -> NoReadingsContent()
             is DayUiState.LoadFailed -> LoadFailedContent(onRetry = onRetry)
@@ -80,7 +84,8 @@ private fun ScheduledContent(
     state: DayUiState.Scheduled,
     onToggleReading: (ReadingStatus) -> Unit,
     onReadingTapped: (Portion) -> Unit,
-    provider: BibleProvider,
+    destinationMode: ReadingDestinationMode,
+    externalApp: ExternalBibleApp,
 ) {
     Column(
         modifier =
@@ -95,7 +100,8 @@ private fun ScheduledContent(
                 reading = reading,
                 onToggleReading = onToggleReading,
                 onReadingTapped = onReadingTapped,
-                provider = provider,
+                destinationMode = destinationMode,
+                externalApp = externalApp,
             )
         }
     }
@@ -106,7 +112,8 @@ private fun ReadingCard(
     reading: ReadingStatus,
     onToggleReading: (ReadingStatus) -> Unit,
     onReadingTapped: (Portion) -> Unit,
-    provider: BibleProvider,
+    destinationMode: ReadingDestinationMode,
+    externalApp: ExternalBibleApp,
 ) {
     val portion = reading.portion
     val referenceText = ReadingFormatter.format(portion)
@@ -144,7 +151,7 @@ private fun ReadingCard(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = stringResource(readingOpenHintRes(provider), referenceText),
+                    text = stringResource(readingOpenHintRes(destinationMode, externalApp), referenceText),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -213,22 +220,63 @@ private fun LoadFailedContent(onRetry: () -> Unit) {
 }
 
 /**
- * The reading-tile hint string for the user's selected "Open readings in" [provider] (owner fix):
+ * The reading-tile hint string for the user's effective reading destination (Sprint K, D-23-1):
  * the small supplementary line under each reading reflects where a tap will go, with a natural
  * preposition per destination ("…in this app", "…on Blue Letter Bible", "…in MySword"). `%1$s`
  * is the reference text, e.g. "Genesis 1–2".
  *
- * This is the SINGLE home of the provider → hint mapping (no second enum). The hint follows the
- * stored setting only: if MYSWORD is selected but the app isn't installed, the tap falls back to
- * BLB at tap time, but the hint still reads "…in MySword" — the hint mirrors the *setting*, not the
- * install-aware tap-time resolution (deliberately not over-engineered).
+ * This is the SINGLE home of the destination → hint mapping (no second enum). The hint follows the
+ * stored setting only: in-app mode reads "…in this app"; in external mode, if MYSWORD is selected
+ * but not installed, the tap falls back to BLB at tap time, yet the hint still reads "…in MySword"
+ * — the hint mirrors the *setting*, not the install-aware tap-time resolution.
  */
 @StringRes
-internal fun readingOpenHintRes(provider: BibleProvider): Int =
-    when (provider) {
-        BibleProvider.IN_APP -> R.string.reading_open_hint_inapp
-        BibleProvider.BLB -> R.string.reading_open_hint_blb
-        BibleProvider.BIBLE_GATEWAY -> R.string.reading_open_hint_gateway
-        BibleProvider.YOUVERSION -> R.string.reading_open_hint_youversion
-        BibleProvider.MYSWORD -> R.string.reading_open_hint_mysword
+internal fun readingOpenHintRes(
+    mode: ReadingDestinationMode,
+    externalApp: ExternalBibleApp,
+): Int =
+    when (mode) {
+        // In-app mode ignores the remembered external app: the tap reads in the app.
+        ReadingDestinationMode.IN_APP -> R.string.reading_open_hint_inapp
+        ReadingDestinationMode.EXTERNAL ->
+            when (externalApp) {
+                ExternalBibleApp.BLB -> R.string.reading_open_hint_blb
+                ExternalBibleApp.BIBLE_GATEWAY -> R.string.reading_open_hint_gateway
+                ExternalBibleApp.YOUVERSION -> R.string.reading_open_hint_youversion
+                ExternalBibleApp.MYSWORD -> R.string.reading_open_hint_mysword
+            }
+    }
+
+/**
+ * Sprint K (reader footer hint) — the in-app reader's footer hint string for the user's chosen
+ * external Bible app: "Tap a verse to open it on Blue Letter Bible" / "…on Bible Gateway" /
+ * "…on YouVersion" / "…in MySword". `%1$s` is the external app display name
+ * ([externalBibleAppNameRes]).
+ *
+ * This lives next to [readingOpenHintRes] ON PURPOSE: the two hint surfaces (the Schedule day-tile
+ * and the reader footer) share ONE home so their per-provider prepositions can never drift. The
+ * reader hint is the external-app axis ALONE — it reflects the chosen external app *regardless of*
+ * the [ReadingDestinationMode], because it is most useful precisely when the user reads IN_APP
+ * (the read-here / study-there bridge). There is therefore no in-app branch here.
+ */
+@StringRes
+internal fun readerVerseTapHintRes(externalApp: ExternalBibleApp): Int =
+    when (externalApp) {
+        ExternalBibleApp.BLB -> R.string.reader_verse_tap_hint_blb
+        ExternalBibleApp.BIBLE_GATEWAY -> R.string.reader_verse_tap_hint_gateway
+        ExternalBibleApp.YOUVERSION -> R.string.reader_verse_tap_hint_youversion
+        ExternalBibleApp.MYSWORD -> R.string.reader_verse_tap_hint_mysword
+    }
+
+/**
+ * Sprint K — the display name of an [ExternalBibleApp], substituted into [readerVerseTapHintRes]'s
+ * `%1$s`. Kept adjacent to the hint mapping so the two `when` branches are reviewed together.
+ */
+@StringRes
+internal fun externalBibleAppNameRes(externalApp: ExternalBibleApp): Int =
+    when (externalApp) {
+        ExternalBibleApp.BLB -> R.string.external_app_name_blb
+        ExternalBibleApp.BIBLE_GATEWAY -> R.string.external_app_name_gateway
+        ExternalBibleApp.YOUVERSION -> R.string.external_app_name_youversion
+        ExternalBibleApp.MYSWORD -> R.string.external_app_name_mysword
     }
