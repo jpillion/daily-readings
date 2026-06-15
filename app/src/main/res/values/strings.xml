@@ -5,7 +5,13 @@
     <string name="jump_to_today">Today</string>
     <string name="open_date_picker">Pick a date</string>
     <string name="date_picker_cancel">Cancel</string>
-    <string name="reading_open_hint">Opens %1$s on Blue Letter Bible</string>
+    <!-- Reading-tile hint, per "Open readings in" provider (S-? owner fix). %1$s = the
+         reference text, e.g. "Genesis 1–2". One per BibleProvider; mapped in DayContent. -->
+    <string name="reading_open_hint_inapp">Opens %1$s in this app</string>
+    <string name="reading_open_hint_blb">Opens %1$s on Blue Letter Bible</string>
+    <string name="reading_open_hint_gateway">Opens %1$s on Bible Gateway</string>
+    <string name="reading_open_hint_youversion">Opens %1$s on YouVersion</string>
+    <string name="reading_open_hint_mysword">Opens %1$s in MySword</string>
     <string name="reading_toggle_description">Mark %1$s as read</string>
     <string name="mark_whole_day_done">Mark whole day done</string>
     <string name="unmark_whole_day">Unmark whole day</string>

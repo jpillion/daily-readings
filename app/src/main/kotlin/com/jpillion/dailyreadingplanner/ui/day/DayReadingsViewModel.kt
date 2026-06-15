@@ -228,6 +228,18 @@ class DayReadingsViewModel
             }.catch { emit(null) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+        /**
+         * The user's selected "Open readings in" provider (S13), surfaced reactively so the
+         * reading-tile hint text reflects the current setting and updates live when the user
+         * changes it in Settings. The value drives display copy only — the actual tap-time
+         * destination is still resolved by [OpenReferenceUseCase] (which re-reads the setting and
+         * applies the MySword-not-installed fallback). Seeds with [BibleProvider.DEFAULT] so the
+         * hint never flickers through a wrong provider before the first emission.
+         */
+        val selectedProvider: StateFlow<BibleProvider> =
+            settingsRepository.bibleProvider
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BibleProvider.DEFAULT)
+
         private val openDestinationChannel = Channel<ReadingDestination>(Channel.BUFFERED)
 
         /** One-shot resolved reading destinations (D-S15-3); collect exactly once from the UI. */

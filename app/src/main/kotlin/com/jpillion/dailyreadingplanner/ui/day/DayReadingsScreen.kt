@@ -89,6 +89,7 @@ fun DayReadingsRoute(
         viewModel.openReaderEvents.collect { onOpenInApp() }
     }
     val statsPanel by viewModel.statsPanel.collectAsStateWithLifecycle()
+    val selectedProvider by viewModel.selectedProvider.collectAsStateWithLifecycle()
     val showTrackingStartPrompt by viewModel.showTrackingStartPrompt.collectAsStateWithLifecycle()
     val showReadingDestinationPrompt by viewModel.showReadingDestinationPrompt.collectAsStateWithLifecycle()
     val showUpgradeNote by viewModel.showUpgradeNote.collectAsStateWithLifecycle()
@@ -97,6 +98,7 @@ fun DayReadingsRoute(
         uiStateFor = viewModel::uiStateFor,
         monthCompletionFor = viewModel::monthCompletionFor,
         statsPanel = statsPanel,
+        selectedProvider = selectedProvider,
         onToggleReading = viewModel::onToggleReading,
         onReadingTapped = viewModel::onReadingTapped,
         onRetry = viewModel::onRetry,
@@ -127,6 +129,9 @@ fun DayReadingsPagerScreen(
     uiStateFor: (LocalDate) -> StateFlow<DayUiState>,
     monthCompletionFor: (YearMonth) -> StateFlow<Map<LocalDate, DayCompletion>>,
     statsPanel: StatsPanelUiState?,
+    // The selected "Open readings in" provider drives the per-tile hint text (owner fix);
+    // default BLB keeps non-prompt/test callers on the historical wording.
+    selectedProvider: BibleProvider = BibleProvider.BLB,
     onToggleReading: (LocalDate, ReadingStatus) -> Unit,
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
@@ -226,6 +231,7 @@ fun DayReadingsPagerScreen(
                         onToggleReading = { reading -> onToggleReading(date, reading) },
                         onReadingTapped = onReadingTapped,
                         onRetry = onRetry,
+                        provider = selectedProvider,
                     )
                 }
                 if (statsPanel != null) {

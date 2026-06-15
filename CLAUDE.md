@@ -890,6 +890,31 @@ Do not reference or depend on strikelog.
   branch to `singleChapter = true` reddens only the plural portion pin), each restored in place.
   Note: docs/features/psalm-singular-reader.md. Device-pass: the singular header/title/spoken label
   on glass.
+- ✅ **Schedule reading-tile hint reflects the selected provider (owner UI fix,
+  `sprint-00M-tile-hint-provider`) is DONE** (uncommitted in the working tree; the main session
+  verifies + commits; no version bump — display-only). The small hint line under each Schedule
+  reading was hardcoded "Opens %1$s on Blue Letter Bible"; it now reflects the user's selected
+  **"Open readings in"** provider, **reactively** (change it in Settings and the tiles update live).
+  **Threading:** `DayReadingsViewModel.selectedProvider` = `settingsRepository.bibleProvider`
+  `stateIn`'d (seeded `BibleProvider.DEFAULT`, no flicker) → collected in `DayReadingsRoute` →
+  new `selectedProvider` param on `DayReadingsPagerScreen` (default BLB for tests/previews) →
+  `provider` on `DayContent`/`ReadingCard`. **Per-provider hint strings with natural prepositions**
+  (replace the single `reading_open_hint`): `reading_open_hint_inapp` "Opens %1$s **in this app**",
+  `_blb` "…on Blue Letter Bible", `_gateway` "…on Bible Gateway", `_youversion` "…on YouVersion",
+  `_mysword` "…**in** MySword". Single `@StringRes` mapping `readingOpenHintRes(provider)` in
+  `DayContent.kt` (one home, no second enum). **IN_APP wording chosen: "in this app"** (owner
+  sign-off noted). **MySword-not-installed:** the hint mirrors the *setting*, not install-aware
+  tap-time resolution — it always reads "…in MySword" even when the tap falls back to BLB (the
+  fallback lives in `OpenReferenceUseCase`, untouched; deliberately not over-engineered). Tile
+  layout/spacing + a11y (hint is supplementary text) unchanged. 605 tests (net +6: 5 per-provider
+  hint UI pins in `DayContentTest` with LITERAL expected strings + 1 `selectedProvider`-reactivity
+  pin in `DayReadingsViewModelTest`; **all three data/Room gates UNTOUCHED — plan = 11,
+  BibleTextVerificationTest = 18, BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.4%
+  on domain/data, a11y gate 7/7, **3 mutations killed** (IN_APP→BLB hint, MYSWORD→YouVersion hint,
+  VM selectedProvider ignoring the setting), each restored in place. No new deps/permissions, no
+  Room/manifest/DataStore change. Note: docs/features/tile-hint-provider.md. **Owner tone sign-off:**
+  the five hint strings (esp. "in this app" vs "Reads … in this app"). Device-pass: the live update
+  when switching provider in Settings.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

@@ -370,6 +370,20 @@ class DayReadingsViewModelTest {
             ).isTrue()
         }
 
+    @Test
+    fun `selectedProvider reflects the stored provider reactively`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            val vm = viewModel(settings = settings)
+            // Default install: Blue Letter Bible.
+            assertThat(vm.selectedProvider.first()).isEqualTo(BibleProvider.BLB)
+            // A Settings change is reflected live (the reading-tile hint follows it).
+            settings.setBibleProvider(BibleProvider.IN_APP)
+            assertThat(
+                vm.selectedProvider.first { it == BibleProvider.IN_APP },
+            ).isEqualTo(BibleProvider.IN_APP)
+        }
+
     // --- Sprint 7: opportunistic widget refresh on progress change (D9, ESpec §7) ---
 
     @Test

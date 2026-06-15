@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.Stream
@@ -43,6 +44,7 @@ class DayContentTest {
         onToggleReading: (ReadingStatus) -> Unit = {},
         onReadingTapped: (Portion) -> Unit = {},
         onRetry: () -> Unit = {},
+        provider: BibleProvider = BibleProvider.BLB,
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -51,6 +53,7 @@ class DayContentTest {
                     onToggleReading = onToggleReading,
                     onReadingTapped = onReadingTapped,
                     onRetry = onRetry,
+                    provider = provider,
                 )
             }
         }
@@ -124,5 +127,42 @@ class DayContentTest {
         composeRule.onNodeWithText("Couldn't load the reading plan").assertIsDisplayed()
         composeRule.onNodeWithTag("retry-button").performClick()
         assertThat(retries).isEqualTo(1)
+    }
+
+    // Owner fix: the per-tile hint text reflects the *selected* "Open readings in" provider, with a
+    // natural preposition per destination. Expectations are LITERAL strings (never computed from the
+    // production mapping) so a wrong provider -> hint mapping reddens exactly the offending pin.
+    @Test
+    fun blbProvider_hintReadsOnBlueLetterBible() {
+        setContent(scheduled(), provider = BibleProvider.BLB)
+        composeRule.onNodeWithText("Opens Genesis 1–2 on Blue Letter Bible").assertIsDisplayed()
+    }
+
+    @Test
+    fun inAppProvider_hintReadsInThisApp() {
+        setContent(scheduled(), provider = BibleProvider.IN_APP)
+        composeRule.onNodeWithText("Opens Genesis 1–2 in this app").assertIsDisplayed()
+        // The default BLB wording must NOT leak through when in-app is selected.
+        composeRule.onNodeWithText("Opens Genesis 1–2 on Blue Letter Bible").assertDoesNotExist()
+    }
+
+    @Test
+    fun bibleGatewayProvider_hintReadsOnBibleGateway() {
+        setContent(scheduled(), provider = BibleProvider.BIBLE_GATEWAY)
+        composeRule.onNodeWithText("Opens Genesis 1–2 on Bible Gateway").assertIsDisplayed()
+    }
+
+    @Test
+    fun youVersionProvider_hintReadsOnYouVersion() {
+        setContent(scheduled(), provider = BibleProvider.YOUVERSION)
+        composeRule.onNodeWithText("Opens Genesis 1–2 on YouVersion").assertIsDisplayed()
+    }
+
+    @Test
+    fun mySwordProvider_hintReadsInMySword() {
+        // The hint mirrors the *setting*, not install-aware tap-time resolution: even when MySword
+        // isn't installed (tap falls back to BLB), the selected-provider hint still reads MySword.
+        setContent(scheduled(), provider = BibleProvider.MYSWORD)
+        composeRule.onNodeWithText("Opens Genesis 1–2 in MySword").assertIsDisplayed()
     }
 }

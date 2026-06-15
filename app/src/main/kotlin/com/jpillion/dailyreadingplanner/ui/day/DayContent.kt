@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.ui.day
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
+import com.jpillion.dailyreadingplanner.domain.model.BibleProvider
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 
@@ -46,6 +48,9 @@ fun DayContent(
     onReadingTapped: (Portion) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    // The selected "Open readings in" provider drives the per-tile hint text. Default BLB
+    // keeps previews/tests that don't care about the hint on the historical wording.
+    provider: BibleProvider = BibleProvider.BLB,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (state) {
@@ -55,6 +60,7 @@ fun DayContent(
                     state = state,
                     onToggleReading = onToggleReading,
                     onReadingTapped = onReadingTapped,
+                    provider = provider,
                 )
             is DayUiState.NoScheduledReadings -> NoReadingsContent()
             is DayUiState.LoadFailed -> LoadFailedContent(onRetry = onRetry)
@@ -74,6 +80,7 @@ private fun ScheduledContent(
     state: DayUiState.Scheduled,
     onToggleReading: (ReadingStatus) -> Unit,
     onReadingTapped: (Portion) -> Unit,
+    provider: BibleProvider,
 ) {
     Column(
         modifier =
@@ -88,6 +95,7 @@ private fun ScheduledContent(
                 reading = reading,
                 onToggleReading = onToggleReading,
                 onReadingTapped = onReadingTapped,
+                provider = provider,
             )
         }
     }
@@ -98,6 +106,7 @@ private fun ReadingCard(
     reading: ReadingStatus,
     onToggleReading: (ReadingStatus) -> Unit,
     onReadingTapped: (Portion) -> Unit,
+    provider: BibleProvider,
 ) {
     val portion = reading.portion
     val referenceText = ReadingFormatter.format(portion)
@@ -135,7 +144,7 @@ private fun ReadingCard(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = stringResource(R.string.reading_open_hint, referenceText),
+                    text = stringResource(readingOpenHintRes(provider), referenceText),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -202,3 +211,24 @@ private fun LoadFailedContent(onRetry: () -> Unit) {
         }
     }
 }
+
+/**
+ * The reading-tile hint string for the user's selected "Open readings in" [provider] (owner fix):
+ * the small supplementary line under each reading reflects where a tap will go, with a natural
+ * preposition per destination ("…in this app", "…on Blue Letter Bible", "…in MySword"). `%1$s`
+ * is the reference text, e.g. "Genesis 1–2".
+ *
+ * This is the SINGLE home of the provider → hint mapping (no second enum). The hint follows the
+ * stored setting only: if MYSWORD is selected but the app isn't installed, the tap falls back to
+ * BLB at tap time, but the hint still reads "…in MySword" — the hint mirrors the *setting*, not the
+ * install-aware tap-time resolution (deliberately not over-engineered).
+ */
+@StringRes
+internal fun readingOpenHintRes(provider: BibleProvider): Int =
+    when (provider) {
+        BibleProvider.IN_APP -> R.string.reading_open_hint_inapp
+        BibleProvider.BLB -> R.string.reading_open_hint_blb
+        BibleProvider.BIBLE_GATEWAY -> R.string.reading_open_hint_gateway
+        BibleProvider.YOUVERSION -> R.string.reading_open_hint_youversion
+        BibleProvider.MYSWORD -> R.string.reading_open_hint_mysword
+    }
