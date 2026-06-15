@@ -3,6 +3,7 @@ package com.jpillion.dailyreadingplanner.bible.domain
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
+import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -52,5 +53,37 @@ class GetPortionTextUseCaseTest {
                     .first()
                     .isTitle,
             )
+        }
+
+    @Test
+    fun `a verse-windowed portion renders ONLY the in-range verses — Psalm 119 day 1 = 1 to 40`() =
+        runTest {
+            val ref = Reference(BookCatalog.requireByName("Psalms"), 119, ReferenceVerses(1, 40))
+            val portion = Portion(Stream.PSALMS_AND_PROPHECY, listOf(ref))
+            val content = useCase(portion)
+            val block = content.blocks.single()
+            val verseNumbers = block.verses.map { it.nativeLabel }
+            // exactly verses 1..40, in order; no verse 0 title (body window), no verse 41+
+            assertEquals((1..40).map { it.toString() }, verseNumbers)
+            assertEquals(false, block.verses.any { it.isTitle })
+            assertEquals("40", verseNumbers.last())
+        }
+
+    @Test
+    fun `verse-windowed days 2 to 4 render their own windows only`() =
+        runTest {
+            suspend fun verses(
+                start: Int,
+                end: Int,
+            ) = useCase(
+                Portion(
+                    Stream.PSALMS_AND_PROPHECY,
+                    listOf(Reference(BookCatalog.requireByName("Psalms"), 119, ReferenceVerses(start, end))),
+                ),
+            ).blocks.single().verses.map { it.nativeLabel.toInt() }
+
+            assertEquals((41..80).toList(), verses(41, 80))
+            assertEquals((81..128).toList(), verses(81, 128))
+            assertEquals((129..176).toList(), verses(129, 176))
         }
 }

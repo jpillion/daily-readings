@@ -807,6 +807,43 @@ Do not reference or depend on strikelog.
   restored in place. **Device-pass items (NOT JVM-provable):** combined-page scroll feel for 3–5-
   chapter portions; the swipe-out-and-back feel on glass; the tab-reset-to-Browse behaviour.
   Handoff: [docs/sprints/sprint-00I-reading-portion-view.md](docs/sprints/sprint-00I-reading-portion-view.md).
+- ✅ **Sprint J (Psalm 119 sub-chapter verse ranges — Phase 2 of the reading-portion work) is
+  DONE** (uncommitted in the working tree; the main session verifies + commits; version untouched
+  at 1.3.5/10305). **The reading plan now encodes Psalm 119's four-day verse division as
+  gate-verified trusted IP, and the app renders those ranges everywhere.** The four Mar 9-12
+  stream-2 days carry verse windows — **Psalms 119:1–40 / 41–80 / 81–128 /
+  129–176** (owner-confirmed from the Bible Companion booklet; both plan sources agree
+  day-by-day; they tile verses 1..176 exactly: 40+40+48+48). Schema **v1 → v2**. Two tracks:
+  (A) **data correction** — four windowed refs in BOTH `reading_plan.json` (canonical) AND
+  `reading_plan_verify.json` (independent second source), `schemaVersion: 2`, extraction scripts
+  (`tools/extract_*.py`) now EMIT `verseStart`/`verseEnd` (they previously detected and discarded
+  the suffix) so the asset stays script-reproducible; provenance + reconciliation recorded in
+  docs/data/README.md (the "deferred" verse-fidelity note is now RESOLVED). (B) **app support** —
+  **D-SCHEMA-1** optional `RefDto.verseStart?/verseEnd?`; **D-MODEL-1** new planner-domain
+  `ReferenceVerses(start,end)` on `Reference` (chapter-relative ints, NEVER the bible spine's
+  `VerseRange` — `domain`/`data` stay free of any `bible/` dep; the verse_id conversion lives in
+  `PortionVerseBridge`), loader validates (both-present, 1≤start≤end) + bumps
+  `SUPPORTED_SCHEMA_VERSION` to 2; **ReadingFormatter** renders "Psalms 119:1–40" (abbreviated
+  "Psa 119:1–40"; single-verse "Psalms 119:7"; a windowed ref is its own run) — all four
+  collapsed-reference surfaces (Schedule card, widget tiers, reminder, persistent tray) flow through
+  it, no per-surface change; **D-READER-1** `PortionVerseBridge.rangesFor` maps a windowed ref to the
+  exact verse_id `VerseRange` so `GetPortionTextUseCase` returns ONLY the in-range verses (the reader
+  shows verses 1–40 and no others on Mar 9, JVM-proven over a window-aware fake source).
+  **THE GATE (`ReadingPlanVerificationTest`) grew 7 → 11**: schema pin = 2 (D-SCHEMA-2),
+  every-windowed-ref-well-formed (end ≤ chapter verse count via the committed
+  `bible/kjv_verse_counts.csv` witness — D-SCHEMA-3, Ps 119 = 176), the **four days tile
+  1..176 exactly** (THE verse-level coverage invariant), second-source range equality, and the
+  **"only Psalm 119 is windowed"** audit pin (exactly 4 windowed refs, all Mar 9-12 stream-2
+  Psalms 119). 590 tests (net +22; **the other two data/Room gates UNTOUCHED —
+  BibleTextVerificationTest = 18, BibleDatabaseRoomOpenTest = 5**), full pipeline green, Kover 95.4%
+  on domain/data, a11y gate 7/7, **8 mutations killed** (4 data: tiling gap, range over-bound,
+  non-Ps119 window, schema revert; 4 code: ReferenceVerses require, loader lone-bound, bridge
+  windowing, formatter run-break), each by its intended test, restored in place. No version bump, no
+  new deps/permissions, no Room/manifest/DataStore change. **D-UI-1 tone sign-off:** the rendered
+  reference is computed (no static string) — owner to confirm "Psalms" (plural, catalog) vs
+  "Psalm" (singular, as the booklet) and the en dash. Device-pass: the window's look in the Schedule
+  card / widget tiers / notification, and the reader showing exactly verses 1–40 on glass.
+  Handoff: [docs/sprints/sprint-00J-psalm-119-verse-ranges.md](docs/sprints/sprint-00J-psalm-119-verse-ranges.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
@@ -824,7 +861,8 @@ Sprint 2 re-home; the original `data/` dir and standalone `verification/` module
 
 - `app/src/main/assets/reading_plan.json` — canonical plan, bundled in the APK. 365 days
   (Feb = 28, **no Feb 29 entry** per D1), structured `{book, chapter}` refs (per D3),
-  `schemaVersion: 1`.
+  `schemaVersion: 2` (Sprint J: optional `verseStart`/`verseEnd` window on a ref; only the four
+  Psalm-119 days carry one — absent ⇒ whole chapter).
 - `app/src/test/resources/book_catalog.csv` — 66 books
   `(order, canonicalName, chapterCount, blbAbbrev)`, all abbrevs verified live against BLB
   (D2 resolved).

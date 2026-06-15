@@ -1,5 +1,5 @@
 {
- "schemaVersion": 1,
+ "schemaVersion": 2,
  "source": "antipas.org 'The Bible Companion' booklet PDF (Robert Roberts)",
  "days": [
   {
@@ -2667,7 +2667,9 @@
      "refs": [
       {
        "book": "Psalms",
-       "chapter": 119
+       "chapter": 119,
+       "verseStart": 1,
+       "verseEnd": 40
       }
      ]
     },
@@ -2708,7 +2710,9 @@
      "refs": [
       {
        "book": "Psalms",
-       "chapter": 119
+       "chapter": 119,
+       "verseStart": 41,
+       "verseEnd": 80
       }
      ]
     },
@@ -2741,7 +2745,9 @@
      "refs": [
       {
        "book": "Psalms",
-       "chapter": 119
+       "chapter": 119,
+       "verseStart": 81,
+       "verseEnd": 128
       }
      ]
     },
@@ -2774,7 +2780,9 @@
      "refs": [
       {
        "book": "Psalms",
-       "chapter": 119
+       "chapter": 119,
+       "verseStart": 129,
+       "verseEnd": 176
       }
      ]
     },

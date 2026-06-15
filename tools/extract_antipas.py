@@ -12,7 +12,7 @@ Requires: pdftotext (poppler).
 Normalization (see docs/data/README.md):
   - comma/hyphen chapter lists expand as the contiguous min..max span
     ("145,147" == primary's "145-147"; every Companion portion is contiguous).
-  - "v." verse-part rows are the Psalm 119 days -> chapter 119.
+  - "v." verse-part rows are the Psalm 119 days -> chapter 119 + verseStart/End (v2).
   - "2,3 John" / "2 & 3 John" -> 2 John 1 + 3 John 1.
   - bare book (Philemon, Jude, "Obadiah ..") -> chapter 1.
 """
@@ -62,6 +62,14 @@ def pdf_text(pdf_path):
 def book_key(s):
     return re.sub(r"[.\s&,]", "", s).lower()
 
+def chapter_ref(book, c):
+    """A chapter entry -> JSON ref. int = whole chapter; (ch, vlo, vhi) carries the schema-v2
+    verse window (the four Psalm-119 days)."""
+    if isinstance(c, tuple):
+        ch, vlo, vhi = c
+        return {"book": book, "chapter": ch, "verseStart": vlo, "verseEnd": vhi}
+    return {"book": book, "chapter": c}
+
 def parse_field(field, carry_book):
     """One stream field -> (book, [chapters]).  carry_book used for ditto rows."""
     f = field.strip()
@@ -82,9 +90,18 @@ def parse_field(field, carry_book):
         if not carry_book:
             raise ValueError(f"ditto field {field!r} with no carry book")
         book = carry_book
-    if "v." in chs_part:                              # Psalm 119 verse parts
+    if "v." in chs_part:                              # Psalm 119 verse parts (schema v2 window)
         assert book == "Psalms", f"verse notation outside Psalms: {field!r}"
-        return (book, [119])
+        # "119,v.1-40" / "119 v.41-80" -> chapter 119 with verse window. The antipas booklet
+        # prints "<ch>,v.<lo>-<hi>" (or "v.<lo>-<hi>" on a ditto row, chapter implied = 119).
+        vm = re.search(r"v\.\s*(\d+)\s*-\s*(\d+)", chs_part)
+        if vm:
+            vlo, vhi = int(vm.group(1)), int(vm.group(2))
+        else:
+            vs = re.search(r"v\.\s*(\d+)", chs_part)
+            assert vs, f"unparseable verse part: {field!r}"
+            vlo = vhi = int(vs.group(1))
+        return (book, [(119, vlo, vhi)])
     nums = [int(n) for n in re.findall(r"\d+", chs_part)]
     if not nums:
         assert book in SINGLE_CHAPTER_OK, f"no chapters for {book!r} in {field!r}"
@@ -142,7 +159,7 @@ def main():
                     refs = [{"book":"2 John","chapter":1},{"book":"3 John","chapter":1}]
                     carry[stream] = "3 John"
                 else:
-                    refs = [{"book":book,"chapter":c} for c in chs]
+                    refs = [chapter_ref(book, c) for c in chs]
                     carry[stream] = book
                 portions.append({"stream": stream, "refs": refs})
             days.append({"month": month, "day": day, "portions": portions})
@@ -152,7 +169,7 @@ def main():
         e["portions"][stream-1]["refs"] = [{"book":b,"chapter":c} for b,c in refs]
 
     assert len(days) == 365, f"expected 365 days, got {len(days)}"
-    doc = {"schemaVersion": 1,
+    doc = {"schemaVersion": 2,
            "source": "antipas.org 'The Bible Companion' booklet PDF (Robert Roberts)",
            "days": days}
     with open(OUT, "w") as fp:

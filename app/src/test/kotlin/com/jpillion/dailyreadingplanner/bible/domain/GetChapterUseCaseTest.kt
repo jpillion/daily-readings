@@ -18,8 +18,9 @@ class GetChapterUseCaseTest {
             assertEquals(43, content.bookNo)
             assertEquals("John", content.bookName)
             assertEquals(3, content.chapter)
-            assertEquals(3, content.verses.size)
-            assertEquals(listOf("1", "2", "3"), content.verses.map { it.nativeLabel })
+            // The fake models a full chapter; the use case returns the verses in canonical order.
+            assertEquals(listOf("1", "2", "3"), content.verses.take(3).map { it.nativeLabel })
+            assertEquals(content.verses.map { it.canonicalId }.sorted(), content.verses.map { it.canonicalId })
         }
 
     @Test

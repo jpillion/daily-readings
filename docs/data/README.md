@@ -47,11 +47,14 @@ ranges ("48-50", "1-3").
 1. **Feb 29 dropped.** Primary contains a Feb 29 row duplicating Feb 28 (Leviticus 3-4 /
    Psalms 104 / 1 Corinthians 12-13); per decision D1 the plan has **no** Feb 29 entry, so the
    row is dropped at extraction. The antipas booklet has no Feb 29 row at all. 365 days total.
-2. **Psalm 119 verse parts → chapter 119.** Both sources split Psalm 119 over Mar 9-12
-   ("Psalms 119:1-40 / :41-80 / :81-128 / :129-176"; antipas "119,v.1-40" etc.). Schema v1 refs
-   are `{book, chapter}` (no verse support), so each of the four days carries
-   `{"book":"Psalms","chapter":119}`. Verse-range fidelity is a deferred candidate enhancement
-   (additive optional field, post-V1 data sprint).
+2. **Psalm 119 verse parts → verse windows (schema v2, RESOLVED — was deferred).** Both sources
+   split Psalm 119 over Mar 9-12 ("Psalms 119:1-40 / :41-80 / :81-128 / :129-176"; antipas
+   "119,v.1-40" etc.). As of **schema v2** each of the four days carries a chapter-relative verse
+   window — `{"book":"Psalms","chapter":119,"verseStart":1,"verseEnd":40}` and so on — instead of a
+   bare `{"book":"Psalms","chapter":119}`. The extraction scripts STOP dropping the verse suffix for
+   these four days and emit `verseStart`/`verseEnd`; every other reading is unchanged (no verse
+   fields = whole chapter). See the Psalm-119 reconciliation entry below for provenance. This was
+   the "deferred candidate enhancement" the V1 schema-v1 note recorded; it is now resolved.
 3. **Chapter-span expansion = min..max contiguous range.** "Genesis 1-2" → [1,2];
    antipas "5,6,7" → [5,6,7]; antipas comma pairs are range endpoints where the primary uses
    hyphens ("145,147" = Psalms 145-147). Every Bible Companion portion is a contiguous span of
@@ -95,6 +98,48 @@ days). No reading was taken from memory.
 conflict had decisive evidence. The coverage invariant in the verification gate (every book's
 chapters 1..chapterCount all read; OT once / NT twice by design) caught 5 of the 7 conflicts
 and all 4 spelling typos.
+
+## Psalm 119 verse division (schema v2, 2026-06-15) — the sub-chapter verse ranges
+
+Psalm 119 (176 verses, the longest chapter in scripture) is read over **four days — Mar 9, 10, 11,
+12 (stream 2)**. Schema v1 flattened all four to bare chapter 119 (normalization rule §2 above, then
+deferred). Schema **v2** encodes the actual verse division as trusted IP under the same gate.
+
+| Day | Stream | Verse window |
+|---|---|---|
+| Mar 9  | 2 | Psalms 119:1–40   |
+| Mar 10 | 2 | Psalms 119:41–80  |
+| Mar 11 | 2 | Psalms 119:81–128 |
+| Mar 12 | 2 | Psalms 119:129–176 |
+
+**Provenance & second-source agreement.** The four boundaries are the **owner-confirmed** division
+from the Bible Companion booklet (the authority on the plan). Both established source PDFs print the
+same division (primary chart.pdf "Psalms 119:1-40 / :41-80 / :81-128 / :129-176"; antipas booklet
+"119,v.1-40" etc., recorded in normalization rule §2 since Sprint 1). The two sources **agree
+day-by-day** on the ranges — the second-source equality gate (`Psalm 119 windows match the
+independent second source`) pins canonical == verify fixture for all four days. **No conflict to
+reconcile:** unlike the 7 chapter-level Sprint-1 conflicts, the two witnesses and the owner all
+concur. The boundaries are multiples of 8 except where the psalm's structure dictates (the windows
+are 40/40/48/48 verses = 5/5/6/6 of the 22 eight-verse acrostic stanzas), consistent with — but
+sourced independently of — the stanza hypothesis flagged in the spec.
+
+**Coverage invariant (the load-bearing proof).** The four windows **tile 1..176 exactly** —
+contiguous, no gap, no overlap, every verse read exactly once: `[1..40][41..80][81..128][129..176]`,
+lengths summing to 176. The gate's `the four Psalm 119 days tile verses 1 to 176 exactly` assertion
+enforces this (the verse-level analogue of the chapter full-coverage / read-once invariant). The
+`verseEnd <= chapterVerseCount` bound is checked against the committed KJV verse-count witness
+(`bible/kjv_verse_counts.csv`, which records Psalms 119 = 176) — D-SCHEMA-3.
+
+**"Only Psalm 119" audit (A2).** A re-scan of the plan confirms Psalm 119 is the **sole** in-chapter
+verse split: the gate's `only the four Psalm 119 days carry verse windows` assertion pins that
+exactly four refs in the whole year carry verse fields, all `{Psalms, 119}` on Mar 9-12 stream 2. Any
+future windowed ref elsewhere fails the gate (audit pinned into the release gate, not just asserted).
+
+**Reproducibility.** The asset stays script-generated: `tools/extract_primary.py` and
+`tools/extract_antipas.py` now emit `verseStart`/`verseEnd` for the four Psalm-119 days (they
+previously detected and discarded the verse suffix). Re-running the scripts against the pinned source
+PDFs reproduces the windowed refs. `schemaVersion` is **2** in both `reading_plan.json` and
+`reading_plan_verify.json`.
 
 ---
 

@@ -7,7 +7,7 @@ Requires: pdftotext (poppler).
 
 Normalization (see docs/data/README.md):
   - Feb 29 row (duplicate of Feb 28) is DROPPED per decision D1 -> 365 days.
-  - "Psalms 119:<verses>" parts -> {"book":"Psalms","chapter":119}.
+  - "Psalms 119:<verses>" parts -> {chapter:119, verseStart, verseEnd} (schema v2).
   - "2 John -3JO" -> 2 John 1 + 3 John 1.
   - Chart typos: Zepheniah->Zephaniah, Haggia->Haggai.
   - Hyphen spans expand per-chapter: "Genesis 1-2" -> ch 1, ch 2.
@@ -31,6 +31,15 @@ def pdf_text(pdf_path):
 
 ENTRY_START = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\b(?=\s*\.)")
 
+def ref_dict(r):
+    """A parsed ref tuple -> JSON ref. (book, ch) = whole chapter; (book, ch, vlo, vhi) carries the
+    schema-v2 verse window (the four Psalm-119 days)."""
+    if len(r) == 2:
+        b, c = r
+        return {"book": b, "chapter": c}
+    b, c, vlo, vhi = r
+    return {"book": b, "chapter": c, "verseStart": vlo, "verseEnd": vhi}
+
 def parse_ref_field(field):
     """One dot-leader-delimited field like 'Genesis 1-2' -> [(book, ch), ...]"""
     field = field.strip().rstrip(".").strip()
@@ -43,9 +52,15 @@ def parse_ref_field(field):
         raise ValueError(f"unparseable ref field: {field!r}")
     book = BOOK_FIX.get(m.group(1).strip(), m.group(1).strip())
     chs = m.group(2).strip()
-    if ":" in chs:                       # Psalm 119 verse part -> chapter 119
-        ch = int(chs.split(":")[0])
-        return [(book, ch)]
+    if ":" in chs:                       # Psalm 119 verse part (schema v2): carry the window
+        ch_part, v_part = chs.split(":", 1)
+        ch = int(ch_part)
+        # verse window "1-40" / single "1" -> (verseStart, verseEnd)
+        if "-" in v_part:
+            vlo, vhi = (int(x) for x in v_part.split("-"))
+        else:
+            vlo = vhi = int(v_part)
+        return [(book, ch, vlo, vhi)]
     if "-" in chs:
         lo, hi = (int(x) for x in chs.split("-"))
         return [(book, c) for c in range(lo, hi+1)]
@@ -68,7 +83,7 @@ def parse(text):
             for stream, f in enumerate(fields, start=1):
                 refs = parse_ref_field(f)
                 portions.append({"stream": stream,
-                                 "refs": [{"book": b, "chapter": c} for b, c in refs]})
+                                 "refs": [ref_dict(r) for r in refs]})
             key = (month, day)
             if key in days:
                 raise ValueError(f"duplicate day {key}")
@@ -92,8 +107,7 @@ OVERRIDES = {
 
 def apply_overrides(days):
     for (m,d),(stream,refs) in OVERRIDES.items():
-        days[(m,d)]["portions"][stream-1]["refs"] = [
-            {"book":b,"chapter":c} for b,c in refs]
+        days[(m,d)]["portions"][stream-1]["refs"] = [ref_dict(r) for r in refs]
 
 def main():
     if len(sys.argv) > 1:
@@ -109,7 +123,7 @@ def main():
         got = sum(1 for (mm, _) in days if mm == m)
         assert got == n, f"month {m}: expected {n} days, got {got}"
     ordered = [days[k] for k in sorted(days)]
-    doc = {"schemaVersion": 1,
+    doc = {"schemaVersion": 2,
            "source": "christadelphia.org chart.pdf (Bible Companion, Robert Roberts); "
                      "verified against antipas.org Bible Companion booklet",
            "days": ordered}

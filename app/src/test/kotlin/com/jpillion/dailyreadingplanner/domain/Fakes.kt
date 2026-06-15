@@ -6,6 +6,7 @@ import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
+import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,19 @@ fun portion(
     Portion(
         stream = stream,
         refs = refs.map { (book, chapter) -> Reference(BookCatalog.requireByName(book), chapter) },
+    )
+
+/** A single-ref portion whose ref carries a chapter-relative verse window (schema v2). */
+fun windowedPortion(
+    stream: Stream,
+    book: String,
+    chapter: Int,
+    start: Int,
+    end: Int,
+): Portion =
+    Portion(
+        stream = stream,
+        refs = listOf(Reference(BookCatalog.requireByName(book), chapter, ReferenceVerses(start, end))),
     )
 
 val threePortions =

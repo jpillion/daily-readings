@@ -13,6 +13,10 @@ import com.jpillion.dailyreadingplanner.domain.model.Stream
  * [formatAbbreviated] is the same collapse with [Book.displayAbbrev] names ("Gen 1–2",
  * "2Jo 1; 3Jo 1") for width-constrained surfaces — the 1x1/1x2 widget (D-S9-1).
  *
+ * A ref carrying a verse window ([Reference.verses], schema v2 / the four Psalm-119 days) renders
+ * "Psalms 119:1–40" (en dash; abbreviated "Psa 119:1–40"); a single-verse window → "Psalms 119:1"
+ * (D-UI-1). A windowed ref is always its own run (it never merges with a chapter neighbour).
+ *
  * Plain strings, not resources: book names are canonical data (V1 is English/KJV-only);
  * revisit if localization ever lands.
  */
@@ -36,7 +40,13 @@ object ReadingFormatter {
         for (ref in refs) {
             val current = runs.lastOrNull()
             val previous = current?.last()
-            if (previous != null && previous.book == ref.book && previous.chapter + 1 == ref.chapter) {
+            val canMerge =
+                previous != null &&
+                    previous.book == ref.book &&
+                    previous.chapter + 1 == ref.chapter &&
+                    previous.verses == null &&
+                    ref.verses == null
+            if (canMerge) {
                 current += ref
             } else {
                 runs += mutableListOf(ref)
@@ -51,7 +61,13 @@ object ReadingFormatter {
     ): String {
         val book = bookName(run.first().book)
         return if (run.size == 1) {
-            "$book ${run.first().chapter}"
+            val ref = run.first()
+            val verses = ref.verses
+            when {
+                verses == null -> "$book ${ref.chapter}"
+                verses.start == verses.end -> "$book ${ref.chapter}:${verses.start}"
+                else -> "$book ${ref.chapter}:${verses.start}–${verses.end}"
+            }
         } else {
             "$book ${run.first().chapter}–${run.last().chapter}"
         }

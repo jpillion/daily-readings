@@ -7,6 +7,7 @@ import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.di.IoDispatcher
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
+import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
 import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -35,7 +36,11 @@ class ReadingPlanAssetLoader
                                 stream = Stream.fromNumber(portion.stream),
                                 refs =
                                     portion.refs.map { ref ->
-                                        Reference(BookCatalog.requireByName(ref.book), ref.chapter)
+                                        Reference(
+                                            book = BookCatalog.requireByName(ref.book),
+                                            chapter = ref.chapter,
+                                            verses = ref.toVerses(),
+                                        )
                                     },
                             )
                         }
@@ -57,7 +62,24 @@ class ReadingPlanAssetLoader
         }
 
         private companion object {
-            const val SUPPORTED_SCHEMA_VERSION = 1
+            const val SUPPORTED_SCHEMA_VERSION = 2
             const val EXPECTED_DAYS = 365
         }
     }
+
+/**
+ * Maps the optional schema-v2 verse fields to a [ReferenceVerses] window. Both must be present
+ * or both absent (a lone bound is ambiguous → reject); `1 <= start <= end` (the `ReferenceVerses`
+ * init also enforces this — defense-in-depth at the asset boundary). The per-chapter upper bound
+ * is the gate's job. The asset is release-gated, so a throw here is a build defect, not user data.
+ */
+private fun com.jpillion.dailyreadingplanner.data.plan.dto.RefDto.toVerses(): ReferenceVerses? {
+    val start = verseStart
+    val end = verseEnd
+    return when {
+        start == null && end == null -> null
+        start == null || end == null ->
+            error("ref $book $chapter has only one of verseStart/verseEnd; both are required")
+        else -> ReferenceVerses(start, end)
+    }
+}

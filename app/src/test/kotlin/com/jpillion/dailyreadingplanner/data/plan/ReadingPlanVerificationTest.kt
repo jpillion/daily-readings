@@ -24,6 +24,13 @@ class ReadingPlanVerificationTest {
         val blbAbbrev: String,
     )
 
+    private data class WindowedRef(
+        val month: Int,
+        val day: Int,
+        val stream: Int,
+        val ref: com.jpillion.dailyreadingplanner.data.plan.dto.RefDto,
+    )
+
     private val assetsDir =
         File(
             System.getProperty("planAssetsDir") ?: error("planAssetsDir system property not set"),
@@ -43,12 +50,40 @@ class ReadingPlanVerificationTest {
     private val daysPerMonth = intArrayOf(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
     private val byName = catalog.associateBy { it.name }
 
+    /**
+     * D-SCHEMA-3: the per-(book, chapter) verse-count upper bound comes from the committed second-
+     * source KJV verse-count witness (Sprint-A `kjv_verse_counts.csv`, 1,189 rows) — reused here as
+     * an independent witness for the `verseEnd <= chapterVerseCount` bound. Cross-references a V3
+     * trusted asset from the V1 plan gate; both are committed trusted data (documented coupling).
+     */
+    private val verseCountByBookChapter: Map<Pair<String, Int>, Int> =
+        testResource("bible/kjv_verse_counts.csv")
+            .lines()
+            .drop(1)
+            .filter { it.isNotBlank() }
+            .associate { line ->
+                val (book, chapter, count) = line.split(",")
+                (book to chapter.toInt()) to count.toInt()
+            }
+
+    /** Every ref carrying a verse window, with its date, in plan order. */
+    private val windowedRefs: List<WindowedRef> =
+        plan.days.flatMap { day ->
+            day.portions.flatMap { p ->
+                p.refs
+                    .filter { it.verseStart != null || it.verseEnd != null }
+                    .map { WindowedRef(day.month, day.day, p.stream, it) }
+            }
+        }
+
     private fun testResource(name: String): String =
         checkNotNull(javaClass.classLoader?.getResource(name)) { "test resource $name not found" }.readText()
 
     @Test
     fun `schema header is correct`() {
-        assertThat(plan.schemaVersion).isEqualTo(1)
+        // D-SCHEMA-2: schemaVersion bumped 1 -> 2 for the optional verse window. A stray v1 asset
+        // (or an un-bumped one) fails the gate — the bump is pinned, never a runtime condition.
+        assertThat(plan.schemaVersion).isEqualTo(2)
         assertThat(plan.source).isNotEmpty()
     }
 
@@ -157,5 +192,131 @@ class ReadingPlanVerificationTest {
                 }
             }
         assertWithMessage("day-by-day mismatches vs second source").that(mismatches).isEmpty()
+    }
+
+    // ---- Schema v2 verse-window gate (Psalm 119 sub-chapter ranges) ----
+
+    /**
+     * Gate 2 (well-formedness, every windowed ref): both fields present, 1 <= start <= end, and
+     * end <= the chapter's verse count (D-SCHEMA-3, via the committed kjv_verse_counts.csv witness).
+     * Whole-chapter refs carry no verse fields and are unaffected — proving the 1,090+ readings are
+     * untouched (the count==4 pin below).
+     */
+    @Test
+    fun `every windowed ref is well-formed within its chapter`() {
+        for (w in windowedRefs) {
+            val where = "${w.month}/${w.day} stream ${w.stream} ${w.ref.book} ${w.ref.chapter}"
+            assertWithMessage("$where: verseStart present").that(w.ref.verseStart).isNotNull()
+            assertWithMessage("$where: verseEnd present").that(w.ref.verseEnd).isNotNull()
+            val start = w.ref.verseStart!!
+            val end = w.ref.verseEnd!!
+            assertWithMessage("$where: 1 <= verseStart").that(start).isAtLeast(1)
+            assertWithMessage("$where: verseStart <= verseEnd").that(start).isAtMost(end)
+            val verseCount =
+                checkNotNull(verseCountByBookChapter[w.ref.book to w.ref.chapter]) {
+                    "$where: no verse-count witness for ${w.ref.book} ${w.ref.chapter}"
+                }
+            assertWithMessage("$where: verseEnd <= chapter verse count ($verseCount)")
+                .that(end)
+                .isAtMost(verseCount)
+        }
+    }
+
+    /**
+     * Gate 3 (THE verse-level coverage invariant): the four Mar 9-12 stream-2 Psalm-119 windows
+     * TILE 1..176 exactly — contiguous, no gap, no overlap, no verse read twice or skipped. The
+     * verse analogue of the chapter full-coverage / read-once check that caught 5 of 7 Sprint-1
+     * conflicts. Self-validating: if the sourced numbers don't tile 1..176, the data is wrong.
+     */
+    @Test
+    fun `the four Psalm 119 days tile verses 1 to 176 exactly - the coverage invariant`() {
+        val psalm119Days = listOf(3 to 9, 3 to 10, 3 to 11, 3 to 12)
+        val windows =
+            psalm119Days
+                .map { (month, day) ->
+                    val ref =
+                        plan.days
+                            .single { it.month == month && it.day == day }
+                            .portions
+                            .single { it.stream == 2 }
+                            .refs
+                            .single()
+                    assertWithMessage("$month/$day stream 2 must be Psalms 119")
+                        .that(ref.book to ref.chapter)
+                        .isEqualTo("Psalms" to 119)
+                    val start = checkNotNull(ref.verseStart) { "$month/$day missing verseStart" }
+                    val end = checkNotNull(ref.verseEnd) { "$month/$day missing verseEnd" }
+                    start to end
+                }.sortedBy { it.first }
+
+        assertWithMessage("first window must start at verse 1").that(windows.first().first).isEqualTo(1)
+        assertWithMessage("last window must end at verse 176 (Ps 119 length)")
+            .that(windows.last().second)
+            .isEqualTo(176)
+        for (i in 1 until windows.size) {
+            assertWithMessage("window $i must start exactly one verse after window ${i - 1} ends")
+                .that(windows[i].first)
+                .isEqualTo(windows[i - 1].second + 1)
+        }
+        // belt-and-braces: the four lengths sum to 176 (no double-count masking a gap+overlap pair).
+        assertWithMessage("the four windows' lengths sum to 176")
+            .that(windows.sumOf { it.second - it.first + 1 })
+            .isEqualTo(176)
+    }
+
+    /**
+     * Gate 4 (second-source range equality): the four Psalm-119 windows in the canonical asset match
+     * the independent second-source fixture verse-for-verse. The day-by-day THE GATE test already
+     * compares portions structurally (now incl. the verse fields, as data-class members), so a
+     * boundary changed in one file but not the other fails there too; this is the explicit pin so a
+     * silent range divergence can never slip past.
+     */
+    @Test
+    fun `Psalm 119 windows match the independent second source`() {
+        val fixtureByDate = fixture.days.associateBy { it.month to it.day }
+        for ((month, day) in listOf(3 to 9, 3 to 10, 3 to 11, 3 to 12)) {
+            val planRef =
+                plan.days
+                    .single { it.month == month && it.day == day }
+                    .portions
+                    .single { it.stream == 2 }
+                    .refs
+                    .single()
+            val fixtureRef =
+                checkNotNull(fixtureByDate[month to day]) { "$month/$day missing from second source" }
+                    .portions
+                    .single { it.stream == 2 }
+                    .refs
+                    .single()
+            assertWithMessage("$month/$day verseStart matches second source")
+                .that(planRef.verseStart)
+                .isEqualTo(fixtureRef.verseStart)
+            assertWithMessage("$month/$day verseEnd matches second source")
+                .that(planRef.verseEnd)
+                .isEqualTo(fixtureRef.verseEnd)
+        }
+    }
+
+    /**
+     * Gate 5 (only Psalm 119 is windowed — pins the A2 audit into the gate): the ONLY refs in the
+     * whole plan carrying verse fields are exactly the four Mar 9-12 stream-2 Psalms-119 refs. If a
+     * future data change adds a windowed ref elsewhere without spec review, the gate flags it.
+     */
+    @Test
+    fun `only the four Psalm 119 days carry verse windows`() {
+        assertWithMessage("exactly four windowed refs in the whole plan")
+            .that(windowedRefs)
+            .hasSize(4)
+        for (w in windowedRefs) {
+            assertWithMessage("windowed ref ${w.month}/${w.day} must be Psalms 119")
+                .that(w.ref.book to w.ref.chapter)
+                .isEqualTo("Psalms" to 119)
+            assertWithMessage("windowed ref ${w.month}/${w.day} must be on stream 2")
+                .that(w.stream)
+                .isEqualTo(2)
+        }
+        assertWithMessage("windowed refs are exactly Mar 9-12")
+            .that(windowedRefs.map { it.month to it.day }.toSet())
+            .isEqualTo(setOf(3 to 9, 3 to 10, 3 to 11, 3 to 12))
     }
 }
