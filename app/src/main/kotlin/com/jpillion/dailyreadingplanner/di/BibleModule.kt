@@ -2,7 +2,10 @@ package com.jpillion.dailyreadingplanner.di
 
 import android.content.Context
 import androidx.room.Room
+import com.jpillion.dailyreadingplanner.bible.data.BibleAssetGate
+import com.jpillion.dailyreadingplanner.bible.data.BibleAssetVersionStore
 import com.jpillion.dailyreadingplanner.bible.data.BibleDatabase
+import com.jpillion.dailyreadingplanner.bible.data.DataStoreBibleAssetVersionStore
 import com.jpillion.dailyreadingplanner.bible.data.RoomBibleTextSource
 import com.jpillion.dailyreadingplanner.bible.data.VerseDao
 import com.jpillion.dailyreadingplanner.bible.domain.BibleTextSource
@@ -38,12 +41,20 @@ object BibleModule {
     @Singleton
     fun provideBibleDatabase(
         @ApplicationContext context: Context,
-    ): BibleDatabase =
-        Room
+        assetGate: BibleAssetGate,
+    ): BibleDatabase {
+        // VE-T0 / D-V3-8: before Room opens the copied DB, re-copy if the bundled asset's
+        // content version was bumped (a shipped text correction). This provider is only ever
+        // resolved off the main thread (the bible DB is first touched from a suspend query on
+        // Room's background executor), so the gate's blocking DataStore read/write is
+        // StrictMode-clean. A delete here forces createFromAsset to copy the corrected asset.
+        assetGate.ensureUpToDate(BIBLE_DB)
+        return Room
             .databaseBuilder(context, BibleDatabase::class.java, BIBLE_DB)
             .createFromAsset(BIBLE_ASSET)
             .fallbackToDestructiveMigration(false)
             .build()
+    }
 
     @Provides
     fun provideVerseDao(database: BibleDatabase): VerseDao = database.verseDao()
@@ -61,4 +72,8 @@ abstract class BibleBindsModule {
     @Binds
     @Singleton
     abstract fun bindBibleTextSource(impl: RoomBibleTextSource): BibleTextSource
+
+    @Binds
+    @Singleton
+    abstract fun bindBibleAssetVersionStore(impl: DataStoreBibleAssetVersionStore): BibleAssetVersionStore
 }

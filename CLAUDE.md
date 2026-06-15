@@ -563,11 +563,41 @@ Do not reference or depend on strikelog.
   preservation on glass, the reading-tap→reader handoff feel. S-D strings await owner tone
   sign-off.
   Handoff: [docs/sprints/sprint-00D-nav-integration.md](docs/sprints/sprint-00D-nav-integration.md).
-- Next up: **V3 Sprint E — V3.0 hardening + release** (`sprint-00E-v3-hardening-release`):
-  consolidated device pass (A/C/D items, incl. one-screen-fit with the bottom bar), M-V3-2
-  faithful-presentation owner sign-off, OQ-3 nav label/icon + S-string tone sign-offs, version
-  bump + UK accepted-risk recorded + closed-track rollout. (V2.x release prep remains queued,
-  owner-scheduled independently.)
+- ✅ **V3 Sprint E (V3.0 hardening + release readiness) is DONE** (uncommitted in the working
+  tree; the main session/owner commits + cuts the release; version untouched at 1.3.5/10305 —
+  **recommended bump to 1.4.0/10400** per D-S9-3, NOT applied this sprint). **V3.0 is
+  release-ready pending the owner's device pass + string/presentation sign-offs** — no new
+  reader features; this sprint hardened, wired the last deferred piece, and assembled the
+  owner's sign-off artifacts. (1) **Deferred asset-version startup hook now wired (VE-T0,
+  D-V3-8):** `bible/data/BibleAssetGate` (Singleton) runs **inside `BibleModule.provideBibleDatabase`
+  BEFORE `.build()`** — that provider only ever resolves off-main (the bible DB is first touched
+  from a suspend query on Room's executor), so its blocking DataStore read/write is
+  StrictMode-clean. On a bumped `BibleAssetVersion.ASSET_CONTENT_VERSION` it deletes the copied
+  `bible.db`/`-wal`/`-shm` so `createFromAsset` re-copies the corrected asset, then persists the
+  new version under a new `bible_asset_content_version` DataStore key (`DataStoreBibleAssetVersionStore`
+  over the existing shared store — NOT inside the read-only bible.db, the D-V3-8 converse rule);
+  no `SettingsRepository` interface change. 3 Robolectric wiring tests; 2 load-bearing mutations
+  killed (comparison flip, skipped delete). Real on-device re-copy = device-pass. (2) **JVM
+  hardening confirmed (VE-T2):** StrictMode review — the only new I/O path (bible read +
+  asset-gate) is off-main; **no `INTERNET` in the merged release manifest** (offline identity
+  NFR-V3-A holds; ACCESS_NETWORK_STATE/WAKE_LOCK etc. are pre-V3 Glance/WorkManager library
+  merges, not INTERNET, no network grant); a11y gate green incl. `ReaderScreen` + `BookChapterPicker`
+  (C/D extension); R8 keeps the `VerseEntity` members (defense-in-depth) + the InputMerger rule
+  intact; bundle-size gate green (**7.67 MB AAB** vs the 12 MB ceiling). (3) **Owner artifacts in
+  the handoff:** the consolidated owner-runnable **device-pass checklist** (A real createFromAsset
+  copy + re-copy; C reading-feel/markup/M-V3-2; D one-screen-fit-with-bottom-bar/tab-state/
+  tap→reader), the **full V3 strings table** for tone sign-off (reader/picker/nav/first-run/upgrade
+  + the OQ-3 "Bible"/"Schedule" label revisit), and the version-bump + whatsnew recommendation.
+  (4) **AR-1 recorded** (accepted UK Crown-copyright risk) in `docs/data/README.md`. (5) **whatsnew
+  draft updated** for V3.0. 490 tests (net +3; **both data gates untouched — plan gate = 7,
+  `BibleTextVerificationTest` = 18**), full pipeline green from clean, `bundleRelease` clean, Kover
+  95.1% on domain/data. **Blocking V3.0 release:** owner's consolidated device pass, M-V3-2
+  presentation sign-off, OQ-3 + S-A..S-D string tone sign-offs, then the version bump + tag-to-Play
+  rollout (owner/main session).
+  Handoff: [docs/sprints/sprint-00E-v3-hardening-release.md](docs/sprints/sprint-00E-v3-hardening-release.md).
+- Next up: **release cut** — owner runs the device pass + sign-offs from the Sprint E handoff,
+  the main session applies the 1.4.0/10400 bump and the closed-track tag-to-Play rollout. (V2.x
+  release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

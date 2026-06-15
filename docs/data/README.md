@@ -215,3 +215,22 @@ sources and left intact; they are authentic text, not defects.)
   vocabulary, and famous-verse exact-text pins. Mutation-verified (dropped superscription,
   stripped `<a>` floor, corrupted famous verse, dropped verse — each turns it red).
 - `ASSET_CONTENT_VERSION` starting value: **1** (`BibleAssetVersion`).
+
+## AR-1 — UK KJV licensing (ACCEPTED RISK, recorded V3 Sprint E)
+
+The King James (Authorized) Version text shipped in `bible.db` is **public domain worldwide
+except the United Kingdom**, where it remains under perpetual **Crown copyright**, administered
+by **Cambridge University Press / the King's Printer**.
+
+**Owner decision (PRD-v3 §11, AR-1): ACCEPT the risk.** Do **not** geo-restrict the app and do
+**not** alter the text. Rationale recorded for the durable provenance record:
+
+- The risk is near-theoretical for a free, non-commercial app: Cambridge grants broad free use,
+  and every free Bible app already serves the KJV to UK users without incident.
+- The text is unaltered, faithfully presented (M-V3-2), and not monetized.
+
+**Optional courtesy action (OQ-5, owner-deferred, NOT blocking ship):** file a free-use
+permission request with Cambridge University Press for certainty. The owner may do this at any
+time; it is not a release gate. If filed, record the outcome here.
+
+This accepted risk is recorded **before ship**, as PRD-v3 §11 requires.

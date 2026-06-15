@@ -25,3 +25,12 @@
 -keep class * extends androidx.work.InputMerger {
     <init>();
 }
+
+# 4) V3 read-only bible.db (Room): Room ships consumer keep rules for entities/DAOs it
+#    generates against, so this is defense-in-depth — keep the verse entity's members so a
+#    column-mapping field is never stripped (a stripped field would fail the asset read only
+#    at runtime, after the createFromAsset copy). Mirrors the serialization keep above.
+-keepclassmembers class com.jpillion.dailyreadingplanner.bible.data.VerseEntity {
+    <fields>;
+    <init>(...);
+}
