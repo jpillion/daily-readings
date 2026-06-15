@@ -626,6 +626,25 @@ Do not reference or depend on strikelog.
   lost its dedicated index — declare `@Index` on `VerseEntity` if a chapter-open profile ever
   shows it (re-derives the hash).
   Handoff: [docs/sprints/sprint-00F-kjv-load-fix.md](docs/sprints/sprint-00F-kjv-load-fix.md).
+- ✅ **Picker grid redesign (owner UI tweak, `sprint-00G-picker-grid`) is DONE** (uncommitted
+  in the working tree; no version bump). The in-app reader's book/chapter picker now fits all
+  66 books on one screen: step 1 is a dense `LazyVerticalGrid(GridCells.Fixed(5))` of
+  **abbreviated** book labels (reusing the one catalog `Book.displayAbbrev` — "Gen", "2Jo";
+  NO second abbreviation table, one-catalog discipline held) with full-width OT/NT section
+  headers spanning the grid (`GridItemSpan(maxLineSpan)`) so the testament grouping survived
+  the single-screen goal. Step 2 (chapters) reuses the SAME grid idiom (Fixed-5, left-to-right
+  top-to-bottom) and scrolls within the sheet for high-chapter books (Psalms 150). A11y: each
+  cell shows the abbreviated/number label but **speaks the full name** — cells carry a
+  `contentDescription` ("Genesis"; chapter cell "Genesis chapter 3" via new
+  `picker_chapter_cd`), the inner label `Text` is `clearAndSetSemantics{}` so TalkBack hears
+  "Genesis" once, never "Gen Genesis". Same modal bottom sheet, same "All books" back
+  affordance, same testTags (`picker-book-N`/`picker-chapter-N`/`picker-book-list`) so the
+  AccessibilityGateTest stays green; ≥48dp cells (`heightIn(min=48.dp)`). 497 tests (net +2;
+  all three data/Room gates UNTOUCHED — plan = 7, BibleTextVerificationTest = 18,
+  BibleDatabaseRoomOpenTest = 5), full pipeline green, Kover 94.9% on domain/data. **Device-pass
+  items:** single-screen fit at default font, cell density / abbreviation legibility on glass,
+  Psalms-150 scroll feel — none JVM-provable.
+  Handoff: [docs/sprints/sprint-00G-picker-grid.md](docs/sprints/sprint-00G-picker-grid.md).
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

@@ -119,6 +119,7 @@
     <string name="picker_testament_ot">Old Testament</string>
     <string name="picker_testament_nt">New Testament</string>
     <string name="picker_back_to_books">All books</string>
+    <string name="picker_chapter_cd">%1$s chapter %2$d</string>
 
     <!-- V3 Sprint D: co-equal bottom nav (Schedule | Bible). OQ-3: labels are placeholders,
          finalized at owner tone sign-off in Sprint E. -->
