@@ -234,24 +234,37 @@ class DayReadingsPagerScreenTest {
     fun datePicker_opensAndCancelDismisses() {
         setScreen(LocalDate.of(2026, 6, 10))
         composeRule.onNodeWithTag("open-date-picker").performClick()
-        composeRule.onNodeWithTag("date-picker-confirm").assertIsDisplayed()
+        composeRule.onNodeWithTag("picker-month-pager").assertIsDisplayed()
         composeRule.onNodeWithTag("date-picker-cancel").performClick()
-        composeRule.onNodeWithTag("date-picker-confirm").assertDoesNotExist()
+        composeRule.onNodeWithTag("picker-month-pager").assertDoesNotExist()
     }
 
     @Test
-    fun datePicker_confirm_jumpsToCurrentYearOccurrence() {
-        // From a page in the *next* year, the picker anchors back to today's year (D-S5-3):
-        // confirming its initial selection (today) returns the pager to today's page.
+    fun datePicker_oneTap_selectsDayAndNavigatesPager() {
+        // BACKLOG #7: one tap on a day cell closes the dialog and jumps the pager to that date.
+        setScreen(LocalDate.of(2026, 6, 10))
+        composeRule.onNodeWithTag("open-date-picker").performClick()
+        composeRule.onNodeWithTag("picker-day-20").performClick()
+        composeRule.waitForIdle()
+        // Dialog closed and the pager moved to June 20.
+        composeRule.onNodeWithTag("picker-month-pager").assertDoesNotExist()
+        composeRule.onNodeWithText("Saturday, June 20").assertIsDisplayed()
+        composeRule.onNodeWithTag("jump-to-today").assertIsDisplayed()
+    }
+
+    @Test
+    fun datePicker_opensOnDisplayedDate_acrossYearBoundary() {
+        // BACKLOG #6: the picker is no longer year-anchored — from a next-year page it opens on
+        // that month/year, and a one-tap pick navigates within that year.
         val today = LocalDate.of(2026, 12, 31)
         setScreen(today)
         swipeToNextDay()
         composeRule.onNodeWithText("Friday, January 1, 2027").assertIsDisplayed()
         composeRule.onNodeWithTag("open-date-picker").performClick()
-        composeRule.onNodeWithTag("date-picker-confirm").performClick()
+        composeRule.onNodeWithText("January 2027").assertIsDisplayed()
+        composeRule.onNodeWithTag("picker-day-5").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Today \u2013 December 31").assertIsDisplayed()
-        composeRule.onNodeWithTag("jump-to-today").assertDoesNotExist()
+        composeRule.onNodeWithText("Tuesday, January 5, 2027").assertIsDisplayed()
     }
 
     // --- S19 (D-S19-2): the first-run tracking-start prompt renders over the day screen. ---

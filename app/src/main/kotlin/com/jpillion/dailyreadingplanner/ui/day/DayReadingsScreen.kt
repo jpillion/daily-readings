@@ -267,10 +267,12 @@ fun DayReadingsPagerScreen(
 
     if (showDatePicker) {
         DayDatePickerDialog(
-            year = today.year,
             today = today,
-            initialDate = if (currentDate.year == today.year) currentDate else today,
+            // No longer year-anchored (BACKLOG #6): the picker swipes across years, so it
+            // opens on the displayed date itself, whatever year the pager has reached.
+            initialDate = currentDate,
             completionFor = monthCompletionFor,
+            // One tap (BACKLOG #7): selecting a day closes the dialog and navigates the pager.
             onConfirm = { picked ->
                 showDatePicker = false
                 scope.launch { pagerState.scrollToPage(pageForDate(today, picked)) }

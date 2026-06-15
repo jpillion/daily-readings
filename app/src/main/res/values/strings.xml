@@ -4,7 +4,6 @@
     <string name="title_today_date">Today – %1$s</string>
     <string name="jump_to_today">Today</string>
     <string name="open_date_picker">Pick a date</string>
-    <string name="date_picker_confirm">Go to date</string>
     <string name="date_picker_cancel">Cancel</string>
     <string name="reading_open_hint">Opens %1$s on Blue Letter Bible</string>
     <string name="reading_toggle_description">Mark %1$s as read</string>

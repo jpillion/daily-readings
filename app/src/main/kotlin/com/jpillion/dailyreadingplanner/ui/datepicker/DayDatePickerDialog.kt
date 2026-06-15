@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -23,10 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +47,7 @@ import com.jpillion.dailyreadingplanner.ui.theme.IndicatorGreenLight
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorRedDark
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorRedLight
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -59,34 +59,35 @@ import java.util.Locale
 
 /**
  * Month/day date picker (FR-5) as a dialog over the day pager (D-S5-2), rebuilt in Sprint 8
- * as a custom calendar grid (D-S8-2): the M3 [androidx.compose.material3.DatePicker] offers no
- * per-day-cell slot, and each day here carries a completion indicator — a green dot for a fully
- * read day (past, today, or future), a red dot for a *past* day with readings missed, nothing
- * for incomplete today/future days or Feb 29 (D1). The dot is backed by a spoken state in the
- * cell's contentDescription, so the signal is never color alone.
+ * as a custom calendar grid (D-S8-2): each day carries a completion indicator — a green dot
+ * for a fully read day (past, today, or future), a red dot for a *past* day with readings
+ * missed, nothing for incomplete today/future days or Feb 29 (D1). The dot is backed by a
+ * spoken state in the cell's contentDescription, so the signal is never color alone.
  *
- * Year semantics are unchanged (D-S5-3, ESpec §6.1): the grid is pinned to [year] — picking a
- * month/day always targets the current year's occurrence; in a leap year Feb 29 is selectable
- * and shows the no-readings state. Swiping, by contrast, steps real dates across year
- * boundaries.
+ * **Sprint 21 (this picker only):**
+ *  - **One-tap selection (BACKLOG #7):** tapping a day cell selects that full date and closes
+ *    the dialog in one tap — [onConfirm] fires immediately. There is no separate confirm step
+ *    (selecting a date is non-destructive — it just navigates the day pager). Cancel/dismiss
+ *    still backs out without selecting.
+ *  - **Cross-year month swipe (BACKLOG #6, supersedes the pinned-year part of D-S5-3 *for the
+ *    picker*):** the months sit on a [HorizontalPager], so the user swipes left/right across
+ *    month — and year — boundaries (Dec → Jan of the next year and back). The chevrons drive
+ *    the same pager. The grid is no longer pinned to a single year; completion dots key to
+ *    full dates ([completionFor] is queried per displayed [YearMonth]), so the existing dot
+ *    semantics carry over at every reachable month.
  */
 @Composable
 fun DayDatePickerDialog(
-    year: Int,
     today: LocalDate,
     initialDate: LocalDate,
     completionFor: (YearMonth) -> StateFlow<Map<LocalDate, DayCompletion>>,
     onConfirm: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // withYear: a leap-day initial date anchors to Feb 28 in a common year (documented D-S5-3).
-    var selectedEpochDay by rememberSaveable {
-        mutableLongStateOf(initialDate.withYear(year).toEpochDay())
-    }
-    val selectedDate = LocalDate.ofEpochDay(selectedEpochDay)
-    var displayedMonth by rememberSaveable { mutableIntStateOf(selectedDate.monthValue) }
-    val month = YearMonth.of(year, displayedMonth)
-    val completion by completionFor(month).collectAsStateWithLifecycle()
+    val initialMonth = YearMonth.from(initialDate)
+    val pagerState = rememberPagerState(initialPage = MONTH_CENTER_PAGE) { MONTH_PAGE_COUNT }
+    val scope = rememberCoroutineScope()
+    val displayedMonth = monthForPage(initialMonth, pagerState.currentPage)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -100,32 +101,40 @@ fun DayDatePickerDialog(
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
                 MonthHeader(
-                    month = month,
-                    onPreviousMonth = { displayedMonth -= 1 },
-                    onNextMonth = { displayedMonth += 1 },
+                    month = displayedMonth,
+                    onPreviousMonth = {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                    },
+                    onNextMonth = {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                    },
                 )
                 // Locale read observably via LocalConfiguration (lint: NonObservableLocale).
                 val locale = LocalConfiguration.current.locales[0]
                 val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
                 WeekdayHeader(firstDayOfWeek, locale)
-                MonthGrid(
-                    month = month,
-                    firstDayOfWeek = firstDayOfWeek,
-                    selectedDate = selectedDate,
-                    today = today,
-                    completion = completion,
-                    onSelect = { selectedEpochDay = it.toEpochDay() },
-                )
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxWidth().testTag("picker-month-pager"),
+                    key = { it },
+                ) { page ->
+                    val month = monthForPage(initialMonth, page)
+                    val completion by completionFor(month).collectAsStateWithLifecycle()
+                    MonthGrid(
+                        month = month,
+                        firstDayOfWeek = firstDayOfWeek,
+                        today = today,
+                        completion = completion,
+                        // One-tap: select this full date and close immediately (BACKLOG #7).
+                        onSelect = onConfirm,
+                    )
+                }
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     Box(modifier = Modifier.weight(1f))
                     TextButton(
                         onClick = onDismiss,
                         modifier = Modifier.testTag("date-picker-cancel"),
                     ) { Text(text = stringResource(R.string.date_picker_cancel)) }
-                    TextButton(
-                        onClick = { onConfirm(selectedDate) },
-                        modifier = Modifier.testTag("date-picker-confirm"),
-                    ) { Text(text = stringResource(R.string.date_picker_confirm)) }
                 }
             }
         }
@@ -147,9 +156,9 @@ private fun MonthHeader(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(start = 8.dp).weight(1f).testTag("picker-month-title"),
         )
+        // No year bound any more (BACKLOG #6): the chevrons swipe freely across years.
         IconButton(
             onClick = onPreviousMonth,
-            enabled = month.monthValue > 1,
             modifier = Modifier.testTag("picker-prev-month"),
         ) {
             Icon(
@@ -159,7 +168,6 @@ private fun MonthHeader(
         }
         IconButton(
             onClick = onNextMonth,
-            enabled = month.monthValue < 12,
             modifier = Modifier.testTag("picker-next-month"),
         ) {
             Icon(
@@ -195,7 +203,6 @@ private fun WeekdayHeader(
 private fun MonthGrid(
     month: YearMonth,
     firstDayOfWeek: DayOfWeek,
-    selectedDate: LocalDate,
     today: LocalDate,
     completion: Map<LocalDate, DayCompletion>,
     onSelect: (LocalDate) -> Unit,
@@ -203,22 +210,23 @@ private fun MonthGrid(
     val leading = leadingEmptyCells(month, firstDayOfWeek)
     val totalCells = leading + month.lengthOfMonth()
     val rows = (totalCells + 6) / 7
-    repeat(rows) { row ->
-        Row(modifier = Modifier.fillMaxWidth()) {
-            repeat(7) { column ->
-                val cell = row * 7 + column
-                val day = cell - leading + 1
-                if (day in 1..month.lengthOfMonth()) {
-                    DayCell(
-                        date = month.atDay(day),
-                        selected = month.atDay(day) == selectedDate,
-                        isToday = month.atDay(day) == today,
-                        completion = completion[month.atDay(day)] ?: DayCompletion.NONE,
-                        onSelect = onSelect,
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    Box(modifier = Modifier.weight(1f).height(48.dp))
+    Column(modifier = Modifier.fillMaxWidth()) {
+        repeat(rows) { row ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                repeat(7) { column ->
+                    val cell = row * 7 + column
+                    val day = cell - leading + 1
+                    if (day in 1..month.lengthOfMonth()) {
+                        DayCell(
+                            date = month.atDay(day),
+                            isToday = month.atDay(day) == today,
+                            completion = completion[month.atDay(day)] ?: DayCompletion.NONE,
+                            onSelect = onSelect,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Box(modifier = Modifier.weight(1f).height(48.dp))
+                    }
                 }
             }
         }
@@ -228,7 +236,6 @@ private fun MonthGrid(
 @Composable
 private fun DayCell(
     date: LocalDate,
-    selected: Boolean,
     isToday: Boolean,
     completion: DayCompletion,
     onSelect: (LocalDate) -> Unit,
@@ -254,16 +261,16 @@ private fun DayCell(
             modifier
                 .height(48.dp)
                 .clip(CircleShape)
-                .background(
-                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                ).then(
-                    if (isToday && !selected) {
+                .background(MaterialTheme.colorScheme.surface)
+                .then(
+                    if (isToday) {
                         Modifier.border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
                     } else {
                         Modifier
                     },
                 ).selectable(
-                    selected = selected,
+                    // One-tap select-and-close: no persistent selected state lives here now.
+                    selected = false,
                     role = Role.Button,
                     onClick = { onSelect(date) },
                 ).testTag("picker-day-${date.dayOfMonth}")
@@ -275,10 +282,10 @@ private fun DayCell(
                 text = date.dayOfMonth.toString(),
                 style = MaterialTheme.typography.bodyLarge,
                 color =
-                    when {
-                        selected -> MaterialTheme.colorScheme.onPrimary
-                        isToday -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.onSurface
+                    if (isToday) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
                     },
             )
             // The completion dot (D-S8-2); redundant with the spoken state above.
@@ -288,19 +295,28 @@ private fun DayCell(
                         .padding(top = 2.dp)
                         .size(5.dp)
                         .clip(CircleShape)
-                        .background(
-                            when {
-                                dotColor == null -> androidx.compose.ui.graphics.Color.Transparent
-                                selected -> MaterialTheme.colorScheme.onPrimary
-                                else -> dotColor
-                            },
-                        ),
+                        .background(dotColor ?: androidx.compose.ui.graphics.Color.Transparent),
             )
         }
     }
 }
 
 private val MonthTitleFormat = DateTimeFormatter.ofPattern("MMMM uuuu", Locale.getDefault())
+
+/**
+ * Month-pager geometry (BACKLOG #6), mirroring the day-pager idiom (D-S5-4): a bounded window
+ * of [MONTH_PAGE_COUNT] real months centered on the initial month at [MONTH_CENTER_PAGE].
+ * ±[MONTH_WINDOW] months ≈ 250 years each way — swiping crosses year boundaries freely.
+ */
+internal const val MONTH_WINDOW = 3_000
+internal const val MONTH_CENTER_PAGE = MONTH_WINDOW
+internal const val MONTH_PAGE_COUNT = 2 * MONTH_WINDOW + 1
+
+/** The [YearMonth] shown on [page], measured as an offset from [initialMonth] at the center page. */
+internal fun monthForPage(
+    initialMonth: YearMonth,
+    page: Int,
+): YearMonth = initialMonth.plusMonths((page - MONTH_CENTER_PAGE).toLong())
 
 /** Number of blank cells before day 1 when the week starts on [firstDayOfWeek]. */
 internal fun leadingEmptyCells(

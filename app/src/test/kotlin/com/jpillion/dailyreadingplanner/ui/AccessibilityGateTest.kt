@@ -219,7 +219,6 @@ class AccessibilityGateTest {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 DayDatePickerDialog(
-                    year = 2026,
                     today = today,
                     initialDate = today,
                     completionFor = { MutableStateFlow(emptyMap()) },
@@ -245,7 +244,7 @@ class AccessibilityGateTest {
                 "picker-next-month",
             ).assertTouchTargetAtLeast(48.dp)
             .assert(hasAnyContentDescription())
-        composeRule.onNodeWithTag("date-picker-confirm").assertTouchTargetAtLeast(48.dp)
+        // One-tap select (BACKLOG #7): no confirm button; Cancel remains a 48dp target.
         composeRule.onNodeWithTag("date-picker-cancel").assertTouchTargetAtLeast(48.dp)
     }
 

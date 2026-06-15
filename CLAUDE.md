@@ -428,6 +428,28 @@ Do not reference or depend on strikelog.
   domain/data; pipeline green. Heading/legend look = device-pass item; S20 strings need
   owner tone sign-off.
   Handoff: [docs/sprints/sprint-0020-stats-heading-legend.md](docs/sprints/sprint-0020-stats-heading-legend.md).
+- ✅ **Sprint 21 (date-picker UX — one-tap select + cross-year month swipe) is DONE**
+  (numbered track, parallel to the V3 lettered sprints; owner-redirected from the queued
+  v2.x release prep; uncommitted in the working tree; version untouched at 1.3.5/10305).
+  Two backlog items, both picker-only. (1) **One-tap selection (BACKLOG #7):** tapping any
+  day cell in `ui/datepicker/DayDatePickerDialog` selects that full date and closes the
+  dialog in one tap — the confirm button + `date_picker_confirm` string are gone (selection
+  is non-destructive: it only navigates the day pager, so no confirm is needed); Cancel/
+  dismiss kept. (2) **Cross-year month swipe (BACKLOG #6):** the months now ride a
+  `HorizontalPager` (`monthForPage` + ±3,000-month window, mirroring the day-pager idiom),
+  so swipes/chevrons move month-by-month freely across year boundaries (Dec 2026 → Jan 2027
+  and back) — chevrons no longer disabled at Jan/Dec. **D-S21-1:** the picker is no longer
+  year-anchored (supersedes the pinned-year part of D-S5-3 *for the picker only*; `year`
+  param + `withYear` anchoring removed, opens on the displayed date directly) — the day
+  pager and full-date progress keying are unaffected. Completion dots (green/red/neutral),
+  Feb-29, today ring, and a11y carry over at every reachable month (all key to full dates).
+  Tags: `date-picker-confirm` removed, `picker-month-pager` added; all others retained.
+  520/520 tests (net +3; the three data/Room gates untouched — plan 7,
+  BibleTextVerificationTest 18, BibleDatabaseRoomOpenTest 5), 2 mutations killed
+  (`monthForPage` offset zeroed → 5 tests; day-cell onClick no-op → 5 tests), each restored
+  in place; Kover ≥70% floor holds; a11y gate green. No new strings (one removed).
+  Device-pass: swipe feel, one-tap accuracy on glass.
+  Handoff: [docs/sprints/sprint-0021-date-picker-ux.md](docs/sprints/sprint-0021-date-picker-ux.md).
 - ✅ **V3 Sprint A (Bible data foundation — the HARD GATE) is DONE** (uncommitted in the
   working tree; the main session verifies the gate and commits; version untouched at
   1.3.5/10305 — V3 WIP). **The project's second core-IP asset exists and is provably
