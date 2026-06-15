@@ -1,0 +1,7 @@
+# VA-T3 — Python deps for the bible.db importer. Build-time only; nothing ships.
+# The importer uses only the Python 3 standard library (xml.etree, sqlite3, hashlib,
+# csv, json, re) so there are NO third-party packages to pin. This file is intentionally
+# dependency-free: a clean Python 3.9+ interpreter is the only requirement. Pinned here so
+# the data-rebuild CI job documents that fact explicitly.
+#
+# Python: 3.9+ (developed/verified on 3.9.6)

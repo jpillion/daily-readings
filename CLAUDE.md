@@ -428,10 +428,48 @@ Do not reference or depend on strikelog.
   domain/data; pipeline green. Heading/legend look = device-pass item; S20 strings need
   owner tone sign-off.
   Handoff: [docs/sprints/sprint-0020-stats-heading-legend.md](docs/sprints/sprint-0020-stats-heading-legend.md).
-- Next up: **Sprint 21 — V2.x release prep** (`sprint-0021-v2x-release-prep`): version bump
-  past 1.3.4/10304, consolidated device pass (S9 + S12–S20 items), S12–S20 string tone
-  sign-offs (incl. the D-S20-1 "Missed"-vs-"Not read" flag), closed-track rollout via the
-  tag-to-Play pipeline.
+- ✅ **V3 Sprint A (Bible data foundation — the HARD GATE) is DONE** (uncommitted in the
+  working tree; the main session verifies the gate and commits; version untouched at
+  1.3.5/10305 — V3 WIP). **The project's second core-IP asset exists and is provably
+  correct:** a committed, reproducible read-only KJV `app/src/main/assets/bible/bible.db`
+  (66 books / 1,189 chapters / **31,102 verses** + **117 verse-0 superscriptions**;
+  `<a>` added-word markup; SHA-256 `ce174e9…29da4909`; ~5.7 MB on disk, **~1.97 MB
+  compressed** = well under the +6 MB D-V3-20 budget). Two **genuinely independent** PD KJV
+  sources (R-V3-3, checksum-distinct, different lineage): primary = open-bibles
+  `eng-kjv.osis.xml` (Haiola/eBible/SWORD; markup-bearing), second = scrollmapper
+  `formats/csv/KJV.csv` (e-Sword/bible_databases). The initially-considered eBible USFX was
+  **rejected as the same upstream** as the primary (the Sprint-1 re-mirror trap, avoided).
+  Importer `tools/build_bible_db.py` (Python stdlib only, byte-deterministic) + the `book`
+  table **generated** from `BookCatalog` via `tools/export_book_catalog.py` (never authored,
+  USFM codes D-V3-5). **5 primary-corpus text defects** corrected via documented
+  `TEXT_OVERRIDES` (1 Chr 11:2 + Ezek 17:24 doubling, Lev 17:8 of/or, Isa 47:11 + Matt 5:30
+  if/it typos — all where the independent witness + authentic KJV agree); 2 legitimate
+  inter-edition variants kept; full provenance + reconciliation in
+  [docs/data/README.md](docs/data/README.md). **Hab 3 finding:** both corpora encode its
+  prayer-heading as verse 1, not a verse-0 title — the asset follows both (overrides the
+  spec's verse-0 expectation). Read-only `BibleDatabase` (`createFromAsset` +
+  `fallbackToDestructiveMigration(false)`, D-V3-15 two-DB isolation) + `VerseEntity`/`VerseDao`
+  + `BibleAssetVersion` re-copy-on-bump compare logic (D-V3-8, JVM-pinned) + `bible/` package
+  skeleton + `di/BibleModule` Hilt wiring + closed `BibleMarkup`/`MarkupStripper` contract
+  (D-V3-6, no `text_plain`). **`BibleTextVerificationTest` (offline `sqlite-jdbc`, 18
+  assertions) is GREEN as the release gate** (M-V3-1) — structural invariants, `book`
+  reconciliation, second-source verse-count equality, checksum-distinctness, superscriptions
+  both-direction + Ps 3/51 text, strip-invariant + added-word floor + closed vocabulary,
+  famous-verse pins incl. John 11:35 = "Jesus wept."; **4 mutations killed** (dropped
+  superscription, stripped `<a>` floor, corrupted famous verse, dropped verse — asset
+  restored byte-identically). New `data-rebuild` CI job re-derives from pinned-SHA sources and
+  asserts a `cmp` byte-diff of zero (verified locally). New TEST dep only: `sqlite-jdbc`
+  (catalog); **zero net-new runtime deps; no `INTERNET`**. 375/375 tests (33 new; 7-test
+  Sprint 1 gate untouched), full pipeline green; Kover floor met. **No reader UI** (Sprint B+).
+  Device-pass items: real `createFromAsset` copy + asset-version re-copy on a device.
+  Handoff: [docs/sprints/sprint-00A-bible-data-foundation.md](docs/sprints/sprint-00A-bible-data-foundation.md).
+- Next up: **V3 Sprint B — the spine: seam, resolver, Portion bridge**
+  (`sprint-00B-spine-resolver-bridge`): `BibleTextSource` + `RoomBibleTextSource` + the
+  `VerseId`/`VerseRef`(verse ∈ [0,999])/`ReferenceResolver`(clean-fail)/`PortionVerseBridge`
+  spine over the now-trusted asset; pure-JVM-testable, no UI. (V2.x release prep — version
+  bump past 1.3.5/10305, S9 + S12–S20 device pass, S12–S20 string tone sign-offs incl. the
+  D-S20-1 "Missed"-vs-"Not read" flag, tag-to-Play rollout — remains queued, owner-scheduled
+  independently of the V3 line.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

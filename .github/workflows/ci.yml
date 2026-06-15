@@ -81,3 +81,40 @@ jobs:
         with:
           name: app-release-bundle
           path: app/build/outputs/bundle/release/app-release.aab
+
+  data-rebuild:
+    name: Bible asset rebuild (deterministic, byte-diff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # VA-T10 — re-derive bible.db from the two PINNED public-domain KJV sources and assert a
+      # byte-diff of ZERO against the committed asset, so a hand-edited binary can never sneak
+      # past the commit (mirrors the Sprint-1/Sprint-9 rebuild discipline). The two source
+      # SHA-256s are verified here; the importer uses only the Python stdlib (tools/requirements.txt).
+      - name: Fetch pinned PD KJV sources
+        run: |
+          mkdir -p /tmp/kjvsrc
+          curl -sL --retry 3 -o /tmp/kjvsrc/eng-kjv.osis.xml             "https://raw.githubusercontent.com/seven1m/open-bibles/master/eng-kjv.osis.xml"
+          curl -sL --retry 3 -o /tmp/kjvsrc/scrollmapper_KJV.csv             "https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/csv/KJV.csv"
+
+      - name: Verify source checksums (re-mirror / drift guard, R-V3-3)
+        run: |
+          echo "eeeae647fc28360ce47f9c0d5cc3b397b7fdd9913fe53dc9f44eb6deee50e253  /tmp/kjvsrc/eng-kjv.osis.xml" | sha256sum -c -
+          echo "9ba72c78bdac0e60bd37ee453e1ae787ea778297fb2b78b73edc0921a136ab09  /tmp/kjvsrc/scrollmapper_KJV.csv" | sha256sum -c -
+
+      - name: Re-derive bible.db
+        run: |
+          cp app/src/main/assets/bible/bible.db /tmp/committed.db
+          python3 tools/build_bible_db.py --osis /tmp/kjvsrc/eng-kjv.osis.xml --second /tmp/kjvsrc/scrollmapper_KJV.csv
+
+      - name: Assert byte-diff of zero vs the committed asset
+        run: |
+          cmp /tmp/committed.db app/src/main/assets/bible/bible.db             && echo "bible.db reproduced byte-identically from pinned sources."             || (echo "ASSET DRIFT: committed bible.db does not match a fresh rebuild." && exit 1)

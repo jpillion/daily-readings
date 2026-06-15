@@ -21,6 +21,7 @@ coroutinesTest = "1.10.2"
 turbine = "1.2.0"
 truth = "1.4.4"
 robolectric = "4.15.1"
+sqliteJdbc = "3.50.1.0"
 kover = "0.9.8"
 spotless = "7.0.4"
 
@@ -54,6 +55,7 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqliteJdbc" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 

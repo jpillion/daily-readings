@@ -180,6 +180,7 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.truth)
     testImplementation(libs.robolectric)
+    testImplementation(libs.sqlite.jdbc)
     testImplementation(libs.androidx.glance.appwidget.testing)
     testImplementation(libs.kotlinx.serialization.json)
 

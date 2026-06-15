@@ -1,0 +1,464 @@
+[
+  {
+    "book_no": 1,
+    "chapter_count": 50,
+    "name": "Genesis",
+    "testament": "OT",
+    "usfm_code": "GEN"
+  },
+  {
+    "book_no": 2,
+    "chapter_count": 40,
+    "name": "Exodus",
+    "testament": "OT",
+    "usfm_code": "EXO"
+  },
+  {
+    "book_no": 3,
+    "chapter_count": 27,
+    "name": "Leviticus",
+    "testament": "OT",
+    "usfm_code": "LEV"
+  },
+  {
+    "book_no": 4,
+    "chapter_count": 36,
+    "name": "Numbers",
+    "testament": "OT",
+    "usfm_code": "NUM"
+  },
+  {
+    "book_no": 5,
+    "chapter_count": 34,
+    "name": "Deuteronomy",
+    "testament": "OT",
+    "usfm_code": "DEU"
+  },
+  {
+    "book_no": 6,
+    "chapter_count": 24,
+    "name": "Joshua",
+    "testament": "OT",
+    "usfm_code": "JOS"
+  },
+  {
+    "book_no": 7,
+    "chapter_count": 21,
+    "name": "Judges",
+    "testament": "OT",
+    "usfm_code": "JDG"
+  },
+  {
+    "book_no": 8,
+    "chapter_count": 4,
+    "name": "Ruth",
+    "testament": "OT",
+    "usfm_code": "RUT"
+  },
+  {
+    "book_no": 9,
+    "chapter_count": 31,
+    "name": "1 Samuel",
+    "testament": "OT",
+    "usfm_code": "1SA"
+  },
+  {
+    "book_no": 10,
+    "chapter_count": 24,
+    "name": "2 Samuel",
+    "testament": "OT",
+    "usfm_code": "2SA"
+  },
+  {
+    "book_no": 11,
+    "chapter_count": 22,
+    "name": "1 Kings",
+    "testament": "OT",
+    "usfm_code": "1KI"
+  },
+  {
+    "book_no": 12,
+    "chapter_count": 25,
+    "name": "2 Kings",
+    "testament": "OT",
+    "usfm_code": "2KI"
+  },
+  {
+    "book_no": 13,
+    "chapter_count": 29,
+    "name": "1 Chronicles",
+    "testament": "OT",
+    "usfm_code": "1CH"
+  },
+  {
+    "book_no": 14,
+    "chapter_count": 36,
+    "name": "2 Chronicles",
+    "testament": "OT",
+    "usfm_code": "2CH"
+  },
+  {
+    "book_no": 15,
+    "chapter_count": 10,
+    "name": "Ezra",
+    "testament": "OT",
+    "usfm_code": "EZR"
+  },
+  {
+    "book_no": 16,
+    "chapter_count": 13,
+    "name": "Nehemiah",
+    "testament": "OT",
+    "usfm_code": "NEH"
+  },
+  {
+    "book_no": 17,
+    "chapter_count": 10,
+    "name": "Esther",
+    "testament": "OT",
+    "usfm_code": "EST"
+  },
+  {
+    "book_no": 18,
+    "chapter_count": 42,
+    "name": "Job",
+    "testament": "OT",
+    "usfm_code": "JOB"
+  },
+  {
+    "book_no": 19,
+    "chapter_count": 150,
+    "name": "Psalms",
+    "testament": "OT",
+    "usfm_code": "PSA"
+  },
+  {
+    "book_no": 20,
+    "chapter_count": 31,
+    "name": "Proverbs",
+    "testament": "OT",
+    "usfm_code": "PRO"
+  },
+  {
+    "book_no": 21,
+    "chapter_count": 12,
+    "name": "Ecclesiastes",
+    "testament": "OT",
+    "usfm_code": "ECC"
+  },
+  {
+    "book_no": 22,
+    "chapter_count": 8,
+    "name": "Song of Solomon",
+    "testament": "OT",
+    "usfm_code": "SNG"
+  },
+  {
+    "book_no": 23,
+    "chapter_count": 66,
+    "name": "Isaiah",
+    "testament": "OT",
+    "usfm_code": "ISA"
+  },
+  {
+    "book_no": 24,
+    "chapter_count": 52,
+    "name": "Jeremiah",
+    "testament": "OT",
+    "usfm_code": "JER"
+  },
+  {
+    "book_no": 25,
+    "chapter_count": 5,
+    "name": "Lamentations",
+    "testament": "OT",
+    "usfm_code": "LAM"
+  },
+  {
+    "book_no": 26,
+    "chapter_count": 48,
+    "name": "Ezekiel",
+    "testament": "OT",
+    "usfm_code": "EZK"
+  },
+  {
+    "book_no": 27,
+    "chapter_count": 12,
+    "name": "Daniel",
+    "testament": "OT",
+    "usfm_code": "DAN"
+  },
+  {
+    "book_no": 28,
+    "chapter_count": 14,
+    "name": "Hosea",
+    "testament": "OT",
+    "usfm_code": "HOS"
+  },
+  {
+    "book_no": 29,
+    "chapter_count": 3,
+    "name": "Joel",
+    "testament": "OT",
+    "usfm_code": "JOL"
+  },
+  {
+    "book_no": 30,
+    "chapter_count": 9,
+    "name": "Amos",
+    "testament": "OT",
+    "usfm_code": "AMO"
+  },
+  {
+    "book_no": 31,
+    "chapter_count": 1,
+    "name": "Obadiah",
+    "testament": "OT",
+    "usfm_code": "OBA"
+  },
+  {
+    "book_no": 32,
+    "chapter_count": 4,
+    "name": "Jonah",
+    "testament": "OT",
+    "usfm_code": "JON"
+  },
+  {
+    "book_no": 33,
+    "chapter_count": 7,
+    "name": "Micah",
+    "testament": "OT",
+    "usfm_code": "MIC"
+  },
+  {
+    "book_no": 34,
+    "chapter_count": 3,
+    "name": "Nahum",
+    "testament": "OT",
+    "usfm_code": "NAM"
+  },
+  {
+    "book_no": 35,
+    "chapter_count": 3,
+    "name": "Habakkuk",
+    "testament": "OT",
+    "usfm_code": "HAB"
+  },
+  {
+    "book_no": 36,
+    "chapter_count": 3,
+    "name": "Zephaniah",
+    "testament": "OT",
+    "usfm_code": "ZEP"
+  },
+  {
+    "book_no": 37,
+    "chapter_count": 2,
+    "name": "Haggai",
+    "testament": "OT",
+    "usfm_code": "HAG"
+  },
+  {
+    "book_no": 38,
+    "chapter_count": 14,
+    "name": "Zechariah",
+    "testament": "OT",
+    "usfm_code": "ZEC"
+  },
+  {
+    "book_no": 39,
+    "chapter_count": 4,
+    "name": "Malachi",
+    "testament": "OT",
+    "usfm_code": "MAL"
+  },
+  {
+    "book_no": 40,
+    "chapter_count": 28,
+    "name": "Matthew",
+    "testament": "NT",
+    "usfm_code": "MAT"
+  },
+  {
+    "book_no": 41,
+    "chapter_count": 16,
+    "name": "Mark",
+    "testament": "NT",
+    "usfm_code": "MRK"
+  },
+  {
+    "book_no": 42,
+    "chapter_count": 24,
+    "name": "Luke",
+    "testament": "NT",
+    "usfm_code": "LUK"
+  },
+  {
+    "book_no": 43,
+    "chapter_count": 21,
+    "name": "John",
+    "testament": "NT",
+    "usfm_code": "JHN"
+  },
+  {
+    "book_no": 44,
+    "chapter_count": 28,
+    "name": "Acts",
+    "testament": "NT",
+    "usfm_code": "ACT"
+  },
+  {
+    "book_no": 45,
+    "chapter_count": 16,
+    "name": "Romans",
+    "testament": "NT",
+    "usfm_code": "ROM"
+  },
+  {
+    "book_no": 46,
+    "chapter_count": 16,
+    "name": "1 Corinthians",
+    "testament": "NT",
+    "usfm_code": "1CO"
+  },
+  {
+    "book_no": 47,
+    "chapter_count": 13,
+    "name": "2 Corinthians",
+    "testament": "NT",
+    "usfm_code": "2CO"
+  },
+  {
+    "book_no": 48,
+    "chapter_count": 6,
+    "name": "Galatians",
+    "testament": "NT",
+    "usfm_code": "GAL"
+  },
+  {
+    "book_no": 49,
+    "chapter_count": 6,
+    "name": "Ephesians",
+    "testament": "NT",
+    "usfm_code": "EPH"
+  },
+  {
+    "book_no": 50,
+    "chapter_count": 4,
+    "name": "Philippians",
+    "testament": "NT",
+    "usfm_code": "PHP"
+  },
+  {
+    "book_no": 51,
+    "chapter_count": 4,
+    "name": "Colossians",
+    "testament": "NT",
+    "usfm_code": "COL"
+  },
+  {
+    "book_no": 52,
+    "chapter_count": 5,
+    "name": "1 Thessalonians",
+    "testament": "NT",
+    "usfm_code": "1TH"
+  },
+  {
+    "book_no": 53,
+    "chapter_count": 3,
+    "name": "2 Thessalonians",
+    "testament": "NT",
+    "usfm_code": "2TH"
+  },
+  {
+    "book_no": 54,
+    "chapter_count": 6,
+    "name": "1 Timothy",
+    "testament": "NT",
+    "usfm_code": "1TI"
+  },
+  {
+    "book_no": 55,
+    "chapter_count": 4,
+    "name": "2 Timothy",
+    "testament": "NT",
+    "usfm_code": "2TI"
+  },
+  {
+    "book_no": 56,
+    "chapter_count": 3,
+    "name": "Titus",
+    "testament": "NT",
+    "usfm_code": "TIT"
+  },
+  {
+    "book_no": 57,
+    "chapter_count": 1,
+    "name": "Philemon",
+    "testament": "NT",
+    "usfm_code": "PHM"
+  },
+  {
+    "book_no": 58,
+    "chapter_count": 13,
+    "name": "Hebrews",
+    "testament": "NT",
+    "usfm_code": "HEB"
+  },
+  {
+    "book_no": 59,
+    "chapter_count": 5,
+    "name": "James",
+    "testament": "NT",
+    "usfm_code": "JAS"
+  },
+  {
+    "book_no": 60,
+    "chapter_count": 5,
+    "name": "1 Peter",
+    "testament": "NT",
+    "usfm_code": "1PE"
+  },
+  {
+    "book_no": 61,
+    "chapter_count": 3,
+    "name": "2 Peter",
+    "testament": "NT",
+    "usfm_code": "2PE"
+  },
+  {
+    "book_no": 62,
+    "chapter_count": 5,
+    "name": "1 John",
+    "testament": "NT",
+    "usfm_code": "1JN"
+  },
+  {
+    "book_no": 63,
+    "chapter_count": 1,
+    "name": "2 John",
+    "testament": "NT",
+    "usfm_code": "2JN"
+  },
+  {
+    "book_no": 64,
+    "chapter_count": 1,
+    "name": "3 John",
+    "testament": "NT",
+    "usfm_code": "3JN"
+  },
+  {
+    "book_no": 65,
+    "chapter_count": 1,
+    "name": "Jude",
+    "testament": "NT",
+    "usfm_code": "JUD"
+  },
+  {
+    "book_no": 66,
+    "chapter_count": 22,
+    "name": "Revelation",
+    "testament": "NT",
+    "usfm_code": "REV"
+  }
+]
