@@ -3,7 +3,6 @@ package com.jpillion.dailyreadingplanner.domain
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -21,19 +20,21 @@ class GetReadingStatsUseCaseTest {
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val progress = FakeProgressRepository()
     private val settings = FakeSettingsRepository()
+    private val activePlan = FakeActivePlanRepository()
 
     private fun useCase(at: Clock = clock) =
         GetReadingStatsUseCase(
             DayCompletionClassifier(ScheduleDateResolver()),
             progress,
             settings,
+            activePlan,
             at,
         )
 
     private fun june(day: Int): LocalDate = LocalDate.of(2026, 6, day)
 
     private suspend fun markDays(vararg dates: LocalDate) {
-        dates.forEach { progress.setWholeDay(it, isRead = true) }
+        dates.forEach { progress.setWholeDay(it, listOf(1, 2, 3), isRead = true) }
     }
 
     // --- Streaks: R-STREAK-1 (complete days only) ---
@@ -47,11 +48,11 @@ class GetReadingStatsUseCaseTest {
             assertThat(stats.yearReadCount).isEqualTo(0)
             assertThat(stats.streamReadCounts)
                 .containsExactly(
-                    Stream.LAW_AND_HISTORY,
+                    1,
                     0,
-                    Stream.PSALMS_AND_PROPHECY,
+                    2,
                     0,
-                    Stream.NEW_TESTAMENT,
+                    3,
                     0,
                 )
         }
@@ -80,8 +81,8 @@ class GetReadingStatsUseCaseTest {
     fun `a passed day with two of three marks ends the streak`() =
         runTest {
             markDays(june(7))
-            progress.setRead(june(8), Stream.LAW_AND_HISTORY, isRead = true)
-            progress.setRead(june(8), Stream.NEW_TESTAMENT, isRead = true) // 2 of 3: not a streak day
+            progress.setRead(june(8), 1, isRead = true)
+            progress.setRead(june(8), 3, isRead = true) // 2 of 3: not a streak day
             markDays(june(9))
             val stats = useCase()().first()
             assertThat(stats.currentStreakDays).isEqualTo(1)
@@ -102,7 +103,7 @@ class GetReadingStatsUseCaseTest {
     fun `a partially complete today neither extends nor breaks`() =
         runTest {
             markDays(june(8), june(9))
-            progress.setRead(june(10), Stream.NEW_TESTAMENT, isRead = true)
+            progress.setRead(june(10), 3, isRead = true)
             val stats = useCase()().first()
             assertThat(stats.currentStreakDays).isEqualTo(2)
         }
@@ -200,20 +201,20 @@ class GetReadingStatsUseCaseTest {
     @Test
     fun `year totals count only the current calendar year, per stream`() =
         runTest {
-            progress.setWholeDay(LocalDate.of(2025, 12, 31), isRead = true) // other year: excluded
-            progress.setRead(june(1), Stream.LAW_AND_HISTORY, isRead = true)
-            progress.setRead(june(2), Stream.LAW_AND_HISTORY, isRead = true)
-            progress.setRead(june(3), Stream.LAW_AND_HISTORY, isRead = true)
-            progress.setRead(june(4), Stream.NEW_TESTAMENT, isRead = true)
+            progress.setWholeDay(LocalDate.of(2025, 12, 31), listOf(1, 2, 3), isRead = true) // other year: excluded
+            progress.setRead(june(1), 1, isRead = true)
+            progress.setRead(june(2), 1, isRead = true)
+            progress.setRead(june(3), 1, isRead = true)
+            progress.setRead(june(4), 3, isRead = true)
             val stats = useCase()().first()
             assertThat(stats.yearReadCount).isEqualTo(4)
             assertThat(stats.streamReadCounts)
                 .containsExactly(
-                    Stream.LAW_AND_HISTORY,
+                    1,
                     3,
-                    Stream.PSALMS_AND_PROPHECY,
+                    2,
                     0,
-                    Stream.NEW_TESTAMENT,
+                    3,
                     1,
                 )
             assertThat(stats.yearReadCount).isEqualTo(stats.streamReadCounts.values.sum())

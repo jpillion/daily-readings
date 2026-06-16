@@ -4,7 +4,6 @@ import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import org.junit.Test
 
 /**
@@ -15,7 +14,7 @@ import org.junit.Test
 class ReaderHandoffTest {
     private fun portion() =
         Portion(
-            Stream.NEW_TESTAMENT,
+            3,
             listOf(Reference(BookCatalog.requireByName("James"), 4)),
         )
 

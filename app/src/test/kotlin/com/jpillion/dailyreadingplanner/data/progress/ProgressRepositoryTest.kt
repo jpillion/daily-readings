@@ -2,7 +2,6 @@ package com.jpillion.dailyreadingplanner.data.progress
 
 import androidx.room.Room
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -50,12 +49,12 @@ class ProgressRepositoryTest {
         runTest {
             val jan2026 = LocalDate.of(2026, 1, 1)
             val jan2027 = LocalDate.of(2027, 1, 1)
-            repository.setWholeDay(jan2026, isRead = true)
-            assertThat(repository.streamsRead(jan2026).first()).containsExactlyElementsIn(Stream.entries)
+            repository.setWholeDay(jan2026, listOf(1, 2, 3), isRead = true)
+            assertThat(repository.streamsRead(jan2026).first()).containsExactly(1, 2, 3)
             assertThat(repository.streamsRead(jan2027).first()).isEmpty()
-            repository.setRead(jan2027, Stream.NEW_TESTAMENT, isRead = true)
-            assertThat(repository.streamsRead(jan2027).first()).containsExactly(Stream.NEW_TESTAMENT)
-            assertThat(repository.streamsRead(jan2026).first()).containsExactlyElementsIn(Stream.entries)
+            repository.setRead(jan2027, 3, isRead = true)
+            assertThat(repository.streamsRead(jan2027).first()).containsExactly(3)
+            assertThat(repository.streamsRead(jan2026).first()).containsExactly(1, 2, 3)
         }
 
     @Test
@@ -63,11 +62,11 @@ class ProgressRepositoryTest {
         runTest {
             val date = LocalDate.of(2026, 6, 10)
             assertThat(repository.streamsRead(date).first()).isEmpty()
-            repository.setRead(date, Stream.LAW_AND_HISTORY, isRead = true)
-            assertThat(repository.streamsRead(date).first()).containsExactly(Stream.LAW_AND_HISTORY)
-            repository.setRead(date, Stream.LAW_AND_HISTORY, isRead = true) // idempotent re-mark
-            assertThat(repository.streamsRead(date).first()).containsExactly(Stream.LAW_AND_HISTORY)
-            repository.setRead(date, Stream.LAW_AND_HISTORY, isRead = false)
+            repository.setRead(date, 1, isRead = true)
+            assertThat(repository.streamsRead(date).first()).containsExactly(1)
+            repository.setRead(date, 1, isRead = true) // idempotent re-mark
+            assertThat(repository.streamsRead(date).first()).containsExactly(1)
+            repository.setRead(date, 1, isRead = false)
             assertThat(repository.streamsRead(date).first()).isEmpty()
         }
 
@@ -76,21 +75,21 @@ class ProgressRepositoryTest {
         runTest {
             val date = LocalDate.of(2026, 6, 10)
             val otherDate = LocalDate.of(2026, 6, 11)
-            repository.setRead(otherDate, Stream.PSALMS_AND_PROPHECY, isRead = true)
-            repository.setWholeDay(date, isRead = true)
-            assertThat(repository.streamsRead(date).first()).containsExactlyElementsIn(Stream.entries)
-            repository.setWholeDay(date, isRead = false)
+            repository.setRead(otherDate, 2, isRead = true)
+            repository.setWholeDay(date, listOf(1, 2, 3), isRead = true)
+            assertThat(repository.streamsRead(date).first()).containsExactly(1, 2, 3)
+            repository.setWholeDay(date, listOf(1, 2, 3), isRead = false)
             assertThat(repository.streamsRead(date).first()).isEmpty()
-            assertThat(repository.streamsRead(otherDate).first()).containsExactly(Stream.PSALMS_AND_PROPHECY)
+            assertThat(repository.streamsRead(otherDate).first()).containsExactly(2)
         }
 
     @Test
     fun `whole-day mark over an existing partial mark stays consistent`() =
         runTest {
             val date = LocalDate.of(2026, 3, 15)
-            repository.setRead(date, Stream.NEW_TESTAMENT, isRead = true)
-            repository.setWholeDay(date, isRead = true)
-            assertThat(repository.streamsRead(date).first()).containsExactlyElementsIn(Stream.entries)
+            repository.setRead(date, 3, isRead = true)
+            repository.setWholeDay(date, listOf(1, 2, 3), isRead = true)
+            assertThat(repository.streamsRead(date).first()).containsExactly(1, 2, 3)
         }
 
     @Test
@@ -98,11 +97,11 @@ class ProgressRepositoryTest {
         runTest {
             val start = LocalDate.of(2026, 6, 1)
             val end = LocalDate.of(2026, 6, 30)
-            repository.setWholeDay(LocalDate.of(2026, 6, 1), isRead = true) // start bound, 3 marks
-            repository.setRead(LocalDate.of(2026, 6, 15), Stream.NEW_TESTAMENT, isRead = true) // 1 mark
-            repository.setWholeDay(LocalDate.of(2026, 6, 30), isRead = true) // end bound
-            repository.setWholeDay(LocalDate.of(2026, 5, 31), isRead = true) // just outside (before)
-            repository.setWholeDay(LocalDate.of(2026, 7, 1), isRead = true) // just outside (after)
+            repository.setWholeDay(LocalDate.of(2026, 6, 1), listOf(1, 2, 3), isRead = true) // start bound, 3 marks
+            repository.setRead(LocalDate.of(2026, 6, 15), 3, isRead = true) // 1 mark
+            repository.setWholeDay(LocalDate.of(2026, 6, 30), listOf(1, 2, 3), isRead = true) // end bound
+            repository.setWholeDay(LocalDate.of(2026, 5, 31), listOf(1, 2, 3), isRead = true) // just outside (before)
+            repository.setWholeDay(LocalDate.of(2026, 7, 1), listOf(1, 2, 3), isRead = true) // just outside (after)
             assertThat(repository.readCounts(start, end).first()).containsExactly(
                 LocalDate.of(2026, 6, 1),
                 3,
@@ -118,26 +117,26 @@ class ProgressRepositoryTest {
         runTest {
             val flow = repository.readCounts(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30))
             assertThat(flow.first()).isEmpty()
-            repository.setWholeDay(LocalDate.of(2026, 6, 10), isRead = true)
+            repository.setWholeDay(LocalDate.of(2026, 6, 10), listOf(1, 2, 3), isRead = true)
             assertThat(flow.first()).containsExactly(LocalDate.of(2026, 6, 10), 3)
         }
 
     @Test
     fun `clearYear deletes Jan 1 through Dec 31 of that year and nothing else`() =
         runTest {
-            repository.setWholeDay(LocalDate.of(2025, 12, 31), isRead = true) // prior year, adjacent
-            repository.setWholeDay(LocalDate.of(2026, 1, 1), isRead = true) // year start bound
-            repository.setRead(LocalDate.of(2026, 6, 10), Stream.LAW_AND_HISTORY, isRead = true)
-            repository.setWholeDay(LocalDate.of(2026, 12, 31), isRead = true) // year end bound
-            repository.setWholeDay(LocalDate.of(2027, 1, 1), isRead = true) // next year, adjacent
+            repository.setWholeDay(LocalDate.of(2025, 12, 31), listOf(1, 2, 3), isRead = true) // prior year, adjacent
+            repository.setWholeDay(LocalDate.of(2026, 1, 1), listOf(1, 2, 3), isRead = true) // year start bound
+            repository.setRead(LocalDate.of(2026, 6, 10), 1, isRead = true)
+            repository.setWholeDay(LocalDate.of(2026, 12, 31), listOf(1, 2, 3), isRead = true) // year end bound
+            repository.setWholeDay(LocalDate.of(2027, 1, 1), listOf(1, 2, 3), isRead = true) // next year, adjacent
             repository.clearYear(2026)
             assertThat(repository.streamsRead(LocalDate.of(2026, 1, 1)).first()).isEmpty()
             assertThat(repository.streamsRead(LocalDate.of(2026, 6, 10)).first()).isEmpty()
             assertThat(repository.streamsRead(LocalDate.of(2026, 12, 31)).first()).isEmpty()
             assertThat(repository.streamsRead(LocalDate.of(2025, 12, 31)).first())
-                .containsExactlyElementsIn(Stream.entries)
+                .containsExactly(1, 2, 3)
             assertThat(repository.streamsRead(LocalDate.of(2027, 1, 1)).first())
-                .containsExactlyElementsIn(Stream.entries)
+                .containsExactly(1, 2, 3)
         }
 
     @Test
@@ -146,7 +145,7 @@ class ProgressRepositoryTest {
             val date = LocalDate.of(2026, 8, 1)
             val flow = repository.streamsRead(date)
             assertThat(flow.first()).isEmpty()
-            repository.setWholeDay(date, isRead = true)
+            repository.setWholeDay(date, listOf(1, 2, 3), isRead = true)
             assertThat(flow.first()).hasSize(3)
         }
 
@@ -154,19 +153,19 @@ class ProgressRepositoryTest {
     fun `hasAnyMarks is false on an empty store, true with any mark, false again after unmark`() =
         runTest {
             assertThat(repository.hasAnyMarks()).isFalse()
-            repository.setRead(LocalDate.of(2026, 6, 1), Stream.NEW_TESTAMENT, isRead = true)
+            repository.setRead(LocalDate.of(2026, 6, 1), 3, isRead = true)
             assertThat(repository.hasAnyMarks()).isTrue()
-            repository.setRead(LocalDate.of(2026, 6, 1), Stream.NEW_TESTAMENT, isRead = false)
+            repository.setRead(LocalDate.of(2026, 6, 1), 3, isRead = false)
             assertThat(repository.hasAnyMarks()).isFalse()
         }
 
     @Test
     fun `allReadCounts spans every stored year and groups per day`() =
         runTest {
-            repository.setWholeDay(LocalDate.of(2025, 12, 31), isRead = true)
-            repository.setRead(LocalDate.of(2026, 1, 1), Stream.LAW_AND_HISTORY, isRead = true)
-            repository.setRead(LocalDate.of(2026, 1, 1), Stream.NEW_TESTAMENT, isRead = true)
-            repository.setRead(LocalDate.of(2027, 6, 10), Stream.PSALMS_AND_PROPHECY, isRead = true)
+            repository.setWholeDay(LocalDate.of(2025, 12, 31), listOf(1, 2, 3), isRead = true)
+            repository.setRead(LocalDate.of(2026, 1, 1), 1, isRead = true)
+            repository.setRead(LocalDate.of(2026, 1, 1), 3, isRead = true)
+            repository.setRead(LocalDate.of(2027, 6, 10), 2, isRead = true)
 
             assertThat(repository.allReadCounts().first())
                 .containsExactly(
@@ -184,7 +183,7 @@ class ProgressRepositoryTest {
         runTest {
             val flow = repository.allReadCounts()
             assertThat(flow.first()).isEmpty()
-            repository.setWholeDay(LocalDate.of(2026, 6, 10), isRead = true)
+            repository.setWholeDay(LocalDate.of(2026, 6, 10), listOf(1, 2, 3), isRead = true)
             assertThat(flow.first()).containsExactly(LocalDate.of(2026, 6, 10), 3)
         }
 
@@ -192,19 +191,19 @@ class ProgressRepositoryTest {
     fun `streamMarks returns per-stream date sets and respects inclusive range bounds`() =
         runTest {
             // S17 year-strip input: raw (day, stream) marks grouped per stream.
-            repository.setWholeDay(LocalDate.of(2026, 1, 1), isRead = true) // boundary in
-            repository.setRead(LocalDate.of(2026, 6, 10), Stream.NEW_TESTAMENT, isRead = true)
-            repository.setRead(LocalDate.of(2026, 12, 31), Stream.LAW_AND_HISTORY, isRead = true) // boundary in
-            repository.setRead(LocalDate.of(2025, 12, 31), Stream.NEW_TESTAMENT, isRead = true) // out of range
-            repository.setRead(LocalDate.of(2027, 1, 1), Stream.NEW_TESTAMENT, isRead = true) // out of range
+            repository.setWholeDay(LocalDate.of(2026, 1, 1), listOf(1, 2, 3), isRead = true) // boundary in
+            repository.setRead(LocalDate.of(2026, 6, 10), 3, isRead = true)
+            repository.setRead(LocalDate.of(2026, 12, 31), 1, isRead = true) // boundary in
+            repository.setRead(LocalDate.of(2025, 12, 31), 3, isRead = true) // out of range
+            repository.setRead(LocalDate.of(2027, 1, 1), 3, isRead = true) // out of range
             val marks =
                 repository
                     .streamMarks(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))
                     .first()
-            assertThat(marks[Stream.LAW_AND_HISTORY])
+            assertThat(marks[1])
                 .containsExactly(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))
-            assertThat(marks[Stream.PSALMS_AND_PROPHECY]).containsExactly(LocalDate.of(2026, 1, 1))
-            assertThat(marks[Stream.NEW_TESTAMENT])
+            assertThat(marks[2]).containsExactly(LocalDate.of(2026, 1, 1))
+            assertThat(marks[3])
                 .containsExactly(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 10))
         }
 
@@ -212,19 +211,19 @@ class ProgressRepositoryTest {
     fun `streamCounts groups per stream and respects inclusive range bounds`() =
         runTest {
             // Inside 2026: two L&H days, one NT day.
-            repository.setRead(LocalDate.of(2026, 1, 1), Stream.LAW_AND_HISTORY, isRead = true)
-            repository.setRead(LocalDate.of(2026, 12, 31), Stream.LAW_AND_HISTORY, isRead = true)
-            repository.setRead(LocalDate.of(2026, 6, 10), Stream.NEW_TESTAMENT, isRead = true)
+            repository.setRead(LocalDate.of(2026, 1, 1), 1, isRead = true)
+            repository.setRead(LocalDate.of(2026, 12, 31), 1, isRead = true)
+            repository.setRead(LocalDate.of(2026, 6, 10), 3, isRead = true)
             // Outside both bounds by exactly one day: must not count.
-            repository.setRead(LocalDate.of(2025, 12, 31), Stream.LAW_AND_HISTORY, isRead = true)
-            repository.setRead(LocalDate.of(2027, 1, 1), Stream.NEW_TESTAMENT, isRead = true)
+            repository.setRead(LocalDate.of(2025, 12, 31), 1, isRead = true)
+            repository.setRead(LocalDate.of(2027, 1, 1), 3, isRead = true)
 
             val counts =
                 repository
                     .streamCounts(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))
                     .first()
             assertThat(counts)
-                .containsExactly(Stream.LAW_AND_HISTORY, 2, Stream.NEW_TESTAMENT, 1)
-            assertThat(counts).doesNotContainKey(Stream.PSALMS_AND_PROPHECY)
+                .containsExactly(1, 2, 3, 1)
+            assertThat(counts).doesNotContainKey(2)
         }
 }

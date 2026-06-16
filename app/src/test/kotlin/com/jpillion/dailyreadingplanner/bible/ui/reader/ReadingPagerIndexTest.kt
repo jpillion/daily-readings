@@ -3,7 +3,6 @@ package com.jpillion.dailyreadingplanner.bible.ui.reader
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
@@ -24,7 +23,7 @@ class ReadingPagerIndexTest {
     private val twoJohn = BookCatalog.requireByName("2 John")
     private val threeJohn = BookCatalog.requireByName("3 John")
 
-    private fun portion(vararg refs: Reference) = Portion(Stream.NEW_TESTAMENT, refs.toList())
+    private fun portion(vararg refs: Reference) = Portion(3, refs.toList())
 
     // The spec's canonical example is "James 4–5"; James has exactly 5 chapters, so 4–5 is the
     // END of the book (the chapter after the portion is 1 Peter 1 — pinned separately below). For

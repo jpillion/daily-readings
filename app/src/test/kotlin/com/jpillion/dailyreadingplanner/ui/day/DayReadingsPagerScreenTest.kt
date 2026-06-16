@@ -10,12 +10,11 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.Portion
-import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
-import com.jpillion.dailyreadingplanner.domain.model.YearStrips
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.bcReadingStats
+import com.jpillion.dailyreadingplanner.testing.bcYearStrips
 import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +37,7 @@ class DayReadingsPagerScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val toggleCalls = mutableListOf<Pair<LocalDate, Stream>>()
+    private val toggleCalls = mutableListOf<Pair<LocalDate, Int>>()
     private val dayStates = mutableMapOf<LocalDate, MutableStateFlow<DayUiState>>()
 
     private fun stateFor(date: LocalDate): StateFlow<DayUiState> =
@@ -59,28 +58,18 @@ class DayReadingsPagerScreenTest {
     private var openSettingsCalls = 0
 
     private val sampleStats =
-        ReadingStats(
+        bcReadingStats(
             currentStreakDays = 4,
             longestStreakDays = 12,
             yearReadCount = 438,
-            streamReadCounts =
-                mapOf(
-                    Stream.LAW_AND_HISTORY to 150,
-                    Stream.PSALMS_AND_PROPHECY to 144,
-                    Stream.NEW_TESTAMENT to 144,
-                ),
+            streamReadCounts = mapOf(1 to 150, 2 to 144, 3 to 144),
         )
 
     /** S17: neutral strips are enough for panel-level tests; StatsContentTest pins states. */
     private fun sampleStrips(today: LocalDate) =
-        YearStrips(
-            year = today.year,
-            todayIndex = today.dayOfYear - 1,
-            dayStates =
-                Stream.entries.associateWith {
-                    List(today.lengthOfYear()) { StripDayState.NEUTRAL }
-                },
-        )
+        bcYearStrips(year = today.year, todayIndex = today.dayOfYear - 1) {
+            List(today.lengthOfYear()) { StripDayState.NEUTRAL }
+        }
 
     private fun setScreen(
         today: LocalDate,
@@ -94,7 +83,7 @@ class DayReadingsPagerScreenTest {
                     uiStateFor = ::stateFor,
                     monthCompletionFor = { MutableStateFlow(emptyMap()) },
                     statsPanel = statsPanel,
-                    onToggleReading = { date, reading -> toggleCalls += date to reading.portion.stream },
+                    onToggleReading = { date, reading -> toggleCalls += date to reading.portion.streamNumber },
                     onReadingTapped = onReadingTapped,
                     onRetry = {},
                     onOpenSettings = { openSettingsCalls++ },
@@ -154,7 +143,7 @@ class DayReadingsPagerScreenTest {
         setScreen(today)
         swipeToNextDay()
         composeRule.onNodeWithTag("toggle-2").performClick()
-        assertThat(toggleCalls).containsExactly(today.plusDays(1) to Stream.PSALMS_AND_PROPHECY)
+        assertThat(toggleCalls).containsExactly(today.plusDays(1) to 2)
     }
 
     @Test

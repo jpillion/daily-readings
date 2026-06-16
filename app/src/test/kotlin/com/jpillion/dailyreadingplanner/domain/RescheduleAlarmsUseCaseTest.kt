@@ -26,6 +26,7 @@ class RescheduleAlarmsUseCaseTest {
                     resolver = ScheduleDateResolver(),
                     planRepository = FakeReadingPlanRepository(),
                     progressRepository = progress,
+                    activePlanRepository = FakeActivePlanRepository(),
                 ),
             notifier = persistentNotifier,
             scheduler = scheduler,

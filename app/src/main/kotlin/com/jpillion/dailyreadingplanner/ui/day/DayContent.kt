@@ -122,7 +122,7 @@ private fun ReadingCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .testTag("reading-${portion.stream.number}"),
+                .testTag("reading-${portion.streamNumber}"),
         colors =
             CardDefaults.cardColors(
                 containerColor =
@@ -141,11 +141,15 @@ private fun ReadingCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = ReadingFormatter.streamTitle(portion.stream),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // D-ALT-22/23: the stream title is plan data, resolved upstream onto the reading.
+                // A single-stream plan supplies null — a lone reading needs no "which stream" label.
+                reading.streamTitle?.let { title ->
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     text = referenceText,
                     style = MaterialTheme.typography.titleMedium,
@@ -163,7 +167,7 @@ private fun ReadingCard(
                     Modifier
                         // G-A11Y: keep the toggle a ≥48dp target.
                         .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                        .testTag("toggle-${portion.stream.number}"),
+                        .testTag("toggle-${portion.streamNumber}"),
             )
         }
     }

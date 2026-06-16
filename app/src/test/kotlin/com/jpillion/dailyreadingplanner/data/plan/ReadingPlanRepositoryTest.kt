@@ -4,7 +4,6 @@ import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.core.date.ReadingDate
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Reference
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -49,9 +48,7 @@ class ReadingPlanRepositoryTest {
         runTest {
             val repo = newRepo()
             val portions = repo.portionsFor("bible_companion", ReadingDate(1, 1))
-            assertThat(portions.map { it.stream })
-                .containsExactly(Stream.LAW_AND_HISTORY, Stream.PSALMS_AND_PROPHECY, Stream.NEW_TESTAMENT)
-                .inOrder()
+            assertThat(portions.map { it.streamNumber }).containsExactly(1, 2, 3).inOrder()
             assertThat(portions[0].refs).containsExactly(ref("Genesis", 1), ref("Genesis", 2)).inOrder()
             assertThat(portions[1].refs).containsExactly(ref("Psalms", 1), ref("Psalms", 2)).inOrder()
             assertThat(portions[2].refs).containsExactly(ref("Matthew", 1), ref("Matthew", 2)).inOrder()
@@ -62,7 +59,7 @@ class ReadingPlanRepositoryTest {
         runTest {
             val repo = newRepo()
             for (date in listOf(ReadingDate(6, 19), ReadingDate(12, 19))) {
-                val nt = repo.portionsFor("bible_companion", date).first { it.stream == Stream.NEW_TESTAMENT }
+                val nt = repo.portionsFor("bible_companion", date).first { it.streamNumber == 3 }
                 assertThat(nt.refs).containsExactly(ref("2 John", 1), ref("3 John", 1)).inOrder()
                 assertThat(nt.firstRef).isEqualTo(ref("2 John", 1))
             }
@@ -116,10 +113,11 @@ class ReadingPlanRepositoryTest {
             val repo = newRepo()
             repo.portionsFor("bible_companion", ReadingDate(1, 1))
             val afterBc = loadCount.get()
-            // Touch the OTHER plan via descriptor() (mcheyne is 4-stream; the domain Portion map
-            // via the Stream enum is exercised only on <=3-stream plans this sprint — Stream retires
-            // in Sprint C). The point: mcheyne's asset is read, bible_companion is not re-read.
-            repo.descriptor("mcheyne")
+            // SC-T1: the Stream enum is retired, so M'Cheyne's 4-stream BODY now maps to the
+            // domain Portion map — Jan 1 resolves to FOUR portions (numbers 1..4). The point here:
+            // mcheyne's asset is read, bible_companion is not re-read.
+            val mcheyne = repo.portionsFor("mcheyne", ReadingDate(1, 1))
+            assertThat(mcheyne.map { it.streamNumber }).containsExactly(1, 2, 3, 4).inOrder()
             assertThat(loadCount.get()).isGreaterThan(afterBc)
             // And re-touching bible_companion is still a cache hit (no further reads).
             val afterMcheyne = loadCount.get()

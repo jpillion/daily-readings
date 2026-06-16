@@ -4,7 +4,6 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -24,20 +23,27 @@ class GetMonthCompletionUseCaseTest {
     // Fixed "today": 2026-06-10.
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val progress = FakeProgressRepository()
+    private val activePlan = FakeActivePlanRepository()
     private val settings = FakeSettingsRepository()
     private val useCase =
-        GetMonthCompletionUseCase(DayCompletionClassifier(ScheduleDateResolver()), progress, settings, clock)
+        GetMonthCompletionUseCase(
+            DayCompletionClassifier(ScheduleDateResolver()),
+            progress,
+            settings,
+            activePlan,
+            clock,
+        )
 
     private fun Map<LocalDate, DayCompletion>.june(day: Int) = this[LocalDate.of(2026, 6, day)]
 
     @Test
     fun `classifies complete, missed and none across past, today and future`() =
         runTest {
-            progress.setWholeDay(LocalDate.of(2026, 6, 1), isRead = true) // past, complete
-            progress.setRead(LocalDate.of(2026, 6, 2), Stream.NEW_TESTAMENT, isRead = true) // past, partial
+            progress.setWholeDay(LocalDate.of(2026, 6, 1), listOf(1, 2, 3), isRead = true) // past, complete
+            progress.setRead(LocalDate.of(2026, 6, 2), 3, isRead = true) // past, partial
             // 2026-06-03: past, zero marks
-            progress.setWholeDay(LocalDate.of(2026, 6, 10), isRead = true) // today, complete
-            progress.setWholeDay(LocalDate.of(2026, 6, 20), isRead = true) // future, complete
+            progress.setWholeDay(LocalDate.of(2026, 6, 10), listOf(1, 2, 3), isRead = true) // today, complete
+            progress.setWholeDay(LocalDate.of(2026, 6, 20), listOf(1, 2, 3), isRead = true) // future, complete
 
             val map = useCase(YearMonth.of(2026, 6)).first()
             assertThat(map.june(1)).isEqualTo(DayCompletion.COMPLETE)
@@ -52,7 +58,7 @@ class GetMonthCompletionUseCaseTest {
     @Test
     fun `today incomplete is NONE, not missed`() =
         runTest {
-            progress.setRead(LocalDate.of(2026, 6, 10), Stream.LAW_AND_HISTORY, isRead = true)
+            progress.setRead(LocalDate.of(2026, 6, 10), 1, isRead = true)
             val map = useCase(YearMonth.of(2026, 6)).first()
             assertThat(map.june(10)).isEqualTo(DayCompletion.NONE)
         }
@@ -60,8 +66,8 @@ class GetMonthCompletionUseCaseTest {
     @Test
     fun `two of three marks on a past day is still missed`() =
         runTest {
-            progress.setRead(LocalDate.of(2026, 6, 5), Stream.LAW_AND_HISTORY, isRead = true)
-            progress.setRead(LocalDate.of(2026, 6, 5), Stream.NEW_TESTAMENT, isRead = true)
+            progress.setRead(LocalDate.of(2026, 6, 5), 1, isRead = true)
+            progress.setRead(LocalDate.of(2026, 6, 5), 3, isRead = true)
             val map = useCase(YearMonth.of(2026, 6)).first()
             assertThat(map.june(5)).isEqualTo(DayCompletion.MISSED)
         }
@@ -86,6 +92,7 @@ class GetMonthCompletionUseCaseTest {
                     DayCompletionClassifier(ScheduleDateResolver()),
                     progress,
                     settings,
+                    activePlan,
                     marchClock,
                 )
             val map = inMarch(YearMonth.of(2028, 2)).first()
@@ -98,7 +105,7 @@ class GetMonthCompletionUseCaseTest {
         runTest {
             useCase(YearMonth.of(2026, 6)).test {
                 assertThat(awaitItem()[LocalDate.of(2026, 6, 1)]).isEqualTo(DayCompletion.MISSED)
-                progress.setWholeDay(LocalDate.of(2026, 6, 1), isRead = true)
+                progress.setWholeDay(LocalDate.of(2026, 6, 1), listOf(1, 2, 3), isRead = true)
                 assertThat(awaitItem()[LocalDate.of(2026, 6, 1)]).isEqualTo(DayCompletion.COMPLETE)
             }
         }
@@ -128,7 +135,7 @@ class GetMonthCompletionUseCaseTest {
     fun `a fully-read pre-start day keeps its earned COMPLETE - green wins over the gate`() =
         runTest {
             settings.storedTrackingStartDate.value = LocalDate.of(2026, 6, 5)
-            progress.setWholeDay(LocalDate.of(2026, 6, 2), isRead = true)
+            progress.setWholeDay(LocalDate.of(2026, 6, 2), listOf(1, 2, 3), isRead = true)
             val map = useCase(YearMonth.of(2026, 6)).first()
             assertThat(map.june(2)).isEqualTo(DayCompletion.COMPLETE)
         }
@@ -153,6 +160,7 @@ class GetMonthCompletionUseCaseTest {
                     DayCompletionClassifier(ScheduleDateResolver()),
                     progress,
                     settings,
+                    activePlan,
                     marchClock,
                 )
             val map = inMarch(YearMonth.of(2028, 2)).first()

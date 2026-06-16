@@ -15,7 +15,6 @@ import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.Reference
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
 import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
@@ -55,7 +54,7 @@ class ReaderViewModelTest {
     private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
         ReaderViewModel(getChapter, getPortionText, getTranslations, openVerse, handle, handoff, settings)
 
-    private fun nt(vararg refs: Reference) = Portion(Stream.NEW_TESTAMENT, refs.toList())
+    private fun nt(vararg refs: Reference) = Portion(3, refs.toList())
 
     @Test
     fun `Browse - a page emits content for that global chapter index`() =
@@ -86,7 +85,7 @@ class ReaderViewModelTest {
             val model = vm()
             handoff.request(
                 Portion(
-                    Stream.PSALMS_AND_PROPHECY,
+                    2,
                     listOf(Reference(psalms, 1), Reference(psalms, 2)),
                 ),
             )

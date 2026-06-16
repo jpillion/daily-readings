@@ -4,7 +4,6 @@ import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -21,7 +20,7 @@ class GetPortionTextUseCaseTest {
     @Test
     fun `multi-chapter portion renders one block per chapter in order`() =
         runTest {
-            val portion = Portion(Stream.LAW_AND_HISTORY, listOf(ref("Genesis", 1), ref("Genesis", 2)))
+            val portion = Portion(1, listOf(ref("Genesis", 1), ref("Genesis", 2)))
             val content = useCase(portion)
             assertEquals(2, content.blocks.size)
             assertEquals(1, content.blocks[0].chapter)
@@ -32,7 +31,7 @@ class GetPortionTextUseCaseTest {
     @Test
     fun `two-book portion renders both books in order — M-V3-4`() =
         runTest {
-            val portion = Portion(Stream.NEW_TESTAMENT, listOf(ref("2 John", 1), ref("3 John", 1)))
+            val portion = Portion(3, listOf(ref("2 John", 1), ref("3 John", 1)))
             val content = useCase(portion)
             assertEquals(2, content.blocks.size)
             assertEquals(63, content.blocks[0].bookNo)
@@ -44,7 +43,7 @@ class GetPortionTextUseCaseTest {
     @Test
     fun `psalms portion preserves the verse-0 title in its block`() =
         runTest {
-            val portion = Portion(Stream.PSALMS_AND_PROPHECY, listOf(ref("Psalms", 23)))
+            val portion = Portion(2, listOf(ref("Psalms", 23)))
             val content = useCase(portion)
             assertEquals(
                 true,
@@ -59,7 +58,7 @@ class GetPortionTextUseCaseTest {
     fun `a verse-windowed portion renders ONLY the in-range verses — Psalm 119 day 1 = 1 to 40`() =
         runTest {
             val ref = Reference(BookCatalog.requireByName("Psalms"), 119, ReferenceVerses(1, 40))
-            val portion = Portion(Stream.PSALMS_AND_PROPHECY, listOf(ref))
+            val portion = Portion(2, listOf(ref))
             val content = useCase(portion)
             val block = content.blocks.single()
             val verseNumbers = block.verses.map { it.nativeLabel }
@@ -77,7 +76,7 @@ class GetPortionTextUseCaseTest {
                 end: Int,
             ) = useCase(
                 Portion(
-                    Stream.PSALMS_AND_PROPHECY,
+                    2,
                     listOf(Reference(BookCatalog.requireByName("Psalms"), 119, ReferenceVerses(start, end))),
                 ),
             ).blocks.single().verses.map { it.nativeLabel.toInt() }

@@ -9,7 +9,6 @@ import com.jpillion.dailyreadingplanner.domain.model.PlanDescriptor
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.StreamDescriptor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -22,10 +21,10 @@ import javax.inject.Inject
  * constants. Validation failures throw: every shipped plan is release-gated by a *PlanVerificationTest,
  * so an invalid asset at runtime is a build defect, not a user-data condition.
  *
- * Sprint A is descriptor-ADDITIVE: the Bible-Companion path still maps each portion through the
- * `Stream` enum (`Stream.fromNumber`), so its output map is byte-identical to today. The `Stream`
- * enum is retired in Sprint C (D-ALT-5); a plan with streams outside 1..3 (M'Cheyne) is validated
- * here at the DTO level but is not mapped to the domain `Portion` map until that retirement.
+ * D-ALT-5 (Alt Sprint C): the `Stream` enum is retired — the loader carries the JSON `stream` int
+ * straight onto `Portion.streamNumber` (validated against the descriptor's `streams[].number`), so
+ * a plan of ANY stream count (M'Cheyne's 4, a chronological 1) maps to the domain `Portion` map.
+ * The Bible-Companion output map is unchanged in meaning (the int was always the key).
  */
 class ReadingPlanAssetLoader
     @Inject
@@ -52,7 +51,7 @@ class ReadingPlanAssetLoader
                         ReadingDate(day.month, day.day) to
                             day.portions.map { portion ->
                                 Portion(
-                                    stream = Stream.fromNumber(portion.stream),
+                                    streamNumber = portion.stream,
                                     refs =
                                         portion.refs.map { ref ->
                                             Reference(

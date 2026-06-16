@@ -3,7 +3,6 @@ package com.jpillion.dailyreadingplanner.ui.day
 import com.jpillion.dailyreadingplanner.data.reference.Book
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 
 /**
  * Presentation formatting for portions and streams (FR-13). Consecutive chapters of one
@@ -27,13 +26,6 @@ import com.jpillion.dailyreadingplanner.domain.model.Stream
  * revisit if localization ever lands.
  */
 object ReadingFormatter {
-    fun streamTitle(stream: Stream): String =
-        when (stream) {
-            Stream.LAW_AND_HISTORY -> "Law & History"
-            Stream.PSALMS_AND_PROPHECY -> "Psalms & Prophecy"
-            Stream.NEW_TESTAMENT -> "New Testament"
-        }
-
     fun format(portion: Portion): String =
         consecutiveRuns(portion.refs).joinToString("; ") { formatRun(it, Book::canonicalName) }
 

@@ -13,10 +13,16 @@ import javax.inject.Inject
  * (R-STREAK-5: one source of truth, no drift between the picker dots and the stats screen).
  *
  * Classification (owner spec + S10 truth table, docs/features/tracking-start-date.md §2,
- * evaluated in order): Feb 29 is always NONE (D1); all three streams read = COMPLETE for any
- * day (pre-start days keep their earned green); a day strictly before the tracking start date
- * is NONE, never MISSED; a past scheduled in-tracking day short of three = MISSED; an
+ * evaluated in order): Feb 29 is always NONE (D1); all of the day's streams read = COMPLETE for
+ * any day (pre-start days keep their earned green); a day strictly before the tracking start date
+ * is NONE, never MISSED; a past scheduled in-tracking day short of [streamCount] = MISSED; an
  * incomplete today/future day = NONE.
+ *
+ * D-ALT-6 (Alt Sprint C): the completion threshold is the per-call [streamCount] sourced from the
+ * ACTIVE PLAN's descriptor (`streams.size`), NOT a constant or a per-plan subclass — generality
+ * flows THROUGH this one predicate, it is never forked (R-STREAK-5). The truth-table ORDER is
+ * untouched; only the constant `3` became a parameter. Bible Companion callers pass 3 (parity);
+ * M'Cheyne passes 4; a single-stream plan passes 1.
  */
 class DayCompletionClassifier
     @Inject
@@ -26,12 +32,13 @@ class DayCompletionClassifier
         fun classify(
             date: LocalDate,
             readCount: Int,
+            streamCount: Int,
             today: LocalDate,
             trackingStart: LocalDate?,
         ): DayCompletion =
             when {
                 resolver.resolve(date) is ResolvedDate.NoScheduledReadings -> DayCompletion.NONE
-                readCount >= STREAM_COUNT -> DayCompletion.COMPLETE
+                readCount >= streamCount -> DayCompletion.COMPLETE
                 // Start-date gate (S10): strictly-before-start days are neutral, never MISSED.
                 // Sits AFTER the COMPLETE branch (earned green is kept) and immediately BEFORE
                 // the MISSED branch (it only ever suppresses red, never adds it).
@@ -39,8 +46,4 @@ class DayCompletionClassifier
                 date.isBefore(today) -> DayCompletion.MISSED
                 else -> DayCompletion.NONE
             }
-
-        companion object {
-            const val STREAM_COUNT = 3
-        }
     }

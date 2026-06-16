@@ -1,6 +1,5 @@
 package com.jpillion.dailyreadingplanner.data.progress
 
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -12,6 +11,9 @@ import javax.inject.Inject
  * D-ALT-12 (Alt Sprint B): every method scopes its DAO call by [planId], which the interface
  * defaults to the flagship `bible_companion` — so the default path is byte-for-byte the pre-Sprint-B
  * behavior (parity). The live active-plan threading into the use-case callers is Sprint C/D.
+ *
+ * D-ALT-5 (Alt Sprint C): a stream is now its plain `Int` number. The DAO already stored/returned
+ * the int `stream` column; the impl no longer maps through the retired `Stream` enum.
  */
 class ProgressRepositoryImpl
     @Inject
@@ -22,10 +24,10 @@ class ProgressRepositoryImpl
         override fun streamsRead(
             date: LocalDate,
             planId: String,
-        ): Flow<Set<Stream>> =
+        ): Flow<Set<Int>> =
             dao
                 .streamsRead(planId, date.toEpochDay())
-                .map { streams -> streams.map(Stream.Companion::fromNumber).toSet() }
+                .map { streams -> streams.toSet() }
                 .distinctUntilChanged()
 
         override fun readCounts(
@@ -48,22 +50,22 @@ class ProgressRepositoryImpl
             start: LocalDate,
             end: LocalDate,
             planId: String,
-        ): Flow<Map<Stream, Int>> =
+        ): Flow<Map<Int, Int>> =
             dao
                 .streamCountsInRange(planId, start.toEpochDay(), end.toEpochDay())
-                .map { rows -> rows.associate { Stream.fromNumber(it.stream) to it.readCount } }
+                .map { rows -> rows.associate { it.stream to it.readCount } }
                 .distinctUntilChanged()
 
         override fun streamMarks(
             start: LocalDate,
             end: LocalDate,
             planId: String,
-        ): Flow<Map<Stream, Set<LocalDate>>> =
+        ): Flow<Map<Int, Set<LocalDate>>> =
             dao
                 .marksInRange(planId, start.toEpochDay(), end.toEpochDay())
                 .map { rows ->
                     rows
-                        .groupBy({ Stream.fromNumber(it.stream) }, { LocalDate.ofEpochDay(it.dateEpochDay) })
+                        .groupBy({ it.stream }, { LocalDate.ofEpochDay(it.dateEpochDay) })
                         .mapValues { (_, dates) -> dates.toSet() }
                 }.distinctUntilChanged()
 
@@ -72,24 +74,25 @@ class ProgressRepositoryImpl
 
         override suspend fun setRead(
             date: LocalDate,
-            stream: Stream,
+            streamNumber: Int,
             isRead: Boolean,
             planId: String,
         ) {
             if (isRead) {
-                dao.upsert(listOf(entity(planId, date, stream)))
+                dao.upsert(listOf(entity(planId, date, streamNumber)))
             } else {
-                dao.delete(planId, date.toEpochDay(), stream.number)
+                dao.delete(planId, date.toEpochDay(), streamNumber)
             }
         }
 
         override suspend fun setWholeDay(
             date: LocalDate,
+            streamNumbers: List<Int>,
             isRead: Boolean,
             planId: String,
         ) {
             if (isRead) {
-                dao.upsert(Stream.entries.map { entity(planId, date, it) })
+                dao.upsert(streamNumbers.map { entity(planId, date, it) })
             } else {
                 dao.deleteDay(planId, date.toEpochDay())
             }
@@ -109,11 +112,11 @@ class ProgressRepositoryImpl
         private fun entity(
             planId: String,
             date: LocalDate,
-            stream: Stream,
+            streamNumber: Int,
         ) = ReadingProgressEntity(
             planId = planId,
             dateEpochDay = date.toEpochDay(),
-            stream = stream.number,
+            stream = streamNumber,
             readAtEpochMillis = clock.millis(),
         )
     }

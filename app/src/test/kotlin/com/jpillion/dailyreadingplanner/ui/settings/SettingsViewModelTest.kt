@@ -6,7 +6,6 @@ import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.testing.FakeNotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.testing.FakeReminderScheduler
@@ -57,6 +56,9 @@ class SettingsViewModelTest {
                         com.jpillion.dailyreadingplanner.domain
                             .FakeReadingPlanRepository(),
                     progressRepository = progress,
+                    activePlanRepository =
+                        com.jpillion.dailyreadingplanner.domain
+                            .FakeActivePlanRepository(),
                 ),
             notifier = persistentNotifier,
             scheduler = reminderScheduler,
@@ -123,12 +125,12 @@ class SettingsViewModelTest {
     @Test
     fun `confirmed reset clears the current year and refreshes the widget`() =
         runTest {
-            progress.setWholeDay(LocalDate.of(2026, 6, 1), isRead = true)
-            progress.setRead(LocalDate.of(2025, 6, 1), Stream.NEW_TESTAMENT, isRead = true)
+            progress.setWholeDay(LocalDate.of(2026, 6, 1), listOf(1, 2, 3), isRead = true)
+            progress.setRead(LocalDate.of(2025, 6, 1), 3, isRead = true)
             viewModel.onResetProgressConfirmed()
             assertThat(progress.clearYearCalls).containsExactly(2026)
             assertThat(progress.marksFor(LocalDate.of(2026, 6, 1))).isEmpty()
-            assertThat(progress.marksFor(LocalDate.of(2025, 6, 1))).containsExactly(Stream.NEW_TESTAMENT)
+            assertThat(progress.marksFor(LocalDate.of(2025, 6, 1))).containsExactly(3)
             assertThat(widgetRefresher.refreshCount).isEqualTo(1)
         }
 
@@ -168,7 +170,7 @@ class SettingsViewModelTest {
             assertThat(repository.trackingStartCalls).isEmpty()
             assertThat(repository.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 6, 3))
             // Changing the start date never clears marks.
-            progress.setWholeDay(LocalDate.of(2026, 5, 1), isRead = true)
+            progress.setWholeDay(LocalDate.of(2026, 5, 1), listOf(1, 2, 3), isRead = true)
             val clearsBefore = progress.clearYearCalls.size
             viewModel.onTrackingStartChanged(LocalDate.of(2026, 1, 1))
             assertThat(progress.clearYearCalls).hasSize(clearsBefore)

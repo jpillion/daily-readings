@@ -7,7 +7,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -62,14 +61,14 @@ class ProgressRepositoryPlanScopeTest {
     fun `marks under one plan are invisible to another plan`() =
         runTest {
             val date = LocalDate.of(2026, 6, 10)
-            repository.setWholeDay(date, isRead = true, planId = bc)
-            repository.setRead(date, Stream.NEW_TESTAMENT, isRead = true, planId = mcheyne)
+            repository.setWholeDay(date, listOf(1, 2, 3), isRead = true, planId = bc)
+            repository.setRead(date, 3, isRead = true, planId = mcheyne)
 
             // Bible Companion sees all three; M'Cheyne sees only the one it marked.
             assertThat(repository.streamsRead(date, planId = bc).first())
-                .containsExactlyElementsIn(Stream.entries)
+                .containsExactly(1, 2, 3)
             assertThat(repository.streamsRead(date, planId = mcheyne).first())
-                .containsExactly(Stream.NEW_TESTAMENT)
+                .containsExactly(3)
         }
 
     @Test
@@ -79,9 +78,9 @@ class ProgressRepositoryPlanScopeTest {
             val end = LocalDate.of(2026, 12, 31)
             val d1 = LocalDate.of(2026, 1, 1)
             val d2 = LocalDate.of(2026, 6, 10)
-            repository.setWholeDay(d1, isRead = true, planId = bc)
-            repository.setRead(d2, Stream.LAW_AND_HISTORY, isRead = true, planId = bc)
-            repository.setRead(d1, Stream.PSALMS_AND_PROPHECY, isRead = true, planId = mcheyne)
+            repository.setWholeDay(d1, listOf(1, 2, 3), isRead = true, planId = bc)
+            repository.setRead(d2, 1, isRead = true, planId = bc)
+            repository.setRead(d1, 2, isRead = true, planId = mcheyne)
 
             // readCounts: BC has two marked days (3 + 1); M'Cheyne one (1).
             assertThat(repository.readCounts(start, end, planId = bc).first())
@@ -90,9 +89,9 @@ class ProgressRepositoryPlanScopeTest {
                 .containsExactly(d1, 1)
 
             // streamMarks scoped per plan.
-            assertThat(repository.streamMarks(start, end, planId = mcheyne).first()[Stream.PSALMS_AND_PROPHECY])
+            assertThat(repository.streamMarks(start, end, planId = mcheyne).first()[2])
                 .containsExactly(d1)
-            assertThat(repository.streamMarks(start, end, planId = bc).first()[Stream.PSALMS_AND_PROPHECY])
+            assertThat(repository.streamMarks(start, end, planId = bc).first()[2])
                 .containsExactly(d1)
 
             // clearYear on BC leaves M'Cheyne untouched.
@@ -106,7 +105,7 @@ class ProgressRepositoryPlanScopeTest {
         runTest {
             assertThat(repository.hasAnyMarks()).isFalse()
             // A mark under a NON-default plan still makes hasAnyMarks true (D-ALT-15).
-            repository.setRead(LocalDate.of(2026, 6, 1), Stream.NEW_TESTAMENT, isRead = true, planId = mcheyne)
+            repository.setRead(LocalDate.of(2026, 6, 1), 3, isRead = true, planId = mcheyne)
             assertThat(repository.hasAnyMarks()).isTrue()
         }
 
@@ -115,12 +114,12 @@ class ProgressRepositoryPlanScopeTest {
         runTest {
             val date = LocalDate.of(2026, 3, 15)
             // Write with the explicit default; read with NO planId arg → must see the same marks.
-            repository.setWholeDay(date, isRead = true, planId = bc)
-            assertThat(repository.streamsRead(date).first()).containsExactlyElementsIn(Stream.entries)
+            repository.setWholeDay(date, listOf(1, 2, 3), isRead = true, planId = bc)
+            assertThat(repository.streamsRead(date).first()).containsExactly(1, 2, 3)
             // A write with NO planId arg lands in the flagship partition too.
             val other = LocalDate.of(2026, 3, 16)
-            repository.setRead(other, Stream.LAW_AND_HISTORY, isRead = true)
-            assertThat(repository.streamsRead(other, planId = bc).first()).containsExactly(Stream.LAW_AND_HISTORY)
+            repository.setRead(other, 1, isRead = true)
+            assertThat(repository.streamsRead(other, planId = bc).first()).containsExactly(1)
         }
 }
 
@@ -179,8 +178,8 @@ class ProgressMigrationNoPerceptibleChangeTest {
             val repo = ProgressRepositoryImpl(db.readingProgressDao(), clock)
 
             // 4. The default-plan read returns EXACTLY the pre-migration history.
-            assertThat(repo.streamsRead(day1).first()).containsExactlyElementsIn(Stream.entries)
-            assertThat(repo.streamsRead(day2).first()).containsExactly(Stream.NEW_TESTAMENT)
+            assertThat(repo.streamsRead(day1).first()).containsExactly(1, 2, 3)
+            assertThat(repo.streamsRead(day2).first()).containsExactly(3)
             assertThat(repo.readCounts(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)).first())
                 .containsExactly(day1, 3, day2, 1)
             assertThat(repo.allReadCounts().first()).containsExactly(day1, 3, day2, 1)

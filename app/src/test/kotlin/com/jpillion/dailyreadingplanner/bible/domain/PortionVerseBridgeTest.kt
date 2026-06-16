@@ -5,7 +5,6 @@ import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -19,7 +18,7 @@ class PortionVerseBridgeTest {
 
     @Test
     fun `multi-chapter portion yields one range per chapter`() {
-        val portion = Portion(Stream.LAW_AND_HISTORY, listOf(ref("Genesis", 1), ref("Genesis", 2)))
+        val portion = Portion(1, listOf(ref("Genesis", 1), ref("Genesis", 2)))
         val ranges = bridge.rangesFor(portion)
         assertEquals(2, ranges.size)
         assertEquals(VerseId.chapterRange(1, 1), ranges[0])
@@ -28,7 +27,7 @@ class PortionVerseBridgeTest {
 
     @Test
     fun `two-book portion yields ranges across two books — never assumes shared book`() {
-        val portion = Portion(Stream.NEW_TESTAMENT, listOf(ref("2 John", 1), ref("3 John", 1)))
+        val portion = Portion(3, listOf(ref("2 John", 1), ref("3 John", 1)))
         val ranges = bridge.rangesFor(portion)
         assertEquals(2, ranges.size)
         assertEquals(63, VerseId.book(ranges[0].startVerseId)) // 2 John
@@ -37,7 +36,7 @@ class PortionVerseBridgeTest {
 
     @Test
     fun `range starts at verse 0 so superscriptions are covered`() {
-        val portion = Portion(Stream.PSALMS_AND_PROPHECY, listOf(ref("Psalms", 23)))
+        val portion = Portion(2, listOf(ref("Psalms", 23)))
         assertEquals(0, VerseId.verse(bridge.rangesFor(portion)[0].startVerseId))
     }
 
@@ -52,7 +51,7 @@ class PortionVerseBridgeTest {
     fun `a verse-windowed ref maps to exactly that verse_id window — Psalm 119 day 1`() {
         // D-READER-1: Mar 9 = Psalms 119:1-40. The bridge produces [encode(19,119,1) .. (19,119,40)],
         // NOT the whole chapter — so the reader renders only verses 1-40.
-        val portion = Portion(Stream.PSALMS_AND_PROPHECY, listOf(windowedRef("Psalms", 119, 1, 40)))
+        val portion = Portion(2, listOf(windowedRef("Psalms", 119, 1, 40)))
         val range = bridge.rangesFor(portion).single()
         assertEquals(VerseId.encode(19, 119, 1), range.startVerseId)
         assertEquals(VerseId.encode(19, 119, 40), range.endVerseId)
@@ -67,7 +66,7 @@ class PortionVerseBridgeTest {
             windows.map { (s, e) ->
                 bridge
                     .rangesFor(
-                        Portion(Stream.PSALMS_AND_PROPHECY, listOf(windowedRef("Psalms", 119, s, e))),
+                        Portion(2, listOf(windowedRef("Psalms", 119, s, e))),
                     ).single()
             }
         assertEquals(VerseId.encode(19, 119, 1), ranges.first().startVerseId)
@@ -79,7 +78,7 @@ class PortionVerseBridgeTest {
 
     @Test
     fun `a whole-chapter ref still maps to the whole chapter (windowing is opt-in)`() {
-        val portion = Portion(Stream.PSALMS_AND_PROPHECY, listOf(ref("Psalms", 23)))
+        val portion = Portion(2, listOf(ref("Psalms", 23)))
         assertEquals(VerseId.chapterRange(19, 23), bridge.rangesFor(portion).single())
     }
 }

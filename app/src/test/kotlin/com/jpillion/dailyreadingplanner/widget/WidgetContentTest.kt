@@ -9,9 +9,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.jpillion.dailyreadingplanner.MainActivity
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -28,12 +28,17 @@ import java.time.LocalDate
 class WidgetContentTest {
     private val today = LocalDate.of(2026, 6, 10)
 
-    private fun scheduled(vararg read: Stream) =
+    private fun bcTitle(streamNumber: Int) = bcStreamDescriptors.first { it.number == streamNumber }.title
+
+    private fun scheduled(vararg read: Int) =
         TodayWidgetState.Loaded(
             DayReadings.Scheduled(
                 date = today,
-                readings = threePortions.map { ReadingStatus(it, it.stream in read) },
-                dayComplete = Stream.entries.all { it in read },
+                readings =
+                    threePortions.map { p ->
+                        ReadingStatus(p, p.streamNumber in read, streamTitle = bcTitle(p.streamNumber))
+                    },
+                dayComplete = listOf(1, 2, 3).all { it in read },
             ),
         )
 
@@ -67,7 +72,7 @@ class WidgetContentTest {
     fun `partially read day marks exactly the read stream`() =
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
-            provideComposable { WidgetContent(scheduled(Stream.PSALMS_AND_PROPHECY)) }
+            provideComposable { WidgetContent(scheduled(2)) }
 
             onAllNodes(hasTestTag("widget-mark-read")).assertCountEquals(1)
             onAllNodes(hasTestTag("widget-mark-unread")).assertCountEquals(2)
@@ -83,7 +88,7 @@ class WidgetContentTest {
     fun `complete day shows the all-done badge and three read marks`() =
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
-            provideComposable { WidgetContent(scheduled(*Stream.entries.toTypedArray())) }
+            provideComposable { WidgetContent(scheduled(1, 2, 3)) }
 
             onNode(hasTestTag("widget-day-complete")).assert(hasText("All readings done"))
             onAllNodes(hasTestTag("widget-mark-read")).assertCountEquals(3)
@@ -100,7 +105,7 @@ class WidgetContentTest {
                         readings =
                             listOf(
                                 ReadingStatus(
-                                    portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1),
+                                    portion(3, "2 John" to 1, "3 John" to 1),
                                     isRead = false,
                                 ),
                             ),

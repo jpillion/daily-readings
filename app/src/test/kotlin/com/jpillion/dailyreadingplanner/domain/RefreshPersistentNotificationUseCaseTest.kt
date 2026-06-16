@@ -32,6 +32,7 @@ class RefreshPersistentNotificationUseCaseTest {
                     resolver = ScheduleDateResolver(),
                     planRepository = FakeReadingPlanRepository(),
                     progressRepository = progress,
+                    activePlanRepository = FakeActivePlanRepository(),
                 ),
             notifier = notifier,
             scheduler = scheduler,
@@ -56,7 +57,7 @@ class RefreshPersistentNotificationUseCaseTest {
     fun `a fully complete day still shows the readings - no suppression unlike the popup`() =
         runTest {
             settings.storedPersistentEnabled.value = true
-            progress.setWholeDay(ordinaryDay, isRead = true)
+            progress.setWholeDay(ordinaryDay, listOf(1, 2, 3), isRead = true)
             useCase(ordinaryDay)()
             assertThat(notifier.shown).hasSize(1)
             assertThat(scheduler.persistentRefreshCount).isEqualTo(1)

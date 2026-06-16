@@ -12,9 +12,9 @@ import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.MainActivity
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -36,12 +36,17 @@ import java.time.LocalDate
 class WidgetContentSizesTest {
     private val today = LocalDate.of(2026, 6, 10)
 
-    private fun scheduled(vararg read: Stream) =
+    private fun bcTitle(streamNumber: Int) = bcStreamDescriptors.first { it.number == streamNumber }.title
+
+    private fun scheduled(vararg read: Int) =
         TodayWidgetState.Loaded(
             DayReadings.Scheduled(
                 date = today,
-                readings = threePortions.map { ReadingStatus(it, it.stream in read) },
-                dayComplete = Stream.entries.all { it in read },
+                readings =
+                    threePortions.map { p ->
+                        ReadingStatus(p, p.streamNumber in read, streamTitle = bcTitle(p.streamNumber))
+                    },
+                dayComplete = listOf(1, 2, 3).all { it in read },
             ),
         )
 
@@ -51,9 +56,17 @@ class WidgetContentSizesTest {
                 date = LocalDate.of(2026, 6, 19),
                 readings =
                     listOf(
-                        ReadingStatus(portion(Stream.LAW_AND_HISTORY, "Deuteronomy" to 33, "Deuteronomy" to 34), false),
-                        ReadingStatus(portion(Stream.PSALMS_AND_PROPHECY, "Isaiah" to 63), false),
-                        ReadingStatus(portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1), false),
+                        ReadingStatus(
+                            portion(1, "Deuteronomy" to 33, "Deuteronomy" to 34),
+                            isRead = false,
+                            streamTitle = bcTitle(1),
+                        ),
+                        ReadingStatus(portion(2, "Isaiah" to 63), isRead = false, streamTitle = bcTitle(2)),
+                        ReadingStatus(
+                            portion(3, "2 John" to 1, "3 John" to 1),
+                            isRead = false,
+                            streamTitle = bcTitle(3),
+                        ),
                     ),
                 dayComplete = false,
             ),
@@ -113,7 +126,7 @@ class WidgetContentSizesTest {
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(WIDE_SHORT_SIZE)
-            provideComposable { WidgetContent(scheduled(Stream.LAW_AND_HISTORY)) }
+            provideComposable { WidgetContent(scheduled(1)) }
 
             onNode(hasText("Genesis 1–2")).assertExists()
             onNode(hasText("Psalms 1–2")).assertExists()
@@ -128,7 +141,7 @@ class WidgetContentSizesTest {
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(TINY_SIZE)
-            provideComposable { WidgetContent(scheduled(*Stream.entries.toTypedArray())) }
+            provideComposable { WidgetContent(scheduled(1, 2, 3)) }
 
             onNode(hasTestTag("widget-day-complete")).assertExists()
             onNode(hasContentDescriptionEqualTo("All readings done")).assertExists()
@@ -139,7 +152,7 @@ class WidgetContentSizesTest {
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(MEDIUM_SIZE)
-            provideComposable { WidgetContent(scheduled(Stream.PSALMS_AND_PROPHECY)) }
+            provideComposable { WidgetContent(scheduled(2)) }
 
             onAllNodes(hasText("Law & History")).assertCountEquals(0)
             onAllNodes(hasText("Psalms & Prophecy")).assertCountEquals(0)
@@ -157,7 +170,7 @@ class WidgetContentSizesTest {
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(MEDIUM_SIZE)
-            provideComposable { WidgetContent(scheduled(*Stream.entries.toTypedArray())) }
+            provideComposable { WidgetContent(scheduled(1, 2, 3)) }
 
             onNode(hasTestTag("widget-day-complete")).assertExists()
             onNode(hasContentDescriptionEqualTo("All readings done")).assertExists()
@@ -168,7 +181,7 @@ class WidgetContentSizesTest {
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(SMALL_SIZE)
-            provideComposable { WidgetContent(scheduled(Stream.LAW_AND_HISTORY, Stream.NEW_TESTAMENT)) }
+            provideComposable { WidgetContent(scheduled(1, 3)) }
 
             onNode(hasTestTag("widget-date")).assert(hasText("Jun 10"))
             onNode(hasText("Gen 1–2")).assertExists()
@@ -187,7 +200,7 @@ class WidgetContentSizesTest {
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(SMALL_SIZE)
-            provideComposable { WidgetContent(scheduled(*Stream.entries.toTypedArray())) }
+            provideComposable { WidgetContent(scheduled(1, 2, 3)) }
 
             onNode(hasText("Gen 1–2")).assertExists()
             onAllNodes(hasTestTag("widget-mark-read")).assertCountEquals(3)
@@ -200,7 +213,7 @@ class WidgetContentSizesTest {
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(TINY_SIZE)
-            provideComposable { WidgetContent(scheduled(Stream.PSALMS_AND_PROPHECY)) }
+            provideComposable { WidgetContent(scheduled(2)) }
 
             onNode(hasText("Gen 1–2")).assertExists()
             onNode(hasText("Psa 1–2")).assertExists()

@@ -4,7 +4,6 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.LocalDate
@@ -17,6 +16,7 @@ class GetDayReadingsUseCaseTest {
             resolver = ScheduleDateResolver(),
             planRepository = FakeReadingPlanRepository(),
             progressRepository = progress,
+            activePlanRepository = FakeActivePlanRepository(),
         )
 
     @Test
@@ -38,12 +38,12 @@ class GetDayReadingsUseCaseTest {
             useCase(date).test {
                 assertThat((awaitItem() as DayReadings.Scheduled).dayComplete).isFalse()
 
-                progress.setRead(date, Stream.LAW_AND_HISTORY, isRead = true)
+                progress.setRead(date, 1, isRead = true)
                 val partial = awaitItem() as DayReadings.Scheduled
-                assertThat(partial.readings.single { it.portion.stream == Stream.LAW_AND_HISTORY }.isRead).isTrue()
+                assertThat(partial.readings.single { it.portion.streamNumber == 1 }.isRead).isTrue()
                 assertThat(partial.dayComplete).isFalse()
 
-                progress.setWholeDay(date, isRead = true)
+                progress.setWholeDay(date, listOf(1, 2, 3), isRead = true)
                 val complete = awaitItem() as DayReadings.Scheduled
                 assertThat(complete.readings.map { it.isRead }).containsExactly(true, true, true)
                 assertThat(complete.dayComplete).isTrue()
@@ -54,7 +54,7 @@ class GetDayReadingsUseCaseTest {
     @Test
     fun `marks on one date do not leak into another year's same calendar day`() =
         runTest {
-            progress.setWholeDay(LocalDate.of(2026, 1, 1), isRead = true)
+            progress.setWholeDay(LocalDate.of(2026, 1, 1), listOf(1, 2, 3), isRead = true)
             useCase(LocalDate.of(2027, 1, 1)).test {
                 val day = awaitItem() as DayReadings.Scheduled
                 assertThat(day.readings.map { it.isRead }).containsExactly(false, false, false)

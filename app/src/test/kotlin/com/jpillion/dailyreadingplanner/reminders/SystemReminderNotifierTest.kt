@@ -7,7 +7,6 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import org.junit.Test
@@ -80,9 +79,9 @@ class SystemReminderNotifierTest {
         // Jun 19 / Dec 19 (Sprint 3): one portion, two single-chapter books.
         val multiBook =
             listOf(
-                portion(Stream.LAW_AND_HISTORY, "Deuteronomy" to 33, "Deuteronomy" to 34),
-                portion(Stream.PSALMS_AND_PROPHECY, "Isaiah" to 60),
-                portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1),
+                portion(1, "Deuteronomy" to 33, "Deuteronomy" to 34),
+                portion(2, "Isaiah" to 60),
+                portion(3, "2 John" to 1, "3 John" to 1),
             )
         assertThat(SystemReminderNotifier.reminderBody(multiBook))
             .isEqualTo("Deuteronomy 33–34 · Isaiah 60 · 2 John 1; 3 John 1")

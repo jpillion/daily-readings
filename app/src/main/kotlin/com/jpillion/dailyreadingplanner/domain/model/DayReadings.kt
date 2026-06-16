@@ -2,10 +2,18 @@ package com.jpillion.dailyreadingplanner.domain.model
 
 import java.time.LocalDate
 
-/** One scheduled reading plus whether the user has marked it read on this exact date. */
+/**
+ * One scheduled reading plus whether the user has marked it read on this exact date.
+ *
+ * D-ALT-22/23 (Alt Sprint C, D-C-6): [streamTitle] is the active plan's title for this portion's
+ * stream, resolved once in the use-case layer from the active descriptor — the UI reads it as data
+ * and never looks anything up. `null` for a single-stream plan (a lone reading needs no "which
+ * stream" label, D-ALT-23); the card/widget then render the reference alone.
+ */
 data class ReadingStatus(
     val portion: Portion,
     val isRead: Boolean,
+    val streamTitle: String? = null,
 )
 
 /**

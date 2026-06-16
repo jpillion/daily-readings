@@ -25,13 +25,12 @@ import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderScreen
 import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderUiState
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
-import com.jpillion.dailyreadingplanner.domain.model.YearStrips
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.bcReadingStats
+import com.jpillion.dailyreadingplanner.testing.bcYearStrips
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.day.DayContent
 import com.jpillion.dailyreadingplanner.ui.day.DayUiState
@@ -277,26 +276,13 @@ class AccessibilityGateTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 StatsContent(
                     stats =
-                        ReadingStats(
+                        bcReadingStats(
                             currentStreakDays = 4,
                             longestStreakDays = 12,
                             yearReadCount = 438,
-                            streamReadCounts =
-                                mapOf(
-                                    Stream.LAW_AND_HISTORY to 150,
-                                    Stream.PSALMS_AND_PROPHECY to 144,
-                                    Stream.NEW_TESTAMENT to 144,
-                                ),
+                            streamReadCounts = mapOf(1 to 150, 2 to 144, 3 to 144),
                         ),
-                    strips =
-                        YearStrips(
-                            year = 2026,
-                            todayIndex = 160,
-                            dayStates =
-                                Stream.entries.associateWith {
-                                    List(365) { StripDayState.NEUTRAL }
-                                },
-                        ),
+                    strips = bcYearStrips(year = 2026, todayIndex = 160) { List(365) { StripDayState.NEUTRAL } },
                     showStreaks = true,
                 )
             }

@@ -275,18 +275,20 @@ private fun ReadingRow(
             },
     )
     Spacer(modifier = GlanceModifier.width(scale.markGap.dp))
+    val titlePrefix = reading.streamTitle?.let { "$it, " }.orEmpty()
     Column(
         modifier =
             GlanceModifier.semantics {
-                // Always the full canonical reference — abbreviations are visual only.
+                // Always the full canonical reference — abbreviations are visual only. The stream
+                // title (plan data) is spoken only when the active plan supplies one (D-ALT-22/23).
                 contentDescription =
-                    "${ReadingFormatter.streamTitle(reading.portion.stream)}, " +
-                    "${ReadingFormatter.format(reading.portion)}, $stateDescription"
+                    "$titlePrefix${ReadingFormatter.format(reading.portion)}, $stateDescription"
             },
     ) {
-        if (showStreamTitle) {
+        // D-ALT-23: a single-stream plan supplies no title — render the reference alone.
+        if (showStreamTitle && reading.streamTitle != null) {
             Text(
-                text = ReadingFormatter.streamTitle(reading.portion.stream),
+                text = reading.streamTitle,
                 style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = scale.titleSp.sp),
             )
         }

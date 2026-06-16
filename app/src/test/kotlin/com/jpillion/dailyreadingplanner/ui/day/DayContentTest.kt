@@ -10,8 +10,9 @@ import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
-import com.jpillion.dailyreadingplanner.domain.model.Stream
+import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
 import org.junit.Test
@@ -33,11 +34,19 @@ class DayContentTest {
 
     private val date = LocalDate.of(2026, 6, 10)
 
-    private fun scheduled(read: Set<Stream> = emptySet()): DayUiState.Scheduled =
+    private fun scheduled(read: Set<Int> = emptySet()): DayUiState.Scheduled =
         DayUiState.Scheduled(
             date = date,
-            readings = threePortions.map { ReadingStatus(it, it.stream in read) },
-            dayComplete = read == Stream.entries.toSet(),
+            readings =
+                threePortions.map { portion ->
+                    ReadingStatus(
+                        portion = portion,
+                        isRead = portion.streamNumber in read,
+                        // D-ALT-22: the title is plan data carried onto the reading by the use case.
+                        streamTitle = bcStreamDescriptors.first { it.number == portion.streamNumber }.title,
+                    )
+                },
+            dayComplete = read == setOf(1, 2, 3),
         )
 
     private fun setContent(
@@ -84,7 +93,7 @@ class DayContentTest {
         setContent(scheduled(), onToggleReading = { toggled += it })
         composeRule.onNodeWithTag("toggle-2").performClick()
         assertThat(toggled).hasSize(1)
-        assertThat(toggled.single().portion.stream).isEqualTo(Stream.PSALMS_AND_PROPHECY)
+        assertThat(toggled.single().portion.streamNumber).isEqualTo(2)
     }
 
     @Test
@@ -93,14 +102,14 @@ class DayContentTest {
         setContent(scheduled(), onReadingTapped = { tapped += it })
         composeRule.onNodeWithTag("reading-3").performClick()
         assertThat(tapped).hasSize(1)
-        assertThat(tapped.single().stream).isEqualTo(Stream.NEW_TESTAMENT)
+        assertThat(tapped.single().streamNumber).isEqualTo(3)
     }
 
     @Test
     fun completeDay_showsNoBadgeAndNoWholeDayButton() {
         // H4: a fully-read day shows neither the "All readings done" badge nor any whole-day button;
         // the three checked checkboxes are the only completion cue (owner).
-        setContent(scheduled(read = Stream.entries.toSet()))
+        setContent(scheduled(read = setOf(1, 2, 3)))
         composeRule.onNodeWithText("All readings done").assertDoesNotExist()
         composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
         for (stream in 1..3) composeRule.onNodeWithTag("toggle-$stream").assertIsDisplayed()
@@ -109,7 +118,7 @@ class DayContentTest {
     @Test
     fun partialDay_showsNoProgressLineNoCompleteBadgeNoButton() {
         // S16 + H3/H4: no count line, no complete badge, and no whole-day button at any partial state.
-        setContent(scheduled(read = setOf(Stream.LAW_AND_HISTORY, Stream.NEW_TESTAMENT)))
+        setContent(scheduled(read = setOf(1, 3)))
         composeRule.onNodeWithText("2 of 3 readings done").assertDoesNotExist()
         composeRule.onNodeWithText("All readings done").assertDoesNotExist()
         composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
@@ -183,5 +192,52 @@ class DayContentTest {
             externalApp = ExternalBibleApp.MYSWORD,
         )
         composeRule.onNodeWithText("Opens Genesis 1–2 in MySword").assertIsDisplayed()
+    }
+
+    // --- SC-T10 (D-ALT-9/22/23): the card surface renders the active plan's ACTUAL stream count ---
+
+    @Test
+    fun nFourPlan_rendersFourCardsWithTheirPlanSuppliedTitles() {
+        // A 4-stream M'Cheyne day: four cards, each titled from plan data (carried on the reading).
+        // A mutation that renders a fixed three would drop the fourth card/title -> reddens here.
+        val mcheyneTitles =
+            listOf("Family — Old Testament", "Family — Gospels", "Secret — Psalms & Prophets", "Secret — Epistles")
+        val state =
+            DayUiState.Scheduled(
+                date = date,
+                readings =
+                    (1..4).map { n ->
+                        ReadingStatus(
+                            portion = portion(n, "Genesis" to n),
+                            isRead = false,
+                            streamTitle = mcheyneTitles[n - 1],
+                        )
+                    },
+                dayComplete = false,
+            )
+        setContent(state)
+        mcheyneTitles.forEach { composeRule.onNodeWithText(it).assertIsDisplayed() }
+        for (n in 1..4) composeRule.onNodeWithTag("reading-$n").assertExists()
+    }
+
+    @Test
+    fun nOnePlan_rendersOneCardWithNoStreamLabel() {
+        // D-ALT-23: a single-stream plan supplies a null title; the lone reading renders the
+        // reference ALONE — no "which stream" label. A mutation that always renders a label
+        // (e.g. a non-null fallback) would surface an unexpected title node.
+        val state =
+            DayUiState.Scheduled(
+                date = date,
+                readings =
+                    listOf(
+                        ReadingStatus(portion(1, "Genesis" to 1, "Genesis" to 2), isRead = false, streamTitle = null),
+                    ),
+                dayComplete = false,
+            )
+        setContent(state)
+        composeRule.onNodeWithText("Genesis 1–2").assertIsDisplayed()
+        composeRule.onNodeWithTag("reading-1").assertExists()
+        // None of the Bible-Companion stream titles appear for a single-stream plan.
+        composeRule.onNodeWithText("Law & History").assertDoesNotExist()
     }
 }

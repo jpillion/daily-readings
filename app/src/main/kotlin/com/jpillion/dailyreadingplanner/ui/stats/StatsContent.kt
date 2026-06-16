@@ -26,10 +26,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.YearStrips
-import com.jpillion.dailyreadingplanner.ui.day.ReadingFormatter
 import java.text.NumberFormat
 
 /**
@@ -186,7 +184,7 @@ private fun YearGroup(
     strips: YearStrips,
 ) {
     val numberFormat = NumberFormat.getIntegerInstance()
-    val percent = stats.yearReadCount * 100 / ReadingStats.YEAR_TOTAL_READINGS
+    val percent = stats.yearReadCount * 100 / stats.yearTotalReadings
     Column(
         modifier =
             Modifier
@@ -210,14 +208,14 @@ private fun YearGroup(
                     stringResource(
                         R.string.stats_year_count,
                         numberFormat.format(stats.yearReadCount),
-                        numberFormat.format(ReadingStats.YEAR_TOTAL_READINGS),
+                        numberFormat.format(stats.yearTotalReadings),
                     ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
             )
         }
-        val allStates = Stream.entries.flatMap { strips.dayStates[it].orEmpty() }
+        val allStates = strips.streams.flatMap { strips.dayStates[it.number].orEmpty() }
         val yearSummary =
             stringResource(
                 R.string.strip_year_summary,
@@ -234,9 +232,9 @@ private fun YearGroup(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             val colors = defaultStripColors()
-            Stream.entries.forEach { stream ->
+            strips.streams.forEach { stream ->
                 YearStrip(
-                    states = strips.dayStates[stream].orEmpty(),
+                    states = strips.dayStates[stream.number].orEmpty(),
                     todayIndex = strips.todayIndex,
                     colors = colors,
                     height = 6.dp,
@@ -259,8 +257,10 @@ private fun StreamGroup(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Stream.entries.forEach { stream ->
-            val count = stats.streamReadCounts[stream] ?: 0
+        // D-ALT-9/22: one row per ACTIVE-plan stream (in descriptor order), keyed by stream
+        // number; the title is plan data from the descriptor, the denominator is an instance field.
+        stats.streams.forEach { stream ->
+            val count = stats.streamReadCounts[stream.number] ?: 0
             Column(
                 modifier =
                     Modifier
@@ -271,7 +271,7 @@ private fun StreamGroup(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = ReadingFormatter.streamTitle(stream),
+                        text = stream.title,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f),
                     )
@@ -280,17 +280,17 @@ private fun StreamGroup(
                             stringResource(
                                 R.string.stats_stream_count,
                                 count,
-                                ReadingStats.STREAM_TOTAL_DAYS,
+                                stats.streamTotalDays,
                             ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                val states = strips.dayStates[stream].orEmpty()
+                val states = strips.dayStates[stream.number].orEmpty()
                 val summary =
                     stringResource(
                         R.string.strip_stream_summary,
-                        ReadingFormatter.streamTitle(stream),
+                        stream.title,
                         states.count { it == StripDayState.READ },
                         states.count { it == StripDayState.MISSED },
                         states.count { it == StripDayState.NEUTRAL },

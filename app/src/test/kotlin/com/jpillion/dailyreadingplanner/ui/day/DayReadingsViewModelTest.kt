@@ -10,6 +10,7 @@ import com.jpillion.dailyreadingplanner.domain.CompleteReadingDestinationPromptU
 import com.jpillion.dailyreadingplanner.domain.CompleteTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.CompleteUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.DayCompletionClassifier
+import com.jpillion.dailyreadingplanner.domain.FakeActivePlanRepository
 import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
@@ -26,7 +27,6 @@ import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
@@ -49,6 +49,7 @@ class DayReadingsViewModelTest {
     private val widgetRefresher = FakeWidgetRefresher()
     private val readerHandoff = ReaderHandoff()
     private val today = LocalDate.of(2026, 6, 10)
+    private val activePlan = FakeActivePlanRepository()
 
     private fun clockAt(date: LocalDate): Clock =
         Clock.fixed(date.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
@@ -62,10 +63,10 @@ class DayReadingsViewModelTest {
         val clock = clockAt(date)
         val classifier = DayCompletionClassifier(resolver)
         return DayReadingsViewModel(
-            getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress),
-            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, clock),
-            toggleReading = ToggleReadingUseCase(progress),
-            markWholeDay = MarkWholeDayUseCase(progress),
+            getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress, activePlan),
+            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, clock),
+            toggleReading = ToggleReadingUseCase(progress, activePlan),
+            markWholeDay = MarkWholeDayUseCase(progress, activePlan),
             openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = widgetRefresher,
             readerHandoff = readerHandoff,
@@ -75,8 +76,8 @@ class DayReadingsViewModelTest {
             resolveReadingDestinationPrompt = ResolveReadingDestinationPromptUseCase(settings, progress),
             completeUpgradeNote = CompleteUpgradeNoteUseCase(settings),
             resolveUpgradeNote = ResolveUpgradeNoteUseCase(settings, progress),
-            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, clock),
-            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, clock),
+            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, activePlan, clock),
+            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, activePlan, clock),
             settingsRepository = settings,
             clock = clock,
         )
@@ -95,8 +96,8 @@ class DayReadingsViewModelTest {
                 val state = awaitScheduled()
                 assertThat(state.date).isEqualTo(today)
                 assertThat(state.readings).hasSize(3)
-                assertThat(state.readings.map { it.portion.stream })
-                    .containsExactly(Stream.LAW_AND_HISTORY, Stream.PSALMS_AND_PROPHECY, Stream.NEW_TESTAMENT)
+                assertThat(state.readings.map { it.portion.streamNumber })
+                    .containsExactly(1, 2, 3)
                     .inOrder()
                 assertThat(state.readings.none { it.isRead }).isTrue()
                 assertThat(state.dayComplete).isFalse()
@@ -121,7 +122,7 @@ class DayReadingsViewModelTest {
     @Test
     fun `toggling a read reading unmarks it`() =
         runTest {
-            progress.setRead(today, Stream.NEW_TESTAMENT, true)
+            progress.setRead(today, 3, true)
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
@@ -148,7 +149,7 @@ class DayReadingsViewModelTest {
     @Test
     fun `mark whole day on a complete day unmarks all three`() =
         runTest {
-            progress.setWholeDay(today, true)
+            progress.setWholeDay(today, listOf(1, 2, 3), true)
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
@@ -173,7 +174,7 @@ class DayReadingsViewModelTest {
                 assertThat(updated.readings[0].isRead).isTrue()
             }
             // D-S5-3: progress is keyed to the displayed full date — today is untouched.
-            assertThat(progress.marksFor(yesterday)).containsExactly(Stream.LAW_AND_HISTORY)
+            assertThat(progress.marksFor(yesterday)).containsExactly(1)
             assertThat(progress.marksFor(today)).isEmpty()
         }
 
@@ -206,7 +207,7 @@ class DayReadingsViewModelTest {
                 val updated = awaitScheduled()
                 assertThat(updated.dayComplete).isTrue()
             }
-            assertThat(progress.marksFor(jan1Next)).isEqualTo(Stream.entries.toSet())
+            assertThat(progress.marksFor(jan1Next)).isEqualTo(setOf(1, 2, 3))
             // Year isolation: neither today nor the *current* year's Jan 1 got marked.
             assertThat(progress.marksFor(newYearsEve)).isEmpty()
             assertThat(progress.marksFor(LocalDate.of(2026, 1, 1))).isEmpty()
@@ -321,8 +322,8 @@ class DayReadingsViewModelTest {
     fun `stats panel starts null then exposes the live derivation with streaks hidden by default`() =
         runTest {
             // S18: streaks are opt-in — the default panel ships with showStreaks = false.
-            progress.setWholeDay(today.minusDays(1), true)
-            progress.setWholeDay(today, true)
+            progress.setWholeDay(today.minusDays(1), listOf(1, 2, 3), true)
+            progress.setWholeDay(today, listOf(1, 2, 3), true)
             val vm = viewModel()
             assertThat(vm.statsPanel.value).isNull()
             val panel = vm.statsPanel.filterNotNull().first()
@@ -335,7 +336,7 @@ class DayReadingsViewModelTest {
     fun `stats panel carries the year strips - marked yesterday is READ on every stream`() =
         runTest {
             // S17: the same panel emission carries the strip day-states, live from marks.
-            progress.setWholeDay(today.minusDays(1), true)
+            progress.setWholeDay(today.minusDays(1), listOf(1, 2, 3), true)
             val vm = viewModel()
             val strips =
                 vm.statsPanel
@@ -345,8 +346,8 @@ class DayReadingsViewModelTest {
             assertThat(strips.year).isEqualTo(today.year)
             assertThat(strips.todayIndex).isEqualTo(today.dayOfYear - 1)
             val yesterdayIndex = today.dayOfYear - 2
-            com.jpillion.dailyreadingplanner.domain.model.Stream.entries.forEach { stream ->
-                assertThat(strips.dayStates.getValue(stream)[yesterdayIndex])
+            listOf(1, 2, 3).forEach { streamNumber ->
+                assertThat(strips.dayStates.getValue(streamNumber)[yesterdayIndex])
                     .isEqualTo(com.jpillion.dailyreadingplanner.domain.model.StripDayState.READ)
             }
         }

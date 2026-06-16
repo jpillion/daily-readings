@@ -2,7 +2,6 @@ package com.jpillion.dailyreadingplanner.domain
 
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.YearStrips
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
@@ -24,19 +23,21 @@ class GetYearStripsUseCaseTest {
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val progress = FakeProgressRepository()
     private val settings = FakeSettingsRepository()
+    private val activePlan = FakeActivePlanRepository()
 
     private fun useCase(at: Clock = clock) =
         GetYearStripsUseCase(
             DayCompletionClassifier(ScheduleDateResolver()),
             progress,
             settings,
+            activePlan,
             at,
         )
 
     private suspend fun strips(at: Clock = clock): YearStrips = useCase(at)().first()
 
     private fun YearStrips.stateOf(
-        stream: Stream,
+        stream: Int,
         date: LocalDate,
     ): StripDayState = dayStates.getValue(stream)[date.dayOfYear - 1]
 
@@ -48,27 +49,27 @@ class GetYearStripsUseCaseTest {
             val strips = strips()
             assertThat(strips.year).isEqualTo(2026)
             assertThat(strips.dayCount).isEqualTo(365) // 2026 is not a leap year
-            assertThat(strips.dayStates.keys).containsExactlyElementsIn(Stream.entries)
+            assertThat(strips.dayStates.keys).containsExactly(1, 2, 3)
             strips.dayStates.values.forEach { assertThat(it).hasSize(365) }
         }
 
     @Test
     fun `marked day is READ for exactly the marked stream`() =
         runTest {
-            progress.setRead(june(5), Stream.NEW_TESTAMENT, isRead = true)
+            progress.setRead(june(5), 3, isRead = true)
             val strips = strips()
-            assertThat(strips.stateOf(Stream.NEW_TESTAMENT, june(5))).isEqualTo(StripDayState.READ)
+            assertThat(strips.stateOf(3, june(5))).isEqualTo(StripDayState.READ)
             // The other streams on the same past day are unmarked: red, not green.
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, june(5))).isEqualTo(StripDayState.MISSED)
-            assertThat(strips.stateOf(Stream.PSALMS_AND_PROPHECY, june(5))).isEqualTo(StripDayState.MISSED)
+            assertThat(strips.stateOf(1, june(5))).isEqualTo(StripDayState.MISSED)
+            assertThat(strips.stateOf(2, june(5))).isEqualTo(StripDayState.MISSED)
         }
 
     @Test
     fun `past unmarked post-start day is MISSED - future unmarked day is NEUTRAL`() =
         runTest {
             val strips = strips()
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, june(9))).isEqualTo(StripDayState.MISSED)
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, june(11))).isEqualTo(StripDayState.NEUTRAL)
+            assertThat(strips.stateOf(1, june(9))).isEqualTo(StripDayState.MISSED)
+            assertThat(strips.stateOf(1, june(11))).isEqualTo(StripDayState.NEUTRAL)
         }
 
     @Test
@@ -76,15 +77,15 @@ class GetYearStripsUseCaseTest {
         runTest {
             // Yesterday red proves the walk reaches this region; today must stay neutral.
             val strips = strips()
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, june(10))).isEqualTo(StripDayState.NEUTRAL)
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, june(9))).isEqualTo(StripDayState.MISSED)
+            assertThat(strips.stateOf(1, june(10))).isEqualTo(StripDayState.NEUTRAL)
+            assertThat(strips.stateOf(1, june(9))).isEqualTo(StripDayState.MISSED)
         }
 
     @Test
     fun `today marked is READ - green does not wait for the day to pass`() =
         runTest {
-            progress.setRead(june(10), Stream.PSALMS_AND_PROPHECY, isRead = true)
-            assertThat(strips().stateOf(Stream.PSALMS_AND_PROPHECY, june(10))).isEqualTo(StripDayState.READ)
+            progress.setRead(june(10), 2, isRead = true)
+            assertThat(strips().stateOf(2, june(10))).isEqualTo(StripDayState.READ)
         }
 
     @Test
@@ -92,18 +93,18 @@ class GetYearStripsUseCaseTest {
         runTest {
             settings.setTrackingStartDate(june(1))
             val strips = strips()
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, LocalDate.of(2026, 3, 15)))
+            assertThat(strips.stateOf(1, LocalDate.of(2026, 3, 15)))
                 .isEqualTo(StripDayState.NEUTRAL)
             // Boundary: the start date itself is post-start - past unmarked = red.
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, june(1))).isEqualTo(StripDayState.MISSED)
+            assertThat(strips.stateOf(1, june(1))).isEqualTo(StripDayState.MISSED)
         }
 
     @Test
     fun `pre-start marked day keeps its earned green - parity with the picker dots`() =
         runTest {
             settings.setTrackingStartDate(june(1))
-            progress.setRead(LocalDate.of(2026, 3, 15), Stream.NEW_TESTAMENT, isRead = true)
-            assertThat(strips().stateOf(Stream.NEW_TESTAMENT, LocalDate.of(2026, 3, 15)))
+            progress.setRead(LocalDate.of(2026, 3, 15), 3, isRead = true)
+            assertThat(strips().stateOf(3, LocalDate.of(2026, 3, 15)))
                 .isEqualTo(StripDayState.READ)
         }
 
@@ -113,43 +114,43 @@ class GetYearStripsUseCaseTest {
             val leapClock = Clock.fixed(Instant.parse("2028-06-10T12:00:00Z"), ZoneOffset.UTC)
             val strips = strips(at = leapClock)
             assertThat(strips.dayCount).isEqualTo(366)
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, LocalDate.of(2028, 2, 29)))
+            assertThat(strips.stateOf(1, LocalDate.of(2028, 2, 29)))
                 .isEqualTo(StripDayState.NEUTRAL)
             // Its past unmarked neighbors ARE red - Feb 29 neutrality is the resolver, not range.
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, LocalDate.of(2028, 2, 28)))
+            assertThat(strips.stateOf(1, LocalDate.of(2028, 2, 28)))
                 .isEqualTo(StripDayState.MISSED)
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, LocalDate.of(2028, 3, 1)))
+            assertThat(strips.stateOf(1, LocalDate.of(2028, 3, 1)))
                 .isEqualTo(StripDayState.MISSED)
         }
 
     @Test
     fun `boundary day 1 - Jan 1 is classified, not skipped`() =
         runTest {
-            progress.setRead(LocalDate.of(2026, 1, 1), Stream.LAW_AND_HISTORY, isRead = true)
+            progress.setRead(LocalDate.of(2026, 1, 1), 1, isRead = true)
             val strips = strips()
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, LocalDate.of(2026, 1, 1)))
+            assertThat(strips.stateOf(1, LocalDate.of(2026, 1, 1)))
                 .isEqualTo(StripDayState.READ)
-            assertThat(strips.stateOf(Stream.NEW_TESTAMENT, LocalDate.of(2026, 1, 1)))
+            assertThat(strips.stateOf(3, LocalDate.of(2026, 1, 1)))
                 .isEqualTo(StripDayState.MISSED)
         }
 
     @Test
     fun `boundary day 365 - Dec 31 is classified, not truncated`() =
         runTest {
-            progress.setRead(LocalDate.of(2026, 12, 31), Stream.NEW_TESTAMENT, isRead = true)
+            progress.setRead(LocalDate.of(2026, 12, 31), 3, isRead = true)
             val strips = strips()
-            assertThat(strips.stateOf(Stream.NEW_TESTAMENT, LocalDate.of(2026, 12, 31)))
+            assertThat(strips.stateOf(3, LocalDate.of(2026, 12, 31)))
                 .isEqualTo(StripDayState.READ)
             // Unmarked Dec 31 is future from June: neutral, not missing from the array.
-            assertThat(strips.stateOf(Stream.LAW_AND_HISTORY, LocalDate.of(2026, 12, 31)))
+            assertThat(strips.stateOf(1, LocalDate.of(2026, 12, 31)))
                 .isEqualTo(StripDayState.NEUTRAL)
         }
 
     @Test
     fun `other-year marks never bleed into the displayed year`() =
         runTest {
-            progress.setRead(LocalDate.of(2025, 6, 5), Stream.NEW_TESTAMENT, isRead = true)
-            assertThat(strips().stateOf(Stream.NEW_TESTAMENT, june(5))).isEqualTo(StripDayState.MISSED)
+            progress.setRead(LocalDate.of(2025, 6, 5), 3, isRead = true)
+            assertThat(strips().stateOf(3, june(5))).isEqualTo(StripDayState.MISSED)
         }
 
     @Test
@@ -162,10 +163,10 @@ class GetYearStripsUseCaseTest {
     fun `an open collector re-emits when a day is marked`() =
         runTest {
             val flow = useCase()()
-            assertThat(flow.first().stateOf(Stream.LAW_AND_HISTORY, june(9)))
+            assertThat(flow.first().stateOf(1, june(9)))
                 .isEqualTo(StripDayState.MISSED)
-            progress.setRead(june(9), Stream.LAW_AND_HISTORY, isRead = true)
-            assertThat(flow.first().stateOf(Stream.LAW_AND_HISTORY, june(9)))
+            progress.setRead(june(9), 1, isRead = true)
+            assertThat(flow.first().stateOf(1, june(9)))
                 .isEqualTo(StripDayState.READ)
         }
 }

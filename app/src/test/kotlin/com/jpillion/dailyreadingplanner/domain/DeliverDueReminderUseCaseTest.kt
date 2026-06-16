@@ -30,6 +30,7 @@ class DeliverDueReminderUseCaseTest {
                     resolver = ScheduleDateResolver(),
                     planRepository = FakeReadingPlanRepository(),
                     progressRepository = progress,
+                    activePlanRepository = FakeActivePlanRepository(),
                 ),
             notifier = notifier,
             scheduler = scheduler,
@@ -60,7 +61,7 @@ class DeliverDueReminderUseCaseTest {
             settings.storedReminderEnabled.value = true
             progress.setRead(
                 ordinaryDay,
-                com.jpillion.dailyreadingplanner.domain.model.Stream.NEW_TESTAMENT,
+                3,
                 isRead = true,
             )
             useCase(ordinaryDay)()
@@ -73,7 +74,7 @@ class DeliverDueReminderUseCaseTest {
             // R-REM-4 (mutation target M-S12-1: drop the dayComplete guard and this fails).
             settings.storedReminderEnabled.value = true
             settings.storedReminderTime.value = LocalTime.of(21, 30)
-            progress.setWholeDay(ordinaryDay, isRead = true)
+            progress.setWholeDay(ordinaryDay, listOf(1, 2, 3), isRead = true)
             useCase(ordinaryDay)()
             assertThat(notifier.shownPortions).isEmpty()
             assertThat(scheduler.scheduledTimes).containsExactly(LocalTime.of(21, 30))

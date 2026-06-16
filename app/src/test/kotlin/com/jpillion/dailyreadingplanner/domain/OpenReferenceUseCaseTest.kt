@@ -5,7 +5,6 @@ import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -23,7 +22,7 @@ class OpenReferenceUseCaseTest {
     @Test
     fun `default destination keeps the shipped blb behavior - first chapter of the portion`() =
         runTest {
-            val genesis = portion(Stream.LAW_AND_HISTORY, "Genesis" to 1, "Genesis" to 2)
+            val genesis = portion(1, "Genesis" to 1, "Genesis" to 2)
             assertThat(useCase(genesis))
                 .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/gen/1/"))
         }
@@ -31,7 +30,7 @@ class OpenReferenceUseCaseTest {
     @Test
     fun `multi-book portion opens the first book on a single-chapter app`() =
         runTest {
-            val johannine = portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1)
+            val johannine = portion(3, "2 John" to 1, "3 John" to 1)
             assertThat(useCase(johannine))
                 .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/2jo/1/"))
         }
@@ -39,7 +38,7 @@ class OpenReferenceUseCaseTest {
     @Test
     fun `the chosen external app is read at tap time`() =
         runTest {
-            val genesis = portion(Stream.LAW_AND_HISTORY, "Genesis" to 1, "Genesis" to 2)
+            val genesis = portion(1, "Genesis" to 1, "Genesis" to 2)
             settings.setExternalBibleApp(ExternalBibleApp.YOUVERSION)
             assertThat(useCase(genesis))
                 .isEqualTo(ReadingDestination.Web("https://www.bible.com/bible/1/GEN.1.KJV"))
@@ -58,7 +57,7 @@ class OpenReferenceUseCaseTest {
     fun `mysword resolves to an app destination carrying the BLB fallback url`() =
         runTest {
             settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
-            val genesis = portion(Stream.LAW_AND_HISTORY, "Genesis" to 1, "Genesis" to 2)
+            val genesis = portion(1, "Genesis" to 1, "Genesis" to 2)
             assertThat(useCase(genesis))
                 .isEqualTo(
                     ReadingDestination.MySwordApp(
@@ -72,7 +71,7 @@ class OpenReferenceUseCaseTest {
     fun `mysword multi-book portion opens the first book - fallback agrees`() =
         runTest {
             settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
-            val johannine = portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1)
+            val johannine = portion(3, "2 John" to 1, "3 John" to 1)
             assertThat(useCase(johannine))
                 .isEqualTo(
                     ReadingDestination.MySwordApp(
@@ -88,7 +87,7 @@ class OpenReferenceUseCaseTest {
             // D-23-1: IN_APP mode returns ReadingDestination.InApp(portion) — NOT a URL; the
             // multi-book portion rides whole, and no URL is built.
             settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
-            val johannine = portion(Stream.NEW_TESTAMENT, "2 John" to 1, "3 John" to 1)
+            val johannine = portion(3, "2 John" to 1, "3 John" to 1)
             assertThat(useCase(johannine)).isEqualTo(ReadingDestination.InApp(johannine))
         }
 
@@ -100,7 +99,7 @@ class OpenReferenceUseCaseTest {
             // mutation that builds the URL before checking the mode reddens here.
             settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
             settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
-            val genesis = portion(Stream.LAW_AND_HISTORY, "Genesis" to 1)
+            val genesis = portion(1, "Genesis" to 1)
             assertThat(useCase(genesis)).isEqualTo(ReadingDestination.InApp(genesis))
         }
 
@@ -110,7 +109,7 @@ class OpenReferenceUseCaseTest {
             // The converse: EXTERNAL mode never returns InApp regardless of any remembered choice.
             settings.setReadingDestinationMode(ReadingDestinationMode.EXTERNAL)
             settings.setExternalBibleApp(ExternalBibleApp.BLB)
-            val genesis = portion(Stream.LAW_AND_HISTORY, "Genesis" to 1)
+            val genesis = portion(1, "Genesis" to 1)
             assertThat(useCase(genesis))
                 .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/gen/1/"))
         }
@@ -123,7 +122,7 @@ class OpenReferenceUseCaseTest {
             settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
             settings.externalBibleAppCalls.clear()
             settings.destinationModeCalls.clear()
-            useCase(portion(Stream.LAW_AND_HISTORY, "Genesis" to 1))
+            useCase(portion(1, "Genesis" to 1))
             assertThat(settings.storedExternalBibleApp.value).isEqualTo(ExternalBibleApp.MYSWORD)
             assertThat(settings.externalBibleAppCalls).isEmpty()
             assertThat(settings.destinationModeCalls).isEmpty()

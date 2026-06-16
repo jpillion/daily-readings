@@ -5,7 +5,6 @@ import com.google.common.truth.Truth.assertWithMessage
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import org.junit.Test
 
 /**
@@ -18,7 +17,7 @@ class ProviderUrlBuilderTest {
 
     private fun portion(vararg refs: Pair<String, Int>): Portion =
         Portion(
-            stream = Stream.NEW_TESTAMENT,
+            streamNumber = 3,
             refs = refs.map { (book, chapter) -> Reference(BookCatalog.requireByName(book), chapter) },
         )
 

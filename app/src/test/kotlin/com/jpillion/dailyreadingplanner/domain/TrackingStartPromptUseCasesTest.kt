@@ -1,7 +1,6 @@
 package com.jpillion.dailyreadingplanner.domain
 
 import com.google.common.truth.Truth.assertThat
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -33,7 +32,7 @@ class TrackingStartPromptUseCasesTest {
     @Test
     fun `upgrader with existing marks is never prompted - history is not retroactively neutralized`() =
         runTest {
-            progress.setRead(LocalDate.of(2026, 1, 5), Stream.NEW_TESTAMENT, isRead = true)
+            progress.setRead(LocalDate.of(2026, 1, 5), 3, isRead = true)
             assertThat(resolve()).isFalse()
             assertThat(settings.storedTrackingStartDate.value).isNull()
             assertThat(settings.storedTrackingStartInitialized.value).isTrue() // runs only once

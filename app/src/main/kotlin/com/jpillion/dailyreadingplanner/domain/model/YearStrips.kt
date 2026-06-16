@@ -14,11 +14,16 @@ enum class StripDayState { READ, MISSED, NEUTRAL }
  * calendar day of [year] — `lengthOfYear` entries (366 in a leap year; Feb 29 is NEUTRAL
  * and visually indistinguishable, D-S17-4). [todayIndex] is today's 0-based position in
  * the arrays (the strip's orientation tick); null only if today falls outside [year].
+ *
+ * D-ALT-9 (Alt Sprint C): keyed by stream NUMBER (1..N) rather than the retired enum, with
+ * [streams] giving the active plan's ordered stream identity so the stats panel renders one
+ * strip per declared stream, in order, with its title.
  */
 data class YearStrips(
     val year: Int,
     val todayIndex: Int?,
-    val dayStates: Map<Stream, List<StripDayState>>,
+    val dayStates: Map<Int, List<StripDayState>>,
+    val streams: List<StreamDescriptor>,
 ) {
     /** Total segments per strip: 365, or 366 in a leap year. */
     val dayCount: Int get() = dayStates.values.firstOrNull()?.size ?: 0

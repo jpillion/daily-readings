@@ -3,7 +3,6 @@ package com.jpillion.dailyreadingplanner.domain
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -28,7 +27,7 @@ class ReadingDestinationPromptUseCasesTest {
     private val resolveNote = ResolveUpgradeNoteUseCase(settings, progress)
     private val completeNote = CompleteUpgradeNoteUseCase(settings)
 
-    private suspend fun seedAMark() = progress.setRead(LocalDate.of(2026, 6, 14), Stream.LAW_AND_HISTORY, isRead = true)
+    private suspend fun seedAMark() = progress.setRead(LocalDate.of(2026, 6, 14), 1, isRead = true)
 
     // --- the first-run question (fresh install) ---
 

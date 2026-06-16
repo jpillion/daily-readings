@@ -10,9 +10,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
-import com.jpillion.dailyreadingplanner.domain.model.Stream
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.YearStrips
+import com.jpillion.dailyreadingplanner.testing.bcReadingStats
+import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
+import com.jpillion.dailyreadingplanner.testing.bcYearStrips
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
 import org.junit.Test
@@ -36,34 +38,24 @@ class StatsContentTest {
     val composeRule = createComposeRule()
 
     private val sampleStats =
-        ReadingStats(
+        bcReadingStats(
             currentStreakDays = 4,
             longestStreakDays = 12,
             yearReadCount = 438,
-            streamReadCounts =
-                mapOf(
-                    Stream.LAW_AND_HISTORY to 150,
-                    Stream.PSALMS_AND_PROPHECY to 144,
-                    Stream.NEW_TESTAMENT to 144,
-                ),
+            streamReadCounts = mapOf(1 to 150, 2 to 144, 3 to 144),
         )
 
     /** Per stream: 120 READ, 3 MISSED, 242 NEUTRAL — exact spoken-summary fixture. */
     private val sampleStrips =
-        YearStrips(
-            year = 2026,
-            todayIndex = 160,
-            dayStates =
-                Stream.entries.associateWith {
-                    List(365) { index ->
-                        when {
-                            index < 120 -> StripDayState.READ
-                            index < 123 -> StripDayState.MISSED
-                            else -> StripDayState.NEUTRAL
-                        }
-                    }
-                },
-        )
+        bcYearStrips(year = 2026, todayIndex = 160) {
+            List(365) { index ->
+                when {
+                    index < 120 -> StripDayState.READ
+                    index < 123 -> StripDayState.MISSED
+                    else -> StripDayState.NEUTRAL
+                }
+            }
+        }
 
     private fun setContent(
         stats: ReadingStats = sampleStats,
@@ -135,13 +127,7 @@ class StatsContentTest {
     @Test
     fun zeroStats_renderPlainZeros_withoutGuiltCopy() {
         setContent(
-            stats =
-                ReadingStats(
-                    currentStreakDays = 0,
-                    longestStreakDays = 0,
-                    yearReadCount = 0,
-                    streamReadCounts = Stream.entries.associateWith { 0 },
-                ),
+            stats = bcReadingStats(),
         )
         composeRule.onAllNodes(textContains("0 days")).assertCountEquals(2)
         composeRule.onNodeWithText("0%").assertExists()
@@ -160,7 +146,7 @@ class StatsContentTest {
     fun stripsReplaceTheBars_perStreamAndStackedYear() {
         setContent()
         // One strip per stream plus the stacked year heat-strip; the old bars are gone.
-        Stream.entries.forEach { stream ->
+        bcStreamDescriptors.forEach { stream ->
             composeRule
                 .onNodeWithTag("strip-stream-${stream.number}", useUnmergedTree = true)
                 .assertExists()

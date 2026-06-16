@@ -266,7 +266,7 @@ class DayReadingsViewModel
             reading: ReadingStatus,
         ) {
             viewModelScope.launch {
-                toggleReading(date, reading.portion.stream, markRead = !reading.isRead)
+                toggleReading(date, reading.portion.streamNumber, markRead = !reading.isRead)
                 // Keep the home-screen widget's completion state consistent (ESpec §7).
                 widgetRefresher.refreshTodayWidget()
             }
