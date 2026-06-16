@@ -709,3 +709,23 @@ and **OQ-4 (anchoring scope)** have owner answers — those three change the sha
 built. Building the wrong interpretation of this item (the general-store pivot, the wrong
 progress model, or progress-anchored plans smuggled into the first cut) is the most expensive
 mistake available here.
+
+---
+
+## Owner decisions (resolved 2026-06-16)
+
+The three shape-determining open questions are answered — the engineering spec may now open:
+
+- **OQ-2 (which app): CURATED SET, Bible Companion flagship.** A small, hand-picked set of
+  well-sourced plans, not a general plan store. The Bible Companion stays the pre-selected default.
+- **OQ-3 (progress on switch): PER-PLAN PROGRESS, kept separately.** Each plan keeps its own marks;
+  switching back restores where you were. Stats/streaks/strips/widget become per-plan. (Storage +
+  the 3-stream generalization are Diego's to design.)
+- **OQ-4 (anchoring) + OQ-1 (first cut): date-anchored 365-day plans only; M'CHEYNE FIRST, then a
+  named chronological plan.** M'Cheyne proves multi-plan + N-streams at low risk; the chronological
+  plan (publisher to be named at sourcing time) proves single-stream + the contested-ordering data
+  discipline. Progress-anchored / start-relative plans are explicitly deferred.
+
+Still open (do NOT block the eng spec; resolve before the relevant build phase): OQ-5 (the per-plan
+data-sourcing burden + second-source availability — confirmed at each plan's sourcing), OQ-7
+(selector placement / first-run — Priya + owner at UI time).
