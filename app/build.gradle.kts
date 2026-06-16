@@ -28,6 +28,14 @@ android {
     namespace = "com.jpillion.dailyreadingplanner"
     compileSdk = 37
 
+    sourceSets {
+        // SB-T3 (D-ALT-14): the exported Room schemas are DEBUG-only assets so Robolectric's
+        // MigrationTestHelper (which reads the debug unit-test resource APK) can open
+        // 1.json/2.json. The `debug` source set is excluded from the RELEASE bundle, so the
+        // ~3 KB of schema JSON never ships to users (pinned by the release bundle-size gate).
+        getByName("debug").assets.srcDir(layout.projectDirectory.dir("schemas"))
+    }
+
     defaultConfig {
         applicationId = "com.jpillion.dailyreadingplanner"
         minSdk = 26
@@ -101,6 +109,10 @@ android {
             it.inputs
                 .dir(layout.projectDirectory.dir("src/main/assets"))
                 .withPropertyName("planAssets")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+            it.inputs
+                .dir(layout.projectDirectory.dir("schemas"))
+                .withPropertyName("roomSchemas")
                 .withPathSensitivity(PathSensitivity.RELATIVE)
         }
     }
@@ -194,6 +206,8 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.robolectric)
     testImplementation(libs.sqlite.jdbc)
+    // SB-T3 (D-ALT-14): MigrationTestHelper for the zero-loss ProgressDatabase 1 → 2 test.
+    testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.glance.appwidget.testing)
     testImplementation(libs.kotlinx.serialization.json)
 

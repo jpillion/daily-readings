@@ -5,8 +5,10 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [ReadingProgressEntity::class],
-    version = 1,
-    // D-S9-4: schema checked in at app/schemas — the pinned baseline V2 migrations start from.
+    // D-ALT-12 (Alt Sprint B): v1 → v2 adds the `plan_id` column + makes it part of the PK.
+    // The hand-written MIGRATION_1_2 (zero loss) is the only path 1 → 2; see DataModule.
+    version = 2,
+    // D-S9-4: schema checked in at app/schemas — the pinned baseline migrations migrate from/to.
     exportSchema = true,
 )
 abstract class ProgressDatabase : RoomDatabase() {

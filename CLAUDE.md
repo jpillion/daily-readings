@@ -1048,13 +1048,57 @@ Do not reference or depend on strikelog.
   permissions, no INTERNET, no version bump. M'Cheyne stream-title strings await owner tone sign-off.
   Provenance/reconciliation: [docs/data/README.md](docs/data/README.md) (M'Cheyne section).
   Handoff: [docs/sprints/sprint-alt-A-plan-foundation.md](docs/sprints/sprint-alt-A-plan-foundation.md).
-- Next up (alternate-schedules track): **Alt Sprint B — per-plan progress Room migration**
-  (`reading_progress` gains `plan_id`; PK → `(plan_id, dateEpochDay, stream)`; `ProgressDatabase` v1→v2
-  zero-loss `MIGRATION_1_2` stamping every existing row `bible_companion`; exported `2.json`;
-  `MigrationTestHelper` zero-loss + "no perceptible migration for the default user" tests; every
-  `ProgressRepository`/DAO method plan-scoped, defaulted to the active plan; no UI change). Needs the new
-  test dep `androidx.room:room-testing` (catalog). See `docs/EXECUTION_PLAN-alternate-schedules.md` §3
-  (SB-T1…T6) + the Sprint A handoff carryover.
+- ✅ **Alt-Schedules Sprint B (per-plan progress Room migration — the HIGH-RISK, isolated sprint)
+  is DONE** (uncommitted in the working tree; the main session independently verifies the migration
+  test + commits; NO version bump — no UI/feature change this sprint). **The progress spine is now
+  per-plan and proven LOSSLESS** — an upgrading Bible Companion user keeps every mark, perceives no
+  migration, and the store can isolate a second plan's marks. NO UI, NO completion/stats/streak-logic,
+  NO `Stream`-enum change (all Sprint C). (1) **Schema v1→v2 (D-ALT-12):** `ReadingProgressEntity`
+  gains `@ColumnInfo(name = "plan_id") val planId: String`; PK → `(plan_id, dateEpochDay, stream)`;
+  `ProgressDatabase version = 2`, `exportSchema` stays true; `2.json` checked in at
+  `app/schemas/.../ProgressDatabase/2.json` (the only column/PK diff vs `1.json`). (2) **THE migration
+  (D-ALT-13):** hand-written `ProgressMigrations.MIGRATION_1_2` (new `data/progress/ProgressMigrations.kt`),
+  recreate-and-copy (SQLite can't alter a PK in place): create `reading_progress_new` with the v2 DDL,
+  `INSERT … SELECT '${'$'}{ReadingProgressEntity.DEFAULT_PLAN_ID}', dateEpochDay, stream, readAtEpochMillis
+  FROM reading_progress` (touch every row once, zero loss), drop old, rename; registered on the
+  `DataModule` builder; **`fallbackToDestructiveMigration` stays OFF** (D-V3-15 — a failed migration is
+  a loud crash, never silent loss). The `bible_companion` stamp is a migration literal sourced from the
+  shared `ReadingProgressEntity.DEFAULT_PLAN_ID == PlanRegistry.DEFAULT_PLAN_ID` constant (anti-drift
+  pin). (3) **Plan-scoped store (D-ALT-12):** every DAO query gained a `plan_id = :planId` clause and
+  every `ProgressRepository` method gained `planId: String = PlanRegistry.DEFAULT_PLAN_ID` — additive
+  with a default, so the ~10 use-case callers + the 13-test `ProgressRepositoryTest` compile and behave
+  byte-identically (parity). The interface still speaks the `Stream` enum (retiring it is C). **D-ALT-15
+  CONFIRMED:** `hasAnyMarks()` stays GLOBAL (`SELECT EXISTS(... reading_progress)`, no plan filter — the
+  per-device 'fresh install' signal) and the tracking-start date stays global. (4) **THE hard gate:**
+  `ProgressMigrationTest` (`MigrationTestHelper`, real exported schemas) seeds a v1 DB (multi-year,
+  whole+partial, a Feb-29-adjacent 2024-02-28 day), runs `MIGRATION_1_2`, and asserts row-count
+  identical + every `(dateEpochDay, stream, readAtEpochMillis)` tuple preserved with
+  `plan_id='bible_companion'` + Room's `validateMigration`. Plus `ProgressMigrationNoPerceptibleChangeTest`
+  (SB-T6): a migrated v1 DB read through the NEW repo with the default plan returns IDENTICAL
+  streams-read/counts to v1. Plus `ProgressRepositoryPlanScopeTest` (two-plan isolation, per-plan
+  counts/clearYear, GLOBAL-`hasAnyMarks`, default-arg parity). **6 mutations killed** (drop row copy /
+  wrong stamp / corrupt `readAtEpochMillis` → migration tests; impl hard-codes plan id / `hasAnyRows`
+  scoped-not-global / default planId flipped to a bogus id → scope+parity tests), each restored in
+  place. **Schema-asset wiring:** the exported `app/schemas` are added as **DEBUG-only** assets
+  (`sourceSets.getByName("debug").assets.srcDir("schemas")`) so Robolectric's `MigrationTestHelper`
+  finds `1.json`/`2.json` in the debug unit-test resource APK — **VERIFIED absent from the release AAB
+  (0 entries) and present in the debug APK (2)**, so the ~3 KB never ships. New TEST dep only:
+  `androidx.room:room-testing` (catalog, version-pinned to `room`). **685 tests** (net +8; the four
+  data/Room gates UNCHANGED — BC plan 11, McheynePlanVerificationTest 10, BibleTextVerificationTest 18,
+  BibleDatabaseRoomOpenTest 5; the 13-test `ProgressRepositoryTest` parity-green), full pipeline green
+  from clean, Kover 95.8% on domain/data. Zero net-new RUNTIME deps, no new permissions, no INTERNET,
+  no manifest change, no version bump. **Device-pass item (Alt Sprint E):** the real migrated-history
+  upgrade on a device.
+  Handoff: [docs/sprints/sprint-alt-B-progress-migration.md](docs/sprints/sprint-alt-B-progress-migration.md).
+- Next up (alternate-schedules track): **Alt Sprint C — N-stream UI generalization**
+  (retire the `Stream` enum, D-ALT-5, compiler-driven; parameterize `DayCompletionClassifier`
+  `streamCount: Int`, D-ALT-6; generalize the stats denominators `dayCount × N`/`dayCount`, D-ALT-7;
+  the three stat use cases iterate the descriptor + read per-plan progress through B's store, D-ALT-8;
+  stream titles from the descriptor, D-ALT-22/23; day cards / stats strips / row-count-aware widget
+  tiers at N≠3, D-ALT-9/10; whole-day-mark + reminder scoping, D-ALT-11). C consumes B's per-plan store:
+  the stat use cases pass the active plan id (now defaulted to `bible_companion`, flip to the live
+  `ActivePlanRepository.activePlanId` in C/D) into the plan-scoped `ProgressRepository` methods.
+  See `docs/EXECUTION_PLAN-alternate-schedules.md` §3 (SC sketch) + the Sprint B handoff carryover.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

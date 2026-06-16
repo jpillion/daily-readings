@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.jpillion.dailyreadingplanner.data.plan.PlanAssetSource
 import com.jpillion.dailyreadingplanner.data.progress.ProgressDatabase
+import com.jpillion.dailyreadingplanner.data.progress.ProgressMigrations
 import com.jpillion.dailyreadingplanner.data.progress.ReadingProgressDao
 import dagger.Module
 import dagger.Provides
@@ -30,7 +31,14 @@ object DataModule {
     @Singleton
     fun provideProgressDatabase(
         @ApplicationContext context: Context,
-    ): ProgressDatabase = Room.databaseBuilder(context, ProgressDatabase::class.java, PROGRESS_DB).build()
+    ): ProgressDatabase =
+        Room
+            .databaseBuilder(context, ProgressDatabase::class.java, PROGRESS_DB)
+            // D-ALT-13: the zero-loss v1 → v2 migration. fallbackToDestructiveMigration is
+            // deliberately NOT enabled (D-V3-15) — user reading history is never destroyed; a
+            // failed migration must surface as a loud crash, never silent loss.
+            .addMigrations(ProgressMigrations.MIGRATION_1_2)
+            .build()
 
     @Provides
     fun provideReadingProgressDao(database: ProgressDatabase): ReadingProgressDao = database.readingProgressDao()

@@ -73,7 +73,10 @@ class FakeProgressRepository : ProgressRepository {
     var streamsReadQueries = 0
         private set
 
-    override fun streamsRead(date: LocalDate): Flow<Set<Stream>> {
+    override fun streamsRead(
+        date: LocalDate,
+        planId: String,
+    ): Flow<Set<Stream>> {
         streamsReadQueries++
         return marks.map { it[date] ?: emptySet() }.distinctUntilChanged()
     }
@@ -81,6 +84,7 @@ class FakeProgressRepository : ProgressRepository {
     override fun readCounts(
         start: LocalDate,
         end: LocalDate,
+        planId: String,
     ): Flow<Map<LocalDate, Int>> =
         marks
             .map { all ->
@@ -90,7 +94,7 @@ class FakeProgressRepository : ProgressRepository {
                     .mapValues { (_, streams) -> streams.size }
             }.distinctUntilChanged()
 
-    override fun allReadCounts(): Flow<Map<LocalDate, Int>> =
+    override fun allReadCounts(planId: String): Flow<Map<LocalDate, Int>> =
         marks
             .map { all ->
                 all.filterValues { it.isNotEmpty() }.mapValues { (_, streams) -> streams.size }
@@ -99,6 +103,7 @@ class FakeProgressRepository : ProgressRepository {
     override fun streamCounts(
         start: LocalDate,
         end: LocalDate,
+        planId: String,
     ): Flow<Map<Stream, Int>> =
         marks
             .map { all ->
@@ -113,6 +118,7 @@ class FakeProgressRepository : ProgressRepository {
     override fun streamMarks(
         start: LocalDate,
         end: LocalDate,
+        planId: String,
     ): Flow<Map<Stream, Set<LocalDate>>> =
         marks
             .map { all ->
@@ -131,6 +137,7 @@ class FakeProgressRepository : ProgressRepository {
         date: LocalDate,
         stream: Stream,
         isRead: Boolean,
+        planId: String,
     ) {
         marks.value =
             marks.value.toMutableMap().apply {
@@ -143,6 +150,7 @@ class FakeProgressRepository : ProgressRepository {
     override suspend fun setWholeDay(
         date: LocalDate,
         isRead: Boolean,
+        planId: String,
     ) {
         marks.value =
             marks.value.toMutableMap().apply {
@@ -150,7 +158,10 @@ class FakeProgressRepository : ProgressRepository {
             }
     }
 
-    override suspend fun clearYear(year: Int) {
+    override suspend fun clearYear(
+        year: Int,
+        planId: String,
+    ) {
         clearYearCalls += year
         marks.value = marks.value.filterKeys { it.year != year }
     }
