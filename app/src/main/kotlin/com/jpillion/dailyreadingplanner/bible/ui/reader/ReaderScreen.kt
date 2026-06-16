@@ -95,13 +95,13 @@ fun ReaderScreen(
                     // + onOpenPicker callback (the a11y gate pins that tag at a 48dp target).
                     val title = (stateForPage(pagerState.currentPage) as? ReaderUiState.Content)?.title.orEmpty()
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = title, modifier = Modifier.testTag("reader-title"))
                         IconButton(onClick = onOpenPicker, modifier = Modifier.testTag("reader-open-picker")) {
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = stringResource(R.string.reader_pick_chapter),
                             )
                         }
-                        Text(text = title, modifier = Modifier.testTag("reader-title"))
                     }
                 },
                 actions = {
@@ -286,7 +286,10 @@ private fun ReaderFooterHint(externalApp: ExternalBibleApp) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp, bottom = 16.dp)
+                // Pinned footer: tight vertical padding (owner — don't waste space); 20dp
+                // horizontal aligns it with the verse text above (it's no longer inside the
+                // LazyColumn's content padding).
+                .padding(horizontal = 20.dp, vertical = 6.dp)
                 // Hide the hint from TalkBack (every verse already speaks its "Open …" affordance),
                 // but keep the testTag — clearAndSetSemantics{} would otherwise drop the tag too, so
                 // re-declare it inside the cleared semantics block.
