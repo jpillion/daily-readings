@@ -1009,6 +1009,52 @@ Do not reference or depend on strikelog.
   pencil tap accuracy, version-title alignment/contrast in light + dark. String sign-off:
   `reader_version_dropdown_description`; the visible-"KJV" / spoken-"King James Version" choice.
   Handoff: [docs/sprints/sprint-00N-reader-version-topbar.md](docs/sprints/sprint-00N-reader-version-topbar.md).
+- ✅ **Alternate-Schedules Sprint A (plan-data model + active-plan spine + M'Cheyne asset & gate —
+  the HARD GATE) is DONE** (uncommitted in the working tree; the main session verifies the gate +
+  commits; version untouched — renders no second-plan UI). **A second trustworthy, gate-verified
+  reading plan (M'Cheyne) now exists, and the app can name an active plan.** (1) **schemaVersion 3
+  (D-ALT-2/3):** a plan DECLARES its shape — `PlanDto` head `planId`/`name`/`anchoring`/`dayCount`/
+  `streams[]` (`PortionDto`/`RefDto` unchanged, v2 body a strict subset); new
+  `PlanDescriptor`/`StreamDescriptor`; `ReadingPlanAssetLoader` validates against the descriptor
+  (anchoring==DATE, dayCount==365, Feb-29-absent, streams 1..N contiguous, every day's stream-set ==
+  declared, planId==expected anti-drift) NOT the old `365`/`listOf(1,2,3)` constants. (2) **Registry +
+  spine:** `assets/plans/registry.json` + `PlanRegistry` (`DEFAULT_PLAN_ID="bible_companion"` pinned ==
+  registry default); `PlanAssetSource(assetPath)` (replaces `PlanJsonSource`); per-plan
+  `ReadingPlanRepository` (`portionsFor(planId,date)`/`descriptor(planId)`, separate descriptor/schedule
+  caches); `selected_plan` DataStore key + `ActivePlanRepository` (absent⇒default, unknown id⇒default).
+  The BC asset MOVED `assets/reading_plan.json` → `assets/plans/bible_companion/plan.json`, re-authored
+  v3 with its **days body byte-identical** (proven). **Descriptor-ADDITIVE only** — the `Stream` enum is
+  NOT retired (Sprint C, D-ALT-5); BC portions still map via `Stream.fromNumber` so the output map is
+  byte-identical; a 4-stream plan's descriptor is reachable but its `Portion` map is not until C.
+  (3) **The M'Cheyne asset (the data track):** `assets/plans/mcheyne/plan.json` (schema 3, 365 days,
+  Feb=28, **4 streams** Family OT/Family Gospels/Secret Psalms&Prophets/Secret Epistles, **38
+  verse-windowed refs** — Ps 119 ×7 ×2, Ps 78 ×2 ×2, Luke 1 ×2 ×2, ~13 cross-chapter ranges as
+  multi-ref portions, Aug 8 `Jer 36,45`). **Built from the verse-faithful edginet source**
+  (Edgington/Haslam) by `tools/build_mcheyne_plan.py`; **bibleplan.org `plan.js` REJECTED** (its verse
+  windows are corrupt — the documented Feb-28 off-by-one). **Verified against the GENUINELY INDEPENDENT
+  Carson/TGC witness** (checksum-distinct lineage; `tools/extract_mcheyne_second.py` →
+  `app/src/test/resources/plans/mcheyne/plan_verify.json`): **zero day-by-day mismatches across all 365
+  days.** Two reconciled edginet column-extraction artifacts (Aug 29 clipped "2", Jun 28 trailing-bleed
+  "2") — content confirmed against TGC, fixed in `reconcile()`. **`McheynePlanVerificationTest` (10
+  tests) is GREEN as the release gate:** structural + 2nd-source day-by-day + the **verse-aware coverage
+  invariant** (OT verses once, Psalms+NT verses twice, every verse covered — Matthew 1 read Family Jan 1
+  AND Secret Jun 21) + Ps-119 tiling (both occurrences) + spanning-range fidelity; **4 mutations killed**
+  (dropped window, 4th-stream→3, coverage double-count, vacuous-gate-code), each restored in place. New
+  `mcheyne-rebuild` CI job re-derives asset+fixture from the two pinned-SHA sources and asserts a
+  byte-diff of zero. **BC parity held:** `ReadingPlanVerificationTest` (11 tests) passes UNCHANGED
+  against the moved+re-authored v3 BC asset (path + schema-literal change only); the other two gates
+  untouched (BibleTextVerificationTest 18, BibleDatabaseRoomOpenTest 5). 677 tests (net +26; 0 failures),
+  full pipeline green from clean, Kover 95.7% on domain/data. Zero net-new runtime deps, no new
+  permissions, no INTERNET, no version bump. M'Cheyne stream-title strings await owner tone sign-off.
+  Provenance/reconciliation: [docs/data/README.md](docs/data/README.md) (M'Cheyne section).
+  Handoff: [docs/sprints/sprint-alt-A-plan-foundation.md](docs/sprints/sprint-alt-A-plan-foundation.md).
+- Next up (alternate-schedules track): **Alt Sprint B — per-plan progress Room migration**
+  (`reading_progress` gains `plan_id`; PK → `(plan_id, dateEpochDay, stream)`; `ProgressDatabase` v1→v2
+  zero-loss `MIGRATION_1_2` stamping every existing row `bible_companion`; exported `2.json`;
+  `MigrationTestHelper` zero-loss + "no perceptible migration for the default user" tests; every
+  `ProgressRepository`/DAO method plan-scoped, defaulted to the active plan; no UI change). Needs the new
+  test dep `androidx.room:room-testing` (catalog). See `docs/EXECUTION_PLAN-alternate-schedules.md` §3
+  (SB-T1…T6) + the Sprint A handoff carryover.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

@@ -4,10 +4,12 @@ import com.jpillion.dailyreadingplanner.core.date.ReadingDate
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
+import com.jpillion.dailyreadingplanner.domain.model.PlanDescriptor
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
 import com.jpillion.dailyreadingplanner.domain.model.Stream
+import com.jpillion.dailyreadingplanner.domain.model.StreamDescriptor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -46,7 +48,24 @@ val threePortions =
 class FakeReadingPlanRepository(
     private val portions: List<Portion> = threePortions,
 ) : ReadingPlanRepository {
-    override suspend fun portionsFor(date: ReadingDate): List<Portion> = portions
+    override suspend fun portionsFor(
+        planId: String,
+        date: ReadingDate,
+    ): List<Portion> = portions
+
+    override suspend fun descriptor(planId: String): PlanDescriptor =
+        PlanDescriptor(
+            planId = planId,
+            name = "Bible Companion",
+            anchoring = "DATE",
+            dayCount = 365,
+            streams =
+                listOf(
+                    StreamDescriptor(1, "Law & History"),
+                    StreamDescriptor(2, "Psalms & Prophecy"),
+                    StreamDescriptor(3, "New Testament"),
+                ),
+        )
 }
 
 class FakeProgressRepository : ProgressRepository {

@@ -169,8 +169,19 @@ def main():
         e["portions"][stream-1]["refs"] = [{"book":b,"chapter":c} for b,c in refs]
 
     assert len(days) == 365, f"expected 365 days, got {len(days)}"
-    doc = {"schemaVersion": 2,
+    # schemaVersion 3 (D-ALT-2/3): the second-source fixture mirrors the canonical asset's v3 head;
+    # the day BODY is unchanged. The descriptor head lets the gate decode it with the v3 PlanDto.
+    doc = {"schemaVersion": 3,
+           "planId": "bible_companion",
+           "name": "Bible Companion",
            "source": "antipas.org 'The Bible Companion' booklet PDF (Robert Roberts)",
+           "anchoring": "DATE",
+           "dayCount": 365,
+           "streams": [
+               {"number": 1, "title": "Law & History"},
+               {"number": 2, "title": "Psalms & Prophecy"},
+               {"number": 3, "title": "New Testament"},
+           ],
            "days": days}
     with open(OUT, "w") as fp:
         json.dump(doc, fp, indent=1)

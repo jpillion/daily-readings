@@ -130,6 +130,18 @@ interface SettingsRepository {
 
     suspend fun setShowStreaks(show: Boolean)
 
+    /**
+     * The user's selected plan id (alt-schedules D-ALT-16). Stored under `selected_plan`. Absent
+     * key ⇒ the flagship default ([com.jpillion.dailyreadingplanner.data.plan.PlanRegistry.DEFAULT_PLAN_ID]),
+     * so every existing install is on the Bible Companion invisibly (FR-ALT-2). This returns the
+     * RAW stored id; degrading an unknown id (e.g. a plan removed in a later build) to the default
+     * is [com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository]'s job (it knows the
+     * registry). Mirrors the `bible_provider` absent/corrupt idiom: never crash.
+     */
+    val selectedPlanId: Flow<String>
+
+    suspend fun setSelectedPlanId(id: String)
+
     companion object {
         const val MIN_FONT_SCALE = 0.85f
         const val MAX_FONT_SCALE = 1.5f

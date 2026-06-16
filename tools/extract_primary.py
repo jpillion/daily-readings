@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """S1-T2: Extract the Bible Companion plan from the PRIMARY source
-(christadelphia.org chart.pdf) into data/reading_plan.json (ESpec 5.1 schema).
+(christadelphia.org chart.pdf) into assets/plans/bible_companion/plan.json (ESpec 5.1 schema).
 
 Usage: extract_primary.py [path-to-chart.pdf]   (fetches the URL if no path given)
 Requires: pdftotext (poppler).
@@ -16,7 +16,7 @@ import json, re, subprocess, sys, tempfile, urllib.request, os
 
 URL = "https://christadelphia.org/chart.pdf"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "app", "src", "main", "assets", "reading_plan.json")
+OUT = os.path.join(ROOT, "app", "src", "main", "assets", "plans", "bible_companion", "plan.json")
 
 MONTHS = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
           "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
@@ -123,10 +123,22 @@ def main():
         got = sum(1 for (mm, _) in days if mm == m)
         assert got == n, f"month {m}: expected {n} days, got {got}"
     ordered = [days[k] for k in sorted(days)]
-    doc = {"schemaVersion": 2,
+    # schemaVersion 3 (D-ALT-2/3): a plan declares its shape in an additive head. The Bible
+    # Companion is the first plan written in v3; its 365-day reading BODY is unchanged from v2.
+    doc = {"schemaVersion": 3,
+           "planId": "bible_companion",
+           "name": "Bible Companion",
            "source": "christadelphia.org chart.pdf (Bible Companion, Robert Roberts); "
                      "verified against antipas.org Bible Companion booklet",
+           "anchoring": "DATE",
+           "dayCount": 365,
+           "streams": [
+               {"number": 1, "title": "Law & History"},
+               {"number": 2, "title": "Psalms & Prophecy"},
+               {"number": 3, "title": "New Testament"},
+           ],
            "days": ordered}
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(doc, f, indent=1)
         f.write("\n")

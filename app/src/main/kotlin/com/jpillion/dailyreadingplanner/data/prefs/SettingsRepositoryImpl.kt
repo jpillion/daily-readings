@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
@@ -183,6 +184,19 @@ class SettingsRepositoryImpl
             dataStore.edit { preferences -> preferences[SHOW_STREAKS_KEY] = show }
         }
 
+        /**
+         * D-ALT-16: absent key ⇒ the flagship default. Raw stored id; unknown-id degradation lives
+         * in [com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository].
+         */
+        override val selectedPlanId: Flow<String> =
+            dataStore.data.map { preferences ->
+                preferences[SELECTED_PLAN_KEY] ?: PlanRegistry.DEFAULT_PLAN_ID
+            }
+
+        override suspend fun setSelectedPlanId(id: String) {
+            dataStore.edit { preferences -> preferences[SELECTED_PLAN_KEY] = id }
+        }
+
         private companion object {
             val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
             val BIBLE_PROVIDER_KEY = stringPreferencesKey("bible_provider")
@@ -194,6 +208,7 @@ class SettingsRepositoryImpl
             val TRACKING_START_EPOCH_DAY_KEY = longPreferencesKey("tracking_start_epoch_day")
             val TRACKING_START_INITIALIZED_KEY = booleanPreferencesKey("tracking_start_initialized")
             val SHOW_STREAKS_KEY = booleanPreferencesKey("show_streaks")
+            val SELECTED_PLAN_KEY = stringPreferencesKey("selected_plan")
             val READING_DESTINATION_PROMPT_COMPLETED_KEY = booleanPreferencesKey("reading_destination_prompt_completed")
             val UPGRADE_NOTE_SHOWN_KEY = booleanPreferencesKey("upgrade_note_shown")
             val REMINDER_ENABLED_KEY = booleanPreferencesKey("reminder_enabled")

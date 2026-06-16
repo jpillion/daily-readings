@@ -2,6 +2,8 @@ package com.jpillion.dailyreadingplanner.di
 
 import com.jpillion.dailyreadingplanner.data.apps.AppInstallChecker
 import com.jpillion.dailyreadingplanner.data.apps.PackageManagerAppInstallChecker
+import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
+import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepositoryImpl
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepositoryImpl
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
@@ -21,6 +23,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindReadingPlanRepository(impl: ReadingPlanRepositoryImpl): ReadingPlanRepository
+
+    @Binds
+    abstract fun bindActivePlanRepository(impl: ActivePlanRepositoryImpl): ActivePlanRepository
 
     @Binds
     @Singleton

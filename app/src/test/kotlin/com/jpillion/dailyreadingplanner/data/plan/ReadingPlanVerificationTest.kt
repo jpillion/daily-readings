@@ -35,7 +35,7 @@ class ReadingPlanVerificationTest {
         File(
             System.getProperty("planAssetsDir") ?: error("planAssetsDir system property not set"),
         )
-    private val plan: PlanDto = PlanJson.decode(assetsDir.resolve("reading_plan.json").readText())
+    private val plan: PlanDto = PlanJson.decode(assetsDir.resolve("plans/bible_companion/plan.json").readText())
     private val fixture: PlanDto = PlanJson.decode(testResource("reading_plan_verify.json"))
     private val catalog: List<CatalogBook> =
         testResource("book_catalog.csv")
@@ -81,10 +81,16 @@ class ReadingPlanVerificationTest {
 
     @Test
     fun `schema header is correct`() {
-        // D-SCHEMA-2: schemaVersion bumped 1 -> 2 for the optional verse window. A stray v1 asset
-        // (or an un-bumped one) fails the gate — the bump is pinned, never a runtime condition.
-        assertThat(plan.schemaVersion).isEqualTo(2)
+        // D-ALT-2 (SA-T10): schemaVersion is now 3 — a plan declares its shape in an additive head.
+        // The Bible Companion's day BODY is byte-unchanged; only the head + asset path moved.
+        assertThat(plan.schemaVersion).isEqualTo(3)
         assertThat(plan.source).isNotEmpty()
+        assertThat(plan.planId).isEqualTo("bible_companion")
+        assertThat(plan.anchoring).isEqualTo("DATE")
+        assertThat(plan.dayCount).isEqualTo(365)
+        assertThat(plan.streams.map { it.number }).isEqualTo(listOf(1, 2, 3))
+        assertThat(plan.streams.map { it.title })
+            .isEqualTo(listOf("Law & History", "Psalms & Prophecy", "New Testament"))
     }
 
     @Test

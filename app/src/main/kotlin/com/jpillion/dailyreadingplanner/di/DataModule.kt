@@ -6,7 +6,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
-import com.jpillion.dailyreadingplanner.data.plan.PlanJsonSource
+import com.jpillion.dailyreadingplanner.data.plan.PlanAssetSource
 import com.jpillion.dailyreadingplanner.data.progress.ProgressDatabase
 import com.jpillion.dailyreadingplanner.data.progress.ReadingProgressDao
 import dagger.Module
@@ -23,7 +23,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DataModule {
-    private const val PLAN_ASSET = "reading_plan.json"
     private const val PROGRESS_DB = "progress.db"
     private const val SETTINGS_STORE = "settings"
 
@@ -48,12 +47,12 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun providePlanJsonSource(
+    fun providePlanAssetSource(
         @ApplicationContext context: Context,
-    ): PlanJsonSource =
-        PlanJsonSource {
+    ): PlanAssetSource =
+        PlanAssetSource { assetPath ->
             context.assets
-                .open(PLAN_ASSET)
+                .open(assetPath)
                 .bufferedReader()
                 .use { it.readText() }
         }

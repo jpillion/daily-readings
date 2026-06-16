@@ -510,6 +510,25 @@ class DayReadingsViewModelTest {
 private class FlakyPlanRepository : ReadingPlanRepository {
     var failing = true
 
-    override suspend fun portionsFor(date: ReadingDate): List<Portion> =
-        if (failing) error("simulated corrupt asset") else threePortions
+    override suspend fun portionsFor(
+        planId: String,
+        date: ReadingDate,
+    ): List<Portion> = if (failing) error("simulated corrupt asset") else threePortions
+
+    override suspend fun descriptor(planId: String) =
+        com.jpillion.dailyreadingplanner.domain.model.PlanDescriptor(
+            planId = planId,
+            name = "Bible Companion",
+            anchoring = "DATE",
+            dayCount = 365,
+            streams =
+                listOf(
+                    com.jpillion.dailyreadingplanner.domain.model
+                        .StreamDescriptor(1, "Law & History"),
+                    com.jpillion.dailyreadingplanner.domain.model
+                        .StreamDescriptor(2, "Psalms & Prophecy"),
+                    com.jpillion.dailyreadingplanner.domain.model
+                        .StreamDescriptor(3, "New Testament"),
+                ),
+        )
 }

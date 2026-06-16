@@ -136,4 +136,16 @@ class FakeSettingsRepository(
         upgradeNoteShownCalls += 1
         storedUpgradeNoteShown.value = true
     }
+
+    // --- Alt-Sprint A: selected plan. ---
+
+    val storedSelectedPlanId = MutableStateFlow("bible_companion")
+    val selectedPlanIdCalls = mutableListOf<String>()
+
+    override val selectedPlanId: Flow<String> = storedSelectedPlanId
+
+    override suspend fun setSelectedPlanId(id: String) {
+        selectedPlanIdCalls += id
+        storedSelectedPlanId.value = id
+    }
 }

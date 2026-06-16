@@ -279,3 +279,93 @@ permission request with Cambridge University Press for certainty. The owner may 
 time; it is not a release gate. If filed, record the outcome here.
 
 This accepted risk is recorded **before ship**, as PRD-v3 §11 requires.
+
+---
+
+# M'Cheyne plan — sources, provenance & reconciliation (Alternate-Schedules Sprint A)
+
+The second curated reading plan (after the Bible Companion). The classic **4-stream, date-anchored,
+365-day** M'Cheyne calendar (OQ-MC resolved), bundled at `app/src/main/assets/plans/mcheyne/plan.json`
+(schemaVersion 3). Built reproducibly by `tools/build_mcheyne_plan.py`; gate-verified by
+`McheynePlanVerificationTest` (10 tests); byte-diff guarded by the `mcheyne-rebuild` CI job. Sourcing
+feasibility study: [mcheyne-sourcing.md](mcheyne-sourcing.md).
+
+## Streams (4 — classic M'Cheyne: Family ×2, Secret ×2)
+
+| # | Title | Content |
+|---|---|---|
+| 1 | Family — Old Testament | Genesis → … (OT history, read once) |
+| 2 | Family — Gospels | Matthew → … (Gospels/NT) |
+| 3 | Secret — Psalms & Prophets | Ezra/Psalms → … (Psalms, Wisdom, Prophets) |
+| 4 | Secret — Epistles | Acts → … (Epistles/NT) |
+
+The "Family" vs "Secret" naming is M'Cheyne's own (Carson/TGC confirm: "secret" from Matthew 6:6,
+the two columns for family vs private devotion). Awaiting owner tone sign-off on the exact labels.
+
+## Two genuinely-independent lineages (the gate is satisfied)
+
+| Role | Source | URL | SHA-256 |
+|---|---|---|---|
+| **Canonical** (verse-faithful) — the asset is built from this | edginet `year_classic_single_a4.pdf` (Ben Edgington's reformat of David Haslam's digitization of the original 1842 calendar) | http://www.edginet.org/mcheyne/year_classic_single_a4.pdf | `2a45dd9b7d9bd3ae213309ab44ec8c6599b382b7a11fedaf4ced7c82613406cb` |
+| **Independent witness** — the gate's second source | The Gospel Coalition / D.A. Carson `RtB_Reading-Plan_2020.pdf` ("For the Love of God" companion) | https://media.thegospelcoalition.org/wp-content/uploads/2020/01/09151141/RtB_Reading-Plan_2020.pdf | `a3170fe52cbb5a54f9183d659c797bf9cfb3c9aca41a3d52286650b8640ec563` |
+
+**Checksum-distinctness + lineage-independence (R-ALT-3): asserted.** The two SHA-256s differ, and —
+more importantly — the lineages are genuinely independent: Edgington/Haslam descend from the original
+1842 M'Cheyne calendar; Carson/TGC is a separate editorial line (Carson's "For the Love of God"). The
+**re-mirror trap was explicitly checked**: `mcheyne.info/calendar.pdf` (Haslam) is the SAME lineage as
+edginet (Edgington credits Haslam) and is therefore NOT used as the second witness — Carson is. The
+bibleplan.org `paulyoder/plan.js` chapter-skeleton was **rejected** as a source for the asset because
+its verse-windowed days are corrupt (Feb 28 `Exodus 11-12:20` and Mar 1 `Exodus 12:21-50` vs the
+verse-faithful `Ex 11:1-12:21` / `Ex 12:22-51` — a documented off-by-one), exactly the
+chapter-collapse trap the sourcing doc warned of.
+
+The asset and the second-source fixture are parsed by **two independently-written parsers**
+(`tools/build_mcheyne_plan.py` on the edginet fixed-column A4 layout; `tools/extract_mcheyne_second.py`
+on the Carson/TGC single-day-per-line layout, different book-abbreviation vocabularies — `Gn`/`Mt`/`Eze`
+vs `Gen.`/`Matt.`/`Ezek.`).
+
+## Verse-window fidelity (the ~24 windowed days)
+
+The asset carries **38 verse-windowed refs** (the ~24 distinct windowed days, several appearing twice
+because Psalms/NT are read twice): Psalm 119 split into 7 windows tiling 1..176 (read twice — Family
+Jun 22–28, Secret Oct 25–31), Psalm 78 split 1-37 / 38-72 (read twice), Luke 1 split 1-38 / 39-80
+(read twice), and ~13 chapter-spanning ranges. **Cross-chapter ranges** are modeled faithfully as
+multi-ref portions: e.g. `Ex 11:1-12:21` → whole `Ex 11` + `Ex 12:1-21`; `Is 9:8-10:4` → `Is 9:8-21` +
+`Is 10:1-4`; `Dt 27:1-28:19` → whole `Dt 27` + `Dt 28:1-19`; `Zech 12:1-13:1` → whole `Zech 12` +
+`Zech 13:1`. A window covering a whole chapter (verses 1..count) is collapsed to a plain whole-chapter
+ref (no verse fields), so the "windowed only where intended" audit holds. The **non-adjacent
+double-chapter slot** Aug 8 = `Jer 36,45` is one comma-joined portion (two chapters of the same book).
+
+## Coverage invariant (verse-aware)
+
+The gate proves, at the **verse** level: every OT (non-Psalms) verse read **exactly once**; every
+Psalms and NT verse read **exactly twice**; every verse of all 66 books covered — so the verse windows
+tile each split chapter with no gap or overlap. The named anchor: **Matthew 1 is read in Family on
+Jan 1 AND in Secret on Jun 21** (the "NT twice" witness). The full asset vs the independent Carson/TGC
+fixture agree on **every one of the 365 days** (THE GATE).
+
+## Reconciliation log (M'Cheyne)
+
+Both documented entries are `pdftotext` column-extraction artifacts in the edginet A4 calendar — NOT
+plan disagreements. In each case the reading **content** is confirmed identical to the independent
+Carson/TGC witness, and the fix is applied in `tools/build_mcheyne_plan.py` (`reconcile()`) so a
+re-run reproduces the corrected data.
+
+| # | Day | edginet extraction artifact | Corrected to | Evidence |
+|---|---|---|---|---|
+| 1 | Aug 29 | The August-column "29" lost its leading "2" at the fixed-width column boundary, extracting as `9 1Sa 21-22; …` — a day-number colliding with the real Aug 9 (Ruth 2), so the row was dropped (364 days). | Re-keyed to Aug 29 = `1Sa 21-22; 1Co 3; Eze 1; Ps 37`. | Carson/TGC Aug 29 = `1 Sam. 21-22; 1 Cor. 3; Ezek. 1; Ps. 37`; fits the 28→30→31 sequence. |
+| 2 | Jun 28 | A trailing column-bleed digit `2` (the adjacent August column's day-2 number) appended to the 4th slot: `… Is 60; Mt 8 2`. | `… Is 60; Mt 8`. | Carson/TGC Jun 28 4th reading = `Matt. 8`. |
+
+## Determinism & gate
+
+- `python3 tools/build_mcheyne_plan.py <edginet.pdf>` re-derives `mcheyne/plan.json` **byte-identically**
+  (fixed day order, `json.dump(indent=1)` + trailing newline, Python stdlib + `pdftotext` only).
+- `python3 tools/extract_mcheyne_second.py <tgc.pdf>` re-derives the committed second-source fixture
+  `app/src/test/resources/plans/mcheyne/plan_verify.json` byte-identically.
+- `McheynePlanVerificationTest` (offline, `testDebugUnitTest`) is the release gate: structural
+  (schema 3 / 365 days / Feb 29 absent / streams 1..4 / refs resolve / windows well-formed vs
+  `bible/kjv_verse_counts.csv`), second-source day-by-day equality, the verse-aware coverage invariant,
+  the Ps-119 tiling (both occurrences), and the spanning-range fidelity pins. Mutation-verified:
+  a dropped window, a 4th-stream day reduced to 3, and a coverage double-count each red the gate.
+- The `mcheyne-rebuild` CI job re-fetches the two pinned sources (SHA-verified), re-derives both files,
+  and asserts a byte-diff of zero — a hand-edited M'Cheyne asset can never reach a release.

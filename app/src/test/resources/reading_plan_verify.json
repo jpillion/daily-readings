@@ -1,6 +1,24 @@
 {
- "schemaVersion": 2,
+ "schemaVersion": 3,
+ "planId": "bible_companion",
+ "name": "Bible Companion",
  "source": "antipas.org 'The Bible Companion' booklet PDF (Robert Roberts)",
+ "anchoring": "DATE",
+ "dayCount": 365,
+ "streams": [
+  {
+   "number": 1,
+   "title": "Law & History"
+  },
+  {
+   "number": 2,
+   "title": "Psalms & Prophecy"
+  },
+  {
+   "number": 3,
+   "title": "New Testament"
+  }
+ ],
  "days": [
   {
    "month": 1,

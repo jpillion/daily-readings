@@ -305,4 +305,21 @@ class SettingsRepositoryImplTest {
             repository.setPersistentNotificationEnabled(true)
             assertThat(repository.persistentNotificationEnabled.first()).isTrue()
         }
+
+    // --- Alt-Sprint A: selected plan (D-ALT-16). ---
+
+    @Test
+    fun `selected plan defaults to the flagship when nothing is stored`() =
+        themeTest { repository, _ ->
+            // Mutation target: the absent-key default. Every existing install (no key) is on the
+            // Bible Companion invisibly (FR-ALT-2).
+            assertThat(repository.selectedPlanId.first()).isEqualTo("bible_companion")
+        }
+
+    @Test
+    fun `selected plan round-trips a stored id`() =
+        themeTest { repository, _ ->
+            repository.setSelectedPlanId("mcheyne")
+            assertThat(repository.selectedPlanId.first()).isEqualTo("mcheyne")
+        }
 }

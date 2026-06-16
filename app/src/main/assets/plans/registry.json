@@ -1,0 +1,14 @@
+{
+ "registryVersion": 1,
+ "defaultPlanId": "bible_companion",
+ "plans": [
+  {
+   "id": "bible_companion",
+   "asset": "plans/bible_companion/plan.json"
+  },
+  {
+   "id": "mcheyne",
+   "asset": "plans/mcheyne/plan.json"
+  }
+ ]
+}

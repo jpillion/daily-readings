@@ -130,3 +130,54 @@ jobs:
       - name: Assert byte-diff of zero vs the committed asset
         run: |
           cmp /tmp/committed.db app/src/main/assets/bible/bible.db             && echo "bible.db reproduced byte-identically from pinned sources."             || (echo "ASSET DRIFT: committed bible.db does not match a fresh rebuild." && exit 1)
+
+  mcheyne-rebuild:
+    name: M'Cheyne plan asset rebuild (deterministic, byte-diff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install poppler (pdftotext)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      # SA-T11 — re-derive plans/mcheyne/plan.json from the PINNED canonical (Edgington/Haslam)
+      # source and assert a byte-diff of ZERO against the committed asset, so a hand-edited M'Cheyne
+      # plan can never sneak past the commit (mirrors the bible.db data-rebuild discipline). The
+      # second-source fixture is re-derived from the INDEPENDENT Carson/TGC source and likewise
+      # byte-diffed. The two source SHA-256s are verified (re-mirror / drift guard). edginet.org
+      # blocks default user-agents, so curl sends a browser UA (docs/data/mcheyne-sourcing.md).
+      - name: Fetch pinned M'Cheyne sources
+        run: |
+          mkdir -p /tmp/mcsrc
+          curl -sL --retry 3 -A "Mozilla/5.0" -o /tmp/mcsrc/edginet_classic.pdf \
+            "http://www.edginet.org/mcheyne/year_classic_single_a4.pdf"
+          curl -sL --retry 3 -A "Mozilla/5.0" -o /tmp/mcsrc/tgc_carson.pdf \
+            "https://media.thegospelcoalition.org/wp-content/uploads/2020/01/09151141/RtB_Reading-Plan_2020.pdf"
+
+      - name: Verify source checksums (re-mirror / drift guard, R-ALT-3)
+        run: |
+          echo "2a45dd9b7d9bd3ae213309ab44ec8c6599b382b7a11fedaf4ced7c82613406cb  /tmp/mcsrc/edginet_classic.pdf" | sha256sum -c -
+          echo "a3170fe52cbb5a54f9183d659c797bf9cfb3c9aca41a3d52286650b8640ec563  /tmp/mcsrc/tgc_carson.pdf" | sha256sum -c -
+
+      - name: Re-derive the M'Cheyne asset + the second-source fixture
+        run: |
+          cp app/src/main/assets/plans/mcheyne/plan.json /tmp/committed_mcheyne.json
+          cp app/src/test/resources/plans/mcheyne/plan_verify.json /tmp/committed_fixture.json
+          python3 tools/build_mcheyne_plan.py /tmp/mcsrc/edginet_classic.pdf
+          python3 tools/extract_mcheyne_second.py /tmp/mcsrc/tgc_carson.pdf
+
+      - name: Assert byte-diff of zero vs the committed asset + fixture
+        run: |
+          cmp /tmp/committed_mcheyne.json app/src/main/assets/plans/mcheyne/plan.json \
+            && echo "mcheyne/plan.json reproduced byte-identically from the pinned source." \
+            || (echo "ASSET DRIFT: committed mcheyne/plan.json does not match a fresh rebuild." && exit 1)
+          cmp /tmp/committed_fixture.json app/src/test/resources/plans/mcheyne/plan_verify.json \
+            && echo "mcheyne/plan_verify.json (TGC second source) reproduced byte-identically." \
+            || (echo "FIXTURE DRIFT: committed plan_verify.json does not match a fresh rebuild." && exit 1)

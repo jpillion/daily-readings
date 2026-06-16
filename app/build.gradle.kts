@@ -86,14 +86,18 @@ android {
         unitTests.all {
             // The plan-data verification gate reads the bundled asset straight from the
             // source tree so the test guards the exact file shipped in the APK.
+            // planAssetsDir points at src/main/assets so every gate reads the EXACT files shipped
+            // in the APK from one root: the plan gates resolve plans/bible_companion/plan.json,
+            // plans/mcheyne/plan.json + plans/registry.json; the bible gate resolves bible/bible.db.
             it.systemProperty(
                 "planAssetsDir",
                 layout.projectDirectory
                     .dir("src/main/assets")
                     .asFile.absolutePath,
             )
-            // Sprint 1 lesson: declare the asset as a test input, otherwise edits to the
-            // plan JSON are silently skipped as UP-TO-DATE and the gate never re-runs.
+            // Sprint 1 lesson: declare the asset dir as a test input, otherwise edits to a bundled
+            // asset are silently skipped as UP-TO-DATE and the gate never re-runs. The whole assets
+            // tree covers BOTH plan assets + the registry (SA-T6) AND the bible.db asset.
             it.inputs
                 .dir(layout.projectDirectory.dir("src/main/assets"))
                 .withPropertyName("planAssets")

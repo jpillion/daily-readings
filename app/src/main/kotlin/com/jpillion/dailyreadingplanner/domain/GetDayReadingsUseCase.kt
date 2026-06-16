@@ -2,6 +2,7 @@ package com.jpillion.dailyreadingplanner.domain
 
 import com.jpillion.dailyreadingplanner.core.date.ResolvedDate
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
+import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
@@ -28,7 +29,7 @@ class GetDayReadingsUseCase
                 is ResolvedDate.NoScheduledReadings -> flowOf(DayReadings.NoScheduledReadings(date))
                 is ResolvedDate.Scheduled ->
                     progressRepository.streamsRead(date).map { readStreams ->
-                        val portions = planRepository.portionsFor(resolved.readingDate)
+                        val portions = planRepository.portionsFor(PlanRegistry.DEFAULT_PLAN_ID, resolved.readingDate)
                         DayReadings.Scheduled(
                             date = date,
                             readings = portions.map { ReadingStatus(it, it.stream in readStreams) },
