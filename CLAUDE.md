@@ -1089,15 +1089,72 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   no manifest change, no version bump. **Device-pass item (Alt Sprint E):** the real migrated-history
   upgrade on a device.
   Handoff: [docs/sprints/sprint-alt-B-progress-migration.md](docs/sprints/sprint-alt-B-progress-migration.md).
-- Next up (alternate-schedules track): **Alt Sprint C — N-stream UI generalization**
-  (retire the `Stream` enum, D-ALT-5, compiler-driven; parameterize `DayCompletionClassifier`
-  `streamCount: Int`, D-ALT-6; generalize the stats denominators `dayCount × N`/`dayCount`, D-ALT-7;
-  the three stat use cases iterate the descriptor + read per-plan progress through B's store, D-ALT-8;
-  stream titles from the descriptor, D-ALT-22/23; day cards / stats strips / row-count-aware widget
-  tiers at N≠3, D-ALT-9/10; whole-day-mark + reminder scoping, D-ALT-11). C consumes B's per-plan store:
-  the stat use cases pass the active plan id (now defaulted to `bible_companion`, flip to the live
-  `ActivePlanRepository.activePlanId` in C/D) into the plan-scoped `ProgressRepository` methods.
-  See `docs/EXECUTION_PLAN-alternate-schedules.md` §3 (SC sketch) + the Sprint B handoff carryover.
+- ✅ **Alt-Schedules Sprint C (N-stream UI generalization) is DONE** (committed `7e6e9a6`; no
+  version bump). **The whole app renders the active plan's ACTUAL stream count truthfully** — every
+  completion/stat/strip/widget surface flows through the ONE `DayCompletionClassifier` seam,
+  parameterized never forked. (1) **D-ALT-5:** the `Stream` enum is retired — a stream is a plain
+  `Int` number (`Portion.streamNumber`), already the persisted key. (2) **D-ALT-6:** the classifier
+  takes `streamCount: Int` (the truth-table order untouched). (3) **D-ALT-7/8:** stats denominators
+  are `dayCount × N` / `dayCount` from the active descriptor (the `1095`/`365` consts gone); the three
+  stat use cases (`GetReadingStatsUseCase`, `GetYearStripsUseCase`, `GetMonthCompletionUseCase`) plus
+  `GetDayReadingsUseCase`, `MarkWholeDayUseCase`, `ToggleReadingUseCase` all inject
+  `ActivePlanRepository`, **`flatMapLatest` on `activePlanId` and `combine` the `activeDescriptor`** —
+  so a plan switch re-emits the whole app LIVE with no further use-case change (the load-bearing fact
+  Sprint D builds on), and every progress query is scoped to the active `plan_id`. (4) **D-ALT-22/23:**
+  stream titles come from `StreamDescriptor.title` (the `ReadingFormatter.streamTitle` enum-`when`
+  retired); a single-stream plan renders the reference with NO stream label (`PlanDescriptor.titleFor`
+  returns null for N≤1). (5) **D-ALT-9/10:** day cards, stats strips/rows, and the row-count-aware
+  widget tier policy render N rows. For the Bible Companion everything resolves to 3 streams / 1,095 /
+  365 exactly (parity — all existing pins green). The widget reads the active plan automatically
+  through `GetDayReadingsUseCase`. N-correctness is JVM-gate-proven (M'Cheyne N=4 + a synthetic N=1).
+  Test seams: `FakeActivePlanRepository(descriptor, planId)`, `bibleCompanionDescriptor`, `StatsFixtures`.
+  (Sprint C's handoff doc was not written to disk; this entry + the committed code are the record.)
+- ✅ **Alt-Schedules Sprint D (plan selector + whole-app integration) is DONE** (uncommitted in the
+  working tree; the main session verifies + commits; NO version bump). **A user can select M'Cheyne in
+  Settings and the ENTIRE app — schedule, stats, strips, day pager, widget, reminders — shows M'Cheyne
+  live; switch back and the Bible Companion view AND its progress are restored intact.** A Bible
+  Companion reader who never opens the selector sees the app byte-for-byte as today (default =
+  `bible_companion`). (1) **Settings "Reading plan" selector (D-ALT-18):** a compact `SettingsDropdownRow`
+  (S14 idiom) at the TOP of Settings showing the active plan's `name` (read from the plan's own
+  descriptor head — "Bible Companion" / "M'Cheyne", never a second name table), anchoring a menu of the
+  registry's plans (tags `plan-dropdown`, `plan-option-<id>`); selecting writes `selected_plan`. The row
+  IS the "active plan visible" affordance (FR-ALT-6); a11y-gate-pinned ≥48dp + spoken "Reading plan,
+  <value>". (2) **The explained non-destructive switch (D-ALT-19):** selecting a DIFFERENT plan raises a
+  one-time dialog (`plan-switch-dialog`) naming both plans — "Your <old> progress is saved — switch back
+  any time and it'll be here. <new> starts fresh." — that writes NOTHING until confirm; selecting the
+  already-active plan is a no-op. Confirm writes `selected_plan` + fires `WidgetRefresher`; dismiss
+  writes nothing. NO data operation runs — per-plan progress (Sprint B) makes the switch non-destructive
+  by construction. (3) **Live switch (D-ALT-17):** because Sprint C made the use cases `combine` the
+  active descriptor, the write alone re-emits schedule/stats/strips/picker-dots/day-pager live — NO
+  use-case change in D. (4) **Widget (D-ALT-10 wiring half):** the `@EntryPoint` needed NO read-side
+  change — it already resolves the active plan through `GetDayReadingsUseCase`; D only fires
+  `WidgetRefresher` on a switch so the launcher snaps to the new plan. (5) **Reminder/persistent
+  content:** already active-plan-correct (Sprint C wired the bodies through `GetDayReadingsUseCase`) —
+  verified, no new code. (6) **OQ-7 RESOLVED (D-D-ALT-1): Settings-only, no first-run plan question,
+  default Bible Companion** — first-run already has tracking-start + reading-destination prompts; a third
+  would clutter the zero-setup promise. THE end-to-end gate (`PlanSwitchIntegrationTest`): drives
+  `GetDayReadingsUseCase` through the REAL `ActivePlanRepositoryImpl` over the REAL bundled BC + M'Cheyne
+  assets, flips `selected_plan` on one open subscription → 3-stream-all-read → 4-stream-fresh →
+  3-stream-all-read-again, plus per-plan marks isolation. New: `ui/settings/PlanSelectorState.kt`
+  (`PlanOption`/`PlanSelectorUiState`/`PendingPlanSwitch`); `SettingsViewModel` (`planSelector`,
+  `pendingPlanSwitch`, `onPlanSelected/Confirmed/Dismissed`, injects `ActivePlanRepository`/`PlanRegistry`/
+  `ReadingPlanRepository`); `SettingsScreen` (`PlanDropdown` + switch dialog). **710 tests** (net +14; the
+  four data/Room gates UNCHANGED — BC plan 11, McheynePlanVerificationTest 10, BibleTextVerificationTest
+  18, BibleDatabaseRoomOpenTest 5), full pipeline green, Kover 95.9% on domain/data, a11y gate 8/8,
+  nav-regression green, **5 mutations killed** (confirm-skips-write; confirm-skips-widget-refresh;
+  active-plan-ignores-selection → integration gate red; same-plan-no-op-guard-removed; option-name-from-id-
+  not-descriptor), each restored byte-identical. No new deps/permissions, no Room/schema/plan-data/manifest
+  change. **New strings need owner tone sign-off** (`plan_section_title`, `plan_dropdown_description`, the
+  four `plan_switch_dialog_*`). **Device-pass items:** the live switch on glass; the widget showing
+  M'Cheyne after a switch.
+  Handoff: [docs/sprints/sprint-alt-D-plan-selector-integration.md](docs/sprints/sprint-alt-D-plan-selector-integration.md).
+- Next up (alternate-schedules track): **Alt Sprint E — the chronological plan + hardening + release**
+  (a specific, named, date-anchored single-stream chronological plan with a genuine independent second
+  witness or DO-NOT-SHIP, D-ALT-21; `ChronologicalPlanVerificationTest` + `chronological-rebuild` CI; the
+  consolidated device pass at N=1/2/4 incl. the switch on glass + the widget snapping to M'Cheyne + a real
+  migrated-history upgrade; string/tone sign-offs incl. the S-A..S-D + S-D selector/switch strings; bundle-
+  size check; version bump + closed-track rollout). See `docs/EXECUTION_PLAN-alternate-schedules.md` §3
+  (SE sketch) + the Sprint D handoff carryover.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

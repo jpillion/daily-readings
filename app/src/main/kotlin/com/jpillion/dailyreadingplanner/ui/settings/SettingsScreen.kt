@@ -79,6 +79,8 @@ fun SettingsRoute(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val planSelector by viewModel.planSelector.collectAsStateWithLifecycle()
+    val pendingPlanSwitch by viewModel.pendingPlanSwitch.collectAsStateWithLifecycle()
     val destinationMode by viewModel.destinationMode.collectAsStateWithLifecycle()
     val externalBibleApp by viewModel.externalBibleApp.collectAsStateWithLifecycle()
     val showStreaks by viewModel.showStreaks.collectAsStateWithLifecycle()
@@ -106,6 +108,8 @@ fun SettingsRoute(
     val requestAppBody = stringResource(R.string.request_app_body)
     SettingsScreen(
         selectedMode = themeMode,
+        planSelector = planSelector,
+        pendingPlanSwitch = pendingPlanSwitch,
         destinationMode = destinationMode,
         externalBibleApp = externalBibleApp,
         mySwordInstalled = viewModel.mySwordInstalled,
@@ -118,6 +122,9 @@ fun SettingsRoute(
         persistentNotificationEnabled = persistentNotificationEnabled,
         showReminderPermissionRationale = showPermissionRationale,
         onThemeModeSelected = viewModel::onThemeModeSelected,
+        onPlanSelected = viewModel::onPlanSelected,
+        onPlanSwitchConfirmed = viewModel::onPlanSwitchConfirmed,
+        onPlanSwitchDismissed = viewModel::onPlanSwitchDismissed,
         onDestinationModeSelected = viewModel::onDestinationModeSelected,
         onExternalBibleAppSelected = viewModel::onExternalBibleAppSelected,
         onShowStreaksToggled = viewModel::onShowStreaksToggled,
@@ -163,6 +170,8 @@ fun SettingsRoute(
 @Composable
 fun SettingsScreen(
     selectedMode: ThemeMode,
+    planSelector: PlanSelectorUiState,
+    pendingPlanSwitch: PendingPlanSwitch?,
     destinationMode: ReadingDestinationMode,
     externalBibleApp: ExternalBibleApp,
     mySwordInstalled: Boolean,
@@ -175,6 +184,9 @@ fun SettingsScreen(
     persistentNotificationEnabled: Boolean,
     showReminderPermissionRationale: Boolean,
     onThemeModeSelected: (ThemeMode) -> Unit,
+    onPlanSelected: (String) -> Unit,
+    onPlanSwitchConfirmed: () -> Unit,
+    onPlanSwitchDismissed: () -> Unit,
     onDestinationModeSelected: (ReadingDestinationMode) -> Unit,
     onExternalBibleAppSelected: (ExternalBibleApp) -> Unit,
     onShowStreaksToggled: (Boolean) -> Unit,
@@ -220,6 +232,12 @@ fun SettingsScreen(
                     .padding(innerPadding)
                     .verticalScroll(rememberScrollState()),
         ) {
+            SectionTitle(stringResource(R.string.plan_section_title))
+            PlanDropdown(
+                planSelector = planSelector,
+                onPlanSelected = onPlanSelected,
+            )
+
             SectionTitle(stringResource(R.string.theme_section_title))
             ThemeDropdown(
                 selectedMode = selectedMode,
@@ -338,6 +356,39 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    if (pendingPlanSwitch != null) {
+        // D-ALT-19: the one-time, informational, non-destructive-switch explanation. Confirming
+        // only writes `selected_plan` (no data operation runs — per-plan progress means the old
+        // plan's marks are simply a different partition, untouched and restored on switching back).
+        AlertDialog(
+            onDismissRequest = onPlanSwitchDismissed,
+            title = { Text(text = stringResource(R.string.plan_switch_dialog_title, pendingPlanSwitch.toName)) },
+            text = {
+                Text(
+                    text =
+                        stringResource(
+                            R.string.plan_switch_dialog_body,
+                            pendingPlanSwitch.fromName,
+                            pendingPlanSwitch.toName,
+                        ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = onPlanSwitchConfirmed,
+                    modifier = Modifier.testTag("plan-switch-confirm"),
+                ) { Text(text = stringResource(R.string.plan_switch_dialog_confirm)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onPlanSwitchDismissed,
+                    modifier = Modifier.testTag("plan-switch-cancel"),
+                ) { Text(text = stringResource(R.string.plan_switch_dialog_cancel)) }
+            },
+            modifier = Modifier.testTag("plan-switch-dialog"),
+        )
     }
 
     if (showResetDialog) {
@@ -656,6 +707,40 @@ private fun SectionTitle(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
     )
+}
+
+/**
+ * Alt Sprint D (D-ALT-18): the reading-plan selector — the S14 [SettingsDropdownRow] idiom showing
+ * the active plan's name and a menu of the registry's plans (Bible Companion first/default). A
+ * selection that differs from the active plan routes through [onPlanSelected], which raises the
+ * one-time non-destructive-switch explanation in the ViewModel before any write. Each menu item
+ * is tagged `plan-option-<id>`; the row is `plan-dropdown`. Off the daily path (FR-ALT-6, G15).
+ */
+@Composable
+private fun PlanDropdown(
+    planSelector: PlanSelectorUiState,
+    onPlanSelected: (String) -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    SettingsDropdownRow(
+        valueText = planSelector.activeName,
+        rowDescription = stringResource(R.string.plan_dropdown_description, planSelector.activeName),
+        testTag = "plan-dropdown",
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        planSelector.options.forEach { option ->
+            SelectableMenuItem(
+                label = option.name,
+                selected = option.id == planSelector.activeId,
+                testTag = "plan-option-${option.id}",
+                onClick = {
+                    expanded = false
+                    onPlanSelected(option.id)
+                },
+            )
+        }
+    }
 }
 
 /**

@@ -2,9 +2,16 @@ package com.jpillion.dailyreadingplanner.ui.settings
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
+import com.jpillion.dailyreadingplanner.data.plan.PlanAssetSource
+import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
+import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanAssetLoader
+import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepositoryImpl
 import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
+import com.jpillion.dailyreadingplanner.domain.bibleCompanionDescriptor
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
+import com.jpillion.dailyreadingplanner.domain.model.PlanDescriptor
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.testing.FakeNotificationPermissionChecker
@@ -12,15 +19,21 @@ import com.jpillion.dailyreadingplanner.testing.FakeReminderScheduler
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
@@ -43,6 +56,23 @@ class SettingsViewModelTest {
                 return mySwordInstalled
             }
         }
+
+    // Alt Sprint D: the selector reads real plan names from the real bundled descriptors.
+    private val assetsRoot = File(System.getProperty("planAssetsDir") ?: error("planAssetsDir not set"))
+    private val planSource = PlanAssetSource { path -> assetsRoot.resolve(path).readText() }
+    private val unconfined = UnconfinedTestDispatcher()
+    private val planRegistry = PlanRegistry(planSource, unconfined)
+    private val readingPlanRepository =
+        ReadingPlanRepositoryImpl(planRegistry, ReadingPlanAssetLoader(planSource, unconfined))
+
+    // A controllable active-plan fake (the active id is a MutableStateFlow the switch tests drive).
+    private val activePlanId = MutableStateFlow("bible_companion")
+    private val activePlanRepository =
+        object : ActivePlanRepository {
+            override val activePlanId: Flow<String> = this@SettingsViewModelTest.activePlanId
+            override val activeDescriptor: Flow<PlanDescriptor> = flowOf(bibleCompanionDescriptor)
+        }
+
     private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
     private val refreshPersistent =
         com.jpillion.dailyreadingplanner.domain.RefreshPersistentNotificationUseCase(
@@ -73,6 +103,9 @@ class SettingsViewModelTest {
             refreshPersistentNotification = refreshPersistent,
             notificationPermissionChecker = permissionChecker,
             appInstallChecker = appInstallChecker,
+            activePlanRepository = activePlanRepository,
+            planRegistry = planRegistry,
+            readingPlanRepository = readingPlanRepository,
             clock = clock,
         )
     }
@@ -350,5 +383,101 @@ class SettingsViewModelTest {
             viewModel.onNotificationPermissionResult(granted = true)
             assertThat(repository.persistentEnabledCalls).containsExactly(true)
             assertThat(repository.reminderEnabledCalls).isEmpty()
+        }
+
+    // --- Alt Sprint D (D-ALT-18/19): the reading-plan selector + non-destructive switch. ---
+
+    @Test
+    fun `the selector lists the registry plans with their descriptor names and the active id`() =
+        runTest {
+            viewModel.planSelector.test {
+                // Skip the initial empty state; the registry/descriptor load resolves to two plans.
+                var state = awaitItem()
+                while (state.options.size < 2) state = awaitItem()
+                assertThat(state.options.map { it.id }).containsExactly("bible_companion", "mcheyne").inOrder()
+                assertThat(state.options.first { it.id == "bible_companion" }.name).isEqualTo("Bible Companion")
+                assertThat(state.options.first { it.id == "mcheyne" }.name).isEqualTo("M'Cheyne")
+                assertThat(state.activeId).isEqualTo("bible_companion")
+                assertThat(state.activeName).isEqualTo("Bible Companion")
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `the selector re-selects the row live when the active plan changes`() =
+        runTest {
+            viewModel.planSelector.test {
+                var state = awaitItem()
+                while (state.options.size < 2) state = awaitItem()
+                assertThat(state.activeId).isEqualTo("bible_companion")
+                activePlanId.value = "mcheyne"
+                state = awaitItem()
+                assertThat(state.activeId).isEqualTo("mcheyne")
+                assertThat(state.activeName).isEqualTo("M'Cheyne")
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `selecting the already-active plan is a no-op - no dialog, no write`() =
+        runTest {
+            // Prime the selector so options are loaded (activeId == bible_companion).
+            viewModel.planSelector.test {
+                var state = awaitItem()
+                while (state.options.size < 2) state = awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+            viewModel.onPlanSelected("bible_companion")
+            assertThat(viewModel.pendingPlanSwitch.value).isNull()
+            assertThat(repository.selectedPlanIdCalls).isEmpty()
+        }
+
+    @Test
+    fun `selecting a different plan raises the switch dialog with from and to names but writes nothing`() =
+        runTest {
+            viewModel.planSelector.test {
+                var state = awaitItem()
+                while (state.options.size < 2) state = awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+            viewModel.onPlanSelected("mcheyne")
+            val pending = viewModel.pendingPlanSwitch.value
+            assertThat(pending).isNotNull()
+            assertThat(pending!!.toId).isEqualTo("mcheyne")
+            assertThat(pending.fromName).isEqualTo("Bible Companion")
+            assertThat(pending.toName).isEqualTo("M'Cheyne")
+            // D-ALT-19: NO write happens until the user confirms.
+            assertThat(repository.selectedPlanIdCalls).isEmpty()
+            assertThat(widgetRefresher.refreshCount).isEqualTo(0)
+        }
+
+    @Test
+    fun `confirming the switch writes selected_plan and refreshes the widget`() =
+        runTest {
+            viewModel.planSelector.test {
+                var state = awaitItem()
+                while (state.options.size < 2) state = awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+            viewModel.onPlanSelected("mcheyne")
+            viewModel.onPlanSwitchConfirmed()
+            assertThat(repository.selectedPlanIdCalls).containsExactly("mcheyne")
+            assertThat(widgetRefresher.refreshCount).isEqualTo(1)
+            assertThat(viewModel.pendingPlanSwitch.value).isNull()
+        }
+
+    @Test
+    fun `dismissing the switch clears the dialog and writes nothing`() =
+        runTest {
+            viewModel.planSelector.test {
+                var state = awaitItem()
+                while (state.options.size < 2) state = awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+            viewModel.onPlanSelected("mcheyne")
+            viewModel.onPlanSwitchDismissed()
+            assertThat(viewModel.pendingPlanSwitch.value).isNull()
+            assertThat(repository.selectedPlanIdCalls).isEmpty()
+            assertThat(widgetRefresher.refreshCount).isEqualTo(0)
         }
 }

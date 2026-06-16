@@ -57,8 +57,24 @@ class SettingsScreenTest {
 
     private val showStreaksToggles = mutableListOf<Boolean>()
 
+    private val planSelections = mutableListOf<String>()
+    private var planSwitchConfirms = 0
+    private var planSwitchDismissals = 0
+
+    private val twoPlanSelector =
+        PlanSelectorUiState(
+            options =
+                listOf(
+                    PlanOption(id = "bible_companion", name = "Bible Companion"),
+                    PlanOption(id = "mcheyne", name = "M'Cheyne"),
+                ),
+            activeId = "bible_companion",
+        )
+
     private fun setScreen(
         selectedMode: ThemeMode,
+        planSelector: PlanSelectorUiState = twoPlanSelector,
+        pendingPlanSwitch: PendingPlanSwitch? = null,
         destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
         externalBibleApp: ExternalBibleApp = ExternalBibleApp.BLB,
         mySwordInstalled: Boolean = false,
@@ -74,6 +90,8 @@ class SettingsScreenTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 SettingsScreen(
                     selectedMode = selectedMode,
+                    planSelector = planSelector,
+                    pendingPlanSwitch = pendingPlanSwitch,
                     destinationMode = destinationMode,
                     externalBibleApp = externalBibleApp,
                     mySwordInstalled = mySwordInstalled,
@@ -86,6 +104,9 @@ class SettingsScreenTest {
                     persistentNotificationEnabled = persistentNotificationEnabled,
                     showReminderPermissionRationale = showReminderPermissionRationale,
                     onThemeModeSelected = { selections += it },
+                    onPlanSelected = { planSelections += it },
+                    onPlanSwitchConfirmed = { planSwitchConfirms++ },
+                    onPlanSwitchDismissed = { planSwitchDismissals++ },
                     onDestinationModeSelected = { modeSelections += it },
                     onExternalBibleAppSelected = { externalAppSelections += it },
                     onShowStreaksToggled = { showStreaksToggles += it },
@@ -466,5 +487,74 @@ class SettingsScreenTest {
     fun persistentToggle_reflectsEnabledState() {
         setScreen(ThemeMode.SYSTEM, persistentNotificationEnabled = true)
         composeRule.onNodeWithTag("persistent-notification-toggle").performScrollTo().assertIsOn()
+    }
+
+    // --- Alt Sprint D (D-ALT-18/19): the reading-plan selector row + switch dialog. ---
+
+    @Test
+    fun planDropdownRow_showsTheActivePlanName_andSpeaksIt() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithText("Reading plan").assertIsDisplayed()
+        composeRule
+            .onNodeWithTag("plan-dropdown")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertContentDescriptionEquals("Reading plan, Bible Companion")
+        // The menu is closed until the row is tapped.
+        composeRule.onNodeWithTag("plan-option-mcheyne").assertDoesNotExist()
+    }
+
+    @Test
+    fun openingThePlanMenu_marksTheActivePlanSelected() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("plan-dropdown").performScrollTo().performClick()
+        composeRule.onNodeWithTag("plan-option-bible_companion").assertIsDisplayed().assertIsSelected()
+        composeRule.onNodeWithTag("plan-option-mcheyne").assertIsNotSelected()
+    }
+
+    @Test
+    fun pickingADifferentPlan_reportsItToThePlanSelectedCallback() {
+        setScreen(ThemeMode.SYSTEM)
+        composeRule.onNodeWithTag("plan-dropdown").performScrollTo().performClick()
+        composeRule.onNodeWithTag("plan-option-mcheyne").performClick()
+        assertThat(planSelections).containsExactly("mcheyne")
+    }
+
+    @Test
+    fun theSwitchDialog_explainsTheNonDestructiveSwitch_andRoutesConfirm() {
+        setScreen(
+            ThemeMode.SYSTEM,
+            pendingPlanSwitch =
+                PendingPlanSwitch(toId = "mcheyne", fromName = "Bible Companion", toName = "M'Cheyne"),
+        )
+        composeRule.onNodeWithTag("plan-switch-dialog").assertIsDisplayed()
+        // The copy names both plans and promises the saved progress (D-ALT-19).
+        composeRule.onNodeWithText("Switch to M'Cheyne?").assertIsDisplayed()
+        composeRule
+            .onNodeWithText(
+                "Your Bible Companion progress is saved — switch back any time and it'll be here. " +
+                    "M'Cheyne starts fresh.",
+            ).assertIsDisplayed()
+        composeRule.onNodeWithTag("plan-switch-confirm").performClick()
+        assertThat(planSwitchConfirms).isEqualTo(1)
+        assertThat(planSwitchDismissals).isEqualTo(0)
+    }
+
+    @Test
+    fun theSwitchDialog_cancelRoutesDismiss() {
+        setScreen(
+            ThemeMode.SYSTEM,
+            pendingPlanSwitch =
+                PendingPlanSwitch(toId = "mcheyne", fromName = "Bible Companion", toName = "M'Cheyne"),
+        )
+        composeRule.onNodeWithTag("plan-switch-cancel").performClick()
+        assertThat(planSwitchDismissals).isEqualTo(1)
+        assertThat(planSwitchConfirms).isEqualTo(0)
+    }
+
+    @Test
+    fun noPendingSwitch_hidesTheDialog() {
+        setScreen(ThemeMode.SYSTEM, pendingPlanSwitch = null)
+        composeRule.onNodeWithTag("plan-switch-dialog").assertDoesNotExist()
     }
 }

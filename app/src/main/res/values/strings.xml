@@ -29,6 +29,13 @@
     <string name="theme_dark">Dark</string>
     <string name="theme_system">System default</string>
     <string name="theme_dropdown_description">Theme, %1$s</string>
+    <!-- Alt Sprint D (D-ALT-18/19): the reading-plan selector + the non-destructive switch dialog. -->
+    <string name="plan_section_title">Reading plan</string>
+    <string name="plan_dropdown_description">Reading plan, %1$s</string>
+    <string name="plan_switch_dialog_title">Switch to %1$s?</string>
+    <string name="plan_switch_dialog_body">Your %1$s progress is saved — switch back any time and it\'ll be here. %2$s starts fresh.</string>
+    <string name="plan_switch_dialog_confirm">Switch</string>
+    <string name="plan_switch_dialog_cancel">Cancel</string>
     <string name="previous_month">Previous month</string>
     <string name="next_month">Next month</string>
     <string name="day_missed">Readings missed</string>

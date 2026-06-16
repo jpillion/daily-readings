@@ -36,6 +36,8 @@ import com.jpillion.dailyreadingplanner.ui.day.DayContent
 import com.jpillion.dailyreadingplanner.ui.day.DayUiState
 import com.jpillion.dailyreadingplanner.ui.day.TrackingStartPromptDialog
 import com.jpillion.dailyreadingplanner.ui.navigation.UpdateRestartSnackbarEffect
+import com.jpillion.dailyreadingplanner.ui.settings.PlanOption
+import com.jpillion.dailyreadingplanner.ui.settings.PlanSelectorUiState
 import com.jpillion.dailyreadingplanner.ui.settings.SettingsScreen
 import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
@@ -106,6 +108,16 @@ class AccessibilityGateTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 SettingsScreen(
                     selectedMode = ThemeMode.SYSTEM,
+                    planSelector =
+                        PlanSelectorUiState(
+                            options =
+                                listOf(
+                                    PlanOption(id = "bible_companion", name = "Bible Companion"),
+                                    PlanOption(id = "mcheyne", name = "M'Cheyne"),
+                                ),
+                            activeId = "bible_companion",
+                        ),
+                    pendingPlanSwitch = null,
                     destinationMode = ReadingDestinationMode.EXTERNAL,
                     externalBibleApp = ExternalBibleApp.BLB,
                     mySwordInstalled = false,
@@ -118,6 +130,9 @@ class AccessibilityGateTest {
                     persistentNotificationEnabled = true,
                     showReminderPermissionRationale = false,
                     onThemeModeSelected = {},
+                    onPlanSelected = {},
+                    onPlanSwitchConfirmed = {},
+                    onPlanSwitchDismissed = {},
                     onDestinationModeSelected = {},
                     onExternalBibleAppSelected = {},
                     onShowStreaksToggled = {},
@@ -135,6 +150,12 @@ class AccessibilityGateTest {
             }
         }
         composeRule.onNodeWithTag("settings-back").assertTouchTargetAtLeast(48.dp)
+        // Alt Sprint D (D-ALT-18): the reading-plan selector is an authored 56dp dropdown
+        // row that speaks "Reading plan, <value>" — pinned ≥48dp + spoken here.
+        composeRule
+            .onNodeWithTag("plan-dropdown")
+            .assertTouchTargetAtLeast(48.dp)
+            .assertContentDescriptionContains("Reading plan", substring = true)
         // S14: the theme selector is a dropdown row (speaks label+value); the menu items
         // are stock M3 DropdownMenuItems at the 48dp item token — verified open.
         composeRule

@@ -3,6 +3,9 @@ package com.jpillion.dailyreadingplanner.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.data.apps.AppInstallChecker
+import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
+import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
+import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.ResetYearProgressUseCase
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -47,10 +51,85 @@ class SettingsViewModel
             com.jpillion.dailyreadingplanner.domain.RefreshPersistentNotificationUseCase,
         private val notificationPermissionChecker: NotificationPermissionChecker,
         appInstallChecker: AppInstallChecker,
+        private val activePlanRepository: ActivePlanRepository,
+        private val planRegistry: PlanRegistry,
+        private val readingPlanRepository: ReadingPlanRepository,
         clock: Clock,
     ) : ViewModel() {
         /** The year a reset would clear — shown in the confirmation dialog. */
         val currentYear: Int = LocalDate.now(clock).year
+
+        // --- Alt Sprint D (D-ALT-18/19): the reading-plan selector. ---
+
+        /**
+         * The available plans (registry order, Bible Companion first/default — D-ALT-18) paired
+         * with their display name read from each plan's own descriptor head, plus the active id.
+         * Combines the one-shot registry/descriptor load with the live [ActivePlanRepository] so a
+         * switch — or one made elsewhere — re-selects the row live. The active id degraded to a
+         * known plan is [ActivePlanRepository]'s job; the row shows the matching option's name.
+         */
+        val planSelector: StateFlow<PlanSelectorUiState> =
+            activePlanRepository.activePlanId
+                .map { activeId ->
+                    PlanSelectorUiState(options = loadPlanOptions(), activeId = activeId)
+                }.stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = PlanSelectorUiState(),
+                )
+
+        private var cachedPlanOptions: List<PlanOption>? = null
+
+        /** The registry's plans with descriptor-sourced names, loaded once and memoized. */
+        private suspend fun loadPlanOptions(): List<PlanOption> =
+            cachedPlanOptions ?: planRegistry
+                .plans()
+                .map { PlanOption(id = it.id, name = readingPlanRepository.descriptor(it.id).name) }
+                .also { cachedPlanOptions = it }
+
+        private val pendingPlanSwitchState = MutableStateFlow<PendingPlanSwitch?>(null)
+
+        /**
+         * A user-initiated switch to a DIFFERENT plan, awaiting the one-time explanation dialog
+         * (D-ALT-19). `null` when no switch is pending. Selecting the already-active plan never
+         * raises it.
+         */
+        val pendingPlanSwitch: StateFlow<PendingPlanSwitch?> = pendingPlanSwitchState.asStateFlow()
+
+        /**
+         * The user tapped a plan in the selector. Selecting the active plan is a no-op (no dialog,
+         * no write); selecting a different plan raises the non-destructive-switch explanation
+         * (D-ALT-19) — the write happens only on confirm.
+         */
+        fun onPlanSelected(id: String) {
+            val state = planSelector.value
+            if (id == state.activeId) return
+            val options = state.options
+            val fromName = options.firstOrNull { it.id == state.activeId }?.name.orEmpty()
+            val toName = options.firstOrNull { it.id == id }?.name.orEmpty()
+            pendingPlanSwitchState.value = PendingPlanSwitch(toId = id, fromName = fromName, toName = toName)
+        }
+
+        /**
+         * Confirm the pending switch (D-ALT-17/19): write `selected_plan` — which re-emits the
+         * whole app's active-plan-scoped flows live — and refresh the home-screen widget so the
+         * launcher snaps to the new plan (D-ALT-10). NO progress is copied, merged, or cleared:
+         * the switch is a pointer move, non-destructive by construction (per-plan progress).
+         */
+        fun onPlanSwitchConfirmed() {
+            val pending = pendingPlanSwitchState.value ?: return
+            pendingPlanSwitchState.value = null
+            viewModelScope.launch {
+                settingsRepository.setSelectedPlanId(pending.toId)
+                // The widget reads the active plan through the same use case; snap it to the new plan.
+                widgetRefresher.refreshTodayWidget()
+            }
+        }
+
+        /** Dismiss the pending switch without switching — writes nothing, the active plan is unchanged. */
+        fun onPlanSwitchDismissed() {
+            pendingPlanSwitchState.value = null
+        }
 
         val themeMode: StateFlow<ThemeMode> =
             settingsRepository.themeMode.stateIn(
