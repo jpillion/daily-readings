@@ -18,3 +18,7 @@ captures/
 
 # Release signing (S9-T5): local key material, never committed
 keystore.properties
+
+# Local, per-machine Claude config: settings.local.json and the agents symlink
+# (points to an external shared library; dangles for anyone cloning). Not app code.
+.claude/

@@ -24,8 +24,7 @@ done, and tap any reading to open its chapter on Blue Letter Bible (KJV) in the 
 scripture text is bundled or rendered in-app in V1 — that's V3. The planner/tracker core works
 offline; the text link needs network.
 
-This is a **standalone repo**, deliberately separate from the unrelated `strikelog` project.
-Do not reference or depend on strikelog.
+This is a **standalone, self-contained repo** — it does not depend on any other local project.
 
 ## Current status (as of 2026-06-11)
 
@@ -1158,7 +1157,7 @@ None. All product/owner decisions are resolved — see below and `docs/EXECUTION
 
 ## Decisions already made
 
-- New, separate repo (not inside strikelog). ✅
+- New, separate, self-contained repo. ✅
 - Spec drafted first before code. ✅
 - **V1 = digital reading planner**; no in-app scripture text (deferred to V3). ✅
 - Mark-as-read is **per reading** (3/day) + one-tap "whole day done"; **not** per-chapter. ✅
