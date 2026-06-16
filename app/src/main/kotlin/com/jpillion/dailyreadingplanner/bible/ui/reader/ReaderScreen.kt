@@ -116,16 +116,21 @@ fun ReaderScreen(
         // D-V3-14: reserved audio seam — an empty bottom bar slot.
         bottomBar = { ReaderAudioSlot() },
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize().padding(innerPadding).testTag("reader-pager"),
-        ) { page ->
-            ReaderPage(
-                state = stateForPage(page),
-                externalApp = externalApp,
-                onVerseTapped = { verseId -> onVerseTapped(page, verseId) },
-                onRetry = { onRetry(page) },
-            )
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth().weight(1f).testTag("reader-pager"),
+            ) { page ->
+                ReaderPage(
+                    state = stateForPage(page),
+                    onVerseTapped = { verseId -> onVerseTapped(page, verseId) },
+                    onRetry = { onRetry(page) },
+                )
+            }
+            // Owner request: the verse-tap hint is PINNED at the bottom of the reader — always
+            // visible while reading, below the pager and above the reserved audio slot / nav bar.
+            // It does not scroll with the verses or swipe with chapters.
+            ReaderFooterHint(externalApp)
         }
     }
 }
@@ -133,7 +138,6 @@ fun ReaderScreen(
 @Composable
 private fun ReaderPage(
     state: ReaderUiState,
-    externalApp: ExternalBibleApp,
     onVerseTapped: (Long) -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -178,12 +182,6 @@ private fun ReaderPage(
                         )
                     }
                 }
-                // Sprint K — always-shown footer hint keying the verse-tap-out to the chosen
-                // external Bible app (read-here / study-there bridge). The LAST list item, separated
-                // from the final verse by extra top padding so it reads as a footer, not a verse;
-                // on a short chapter it sits in the empty band below the text, on a long chapter it
-                // is reached at the end of scroll.
-                item(key = "reader-footer-hint") { ReaderFooterHint(externalApp) }
             }
         }
     }
