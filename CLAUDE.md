@@ -1148,13 +1148,43 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   four `plan_switch_dialog_*`). **Device-pass items:** the live switch on glass; the widget showing
   M'Cheyne after a switch.
   Handoff: [docs/sprints/sprint-alt-D-plan-selector-integration.md](docs/sprints/sprint-alt-D-plan-selector-integration.md).
-- Next up (alternate-schedules track): **Alt Sprint E — the chronological plan + hardening + release**
-  (a specific, named, date-anchored single-stream chronological plan with a genuine independent second
-  witness or DO-NOT-SHIP, D-ALT-21; `ChronologicalPlanVerificationTest` + `chronological-rebuild` CI; the
-  consolidated device pass at N=1/2/4 incl. the switch on glass + the widget snapping to M'Cheyne + a real
-  migrated-history upgrade; string/tone sign-offs incl. the S-A..S-D + S-D selector/switch strings; bundle-
-  size check; version bump + closed-track rollout). See `docs/EXECUTION_PLAN-alternate-schedules.md` §3
-  (SE sketch) + the Sprint D handoff carryover.
+- ✅ **Alternate-Schedules Sprint E (chronological GO/NO-GO + hardening + release readiness) is DONE**
+  (uncommitted in the working tree — only `docs/data/README.md` + `distribution/whatsnew/whatsnew-en-US`
+  changed; NO code/asset/test/version change; the main session/owner commits + cuts the release). **The
+  alternate-schedules epic is COMPLETE** and ships valuably with **TWO** gate-verified, live-switchable,
+  per-plan-progress plans (Bible Companion + M'Cheyne). **Track 1 — chronological = NO-GO (do not ship),
+  the correct honesty-gate outcome (D-ALT-21), recorded in `docs/data/README.md`.** A *named* candidate
+  (Blue Letter Bible "Chronological Plan", Nathan Gammie) exists, but every second source for it is a
+  verbatim re-host of BLB's own PDF (the re-mirror trap = ONE witness); the only other wide lineage
+  ("2020/Bible Study Tools") is anonymous/untraceable AND **genuinely disagrees** with BLB on real
+  editorial choices (Day 104 Psalm 91; Day 121/150/200/209 verse splits — cross-confirmed from the live
+  PDFs) — so neither witnesses the other. The contested ordering IS the IP; two disagreeing "chronological"
+  sources are NOT second-source verification. No chronological asset/registry-entry/script/gate/CI-job was
+  created; the FOUR data gates stay UNCHANGED (BC plan 11, McheynePlanVerificationTest 10,
+  BibleTextVerificationTest 18, BibleDatabaseRoomOpenTest 5). **Track 2 — hardening (landed):** merged
+  RELEASE manifest carries **NO INTERNET / zero new permissions** (the 6 perms are pre-alt Glance/
+  WorkManager/reminder merges; offline identity holds); `bundleRelease` clean = **8.12 MB AAB** (< the
+  12 MB CI ceiling; both plan assets packaged — BC 168 KB / M'Cheyne 199 KB uncompressed, ~8–9 KB gzipped
+  each); StrictMode/off-main review of the NEW plan-load paths = CLEAN (multi-plan changed only the asset
+  PATH, not the threading — the day-screen load runs inside a `combine` over a Room Flow = Room's
+  background dispatcher; the settings plan-name + active-descriptor loads run inside a `.map` over a
+  DataStore Flow = IO; only the ACTIVE plan's asset is parsed, per-plan single-flight under a mutex, so the
+  default user never parses M'Cheyne — cold-start budget unchanged); a11y gate **8/8** (incl. the
+  `plan-dropdown` ≥48dp + spoken pin); full pipeline green (**710 tests, 0 failures**), Kover **95.9%** on
+  domain/data. **Recommended release version: 1.5.0 / 10500** (MINOR bump per D-S9-3 — a significant
+  feature; NOT applied — main session/owner bumps + tags + deploys; current 1.4.3/10403). whatsnew draft
+  updated for the alt-schedules feature. **The full alt-schedules strings tone-sign-off table** (M'Cheyne
+  stream titles "Family — Old Testament"/"Family — Gospels"/"Secret — Psalms & Prophets"/"Secret —
+  Epistles"; plan name "M'Cheyne"; the selector + switch-dialog copy) and the **consolidated owner device-
+  pass checklist** (N=4 day cards one-screen-fit WITH the bottom bar; stats one-screen-fit + 4 strips/
+  legend/a11y at N=4; widget tiers at N=4 every size; the live switch on glass; the widget snapping to
+  M'Cheyne; a real migrated-history upgrade) are in the handoff. **Blocking the release:** the owner's
+  device pass + the string/tone sign-offs, then the 1.5.0/10500 bump + closed-track tag-to-Play rollout.
+  Handoff: [docs/sprints/sprint-alt-E-chronological-hardening-release.md](docs/sprints/sprint-alt-E-chronological-hardening-release.md).
+- Next up: **alt-schedules release cut** — owner runs the consolidated device pass + the string/tone
+  sign-offs from the Alt Sprint E handoff; the main session applies the **1.5.0/10500** bump and the
+  closed-track tag-to-Play rollout. The alternate-schedules epic (BACKLOG #3) is DONE — two gate-verified
+  plans; chronological is recorded NO-GO. (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

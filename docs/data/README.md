@@ -369,3 +369,89 @@ re-run reproduces the corrected data.
   a dropped window, a 4th-stream day reduced to 3, and a coverage double-count each red the gate.
 - The `mcheyne-rebuild` CI job re-fetches the two pinned sources (SHA-verified), re-derives both files,
   and asserts a byte-diff of zero — a hand-edited M'Cheyne asset can never reach a release.
+
+---
+
+# Chronological plan — sourcing investigation (Alternate-Schedules Sprint E) — **NO-GO (do not ship)**
+
+The third candidate curated plan was a **named, date-anchored, single-stream one-year chronological
+plan** — the proof of the N=1 end of the multi-plan generalization. Per the project's two-independent-
+source discipline (FR-ALT-3, D-ALT-21) a plan ships ONLY if a *specific, named* published ordering has
+a **genuinely independent second witness that agrees day-by-day**. Sprint E's sourcing investigation
+found that **no chronological ordering meets this bar**, so chronological is declared **NO-GO and is
+NOT shipped**. The multi-plan feature ships complete and valuable with **two** gate-verified plans
+(Bible Companion + M'Cheyne). A do-not-ship with a clear, recorded reason is the correct outcome of the
+honesty gate (D-ALT-21), not a failure.
+
+## Why NO-GO — the contested-ordering / re-mirror dilemma
+
+A chronological ordering **is the IP**, and different publishers legitimately DISAGREE on it (where Job
+sits relative to Genesis, how the Psalms interleave with Samuel/Kings, whether a long chapter is split
+by verse). Two "chronological" sources from two publishers disagreeing is a **real editorial difference,
+not a typo to reconcile** — so it is *not* second-source verification, it is two different plans. The
+investigation hit both horns of the dilemma:
+
+1. **The Blue Letter Bible "Chronological Plan"** (Nathan Gammie, blueletterbible.org, the natural
+   canonical candidate — BLB is already the app's flagship reading destination). It is a specific,
+   named, published, date-anchored 365-day plan (verified: Day 1 = Genesis 1-3 … Day 365 = Revelation
+   19-22; full text extracted from the official PDF). **But every second source I could find for it is a
+   verbatim re-host of BLB's own PDF** (Scribd, church bulletins) — the **re-mirror trap** (the exact
+   Sprint-1 pricejh==christadelphia and the M'Cheyne Haslam→Edgington lesson). One lineage re-hosted is
+   **one witness**, never two. No genuinely independent re-derivation of the BLB ordering exists.
+
+2. **The widely-copied "2020 / Bible Study Tools" chronological lineage** (biblestudytools.com +
+   numerous church PDFs, e.g. crossroadsbaptistbeggs.org "2020 CHRONOLOGICAL BIBLE READING PLAN",
+   different authors/sites). These re-hosts agree with EACH OTHER, but (a) the lineage is **anonymous
+   and untraceable** — the search could not establish a single named original publisher (unlike Robert
+   Roberts' Bible Companion or M'Cheyne's 1842 calendar, which are *named, citable* IP), so there is no
+   canonical source to ship as the authority; and (b) the multiple agreeing copies are themselves a
+   **re-mirror set** of one propagated standard, not independent derivations.
+
+3. **Critically, lineages (1) and (2) genuinely DISAGREE** — proving they are two DIFFERENT plans, so
+   neither can witness the other. Cross-confirmed divergences (BLB PDF vs. the BST/2020 lineage, each
+   verified from at least two independent fetches):
+
+   | Day | BLB (Nathan Gammie / blueletterbible.org) | "2020 / Bible Study Tools" lineage | Nature of difference |
+   |---|---|---|---|
+   | 104 | 1 Samuel 21-24; **Psalm 91** | 1 Samuel 21-24 (no Psalm 91) | editorial: which Psalm sits with David's flight |
+   | 121 | 2 Samuel 5; 1 Chronicles 11-12 | 2 Samuel **5:1-10** (verse-split across days) | granularity: whole chapter vs. verse split |
+   | 150 | **Psalm 119** (whole) | Psalm **119:1-88** (split into two days) | granularity: long chapter split by verse |
+   | 200 | 2 Kings 18; 2 Chron 29-31; Psalm 48 | 2 Kings **18:1-8**; 2 Chron 29-31; Psalm 48 | verse split |
+   | 209 | 2 Kings 19; Psalms 46, 80, 135 | 2 Kings **18:9-37; 19:1-37**; Psalms 46, 80, 135 | verse split |
+
+   (Other named plans confirm the contestation is structural, not noise: Guthrie/CSB "Reader's Guide to
+   the Bible" interleaves the NT from Day 2; Tyndale's *NLT One Year Chronological Bible* is its own
+   distinct ordering; the Bible Project, Heartlight, and Billy Graham chronological plans each differ.)
+
+## The decision rule applied (D-ALT-21, the honesty gate)
+
+> Ship a *specific, named, date-anchored* chronological plan with a verifiable independent second
+> witness, OR do not ship that plan. Do not fabricate an ordering; do not ship a single-source
+> unverified plan; a contested second "chronological" source that DISagrees is NOT a witness.
+
+No candidate satisfied the rule: BLB has only re-mirror witnesses; the BST/2020 lineage is anonymous +
+self-re-mirrored; the two top candidates disagree on real editorial choices. **Verdict: NO-GO.** No
+`assets/plans/chronological/` asset, no `registry.json` entry, no `tools/build_chronological_*.py`, no
+`ChronologicalPlanVerificationTest`, and no `chronological-rebuild` CI job were created. The four
+standing data gates are unchanged (BC plan 11, McheynePlanVerificationTest 10, BibleTextVerificationTest
+18, BibleDatabaseRoomOpenTest 5).
+
+## Sources consulted (for the record; no asset built from any of them)
+
+| Role | Source | URL |
+|---|---|---|
+| BLB chronological (named, but only re-mirror witnesses) | Blue Letter Bible "Daily Bible Reading Program — Chronological Plan" (PDF; Author: Nathan Gammie, 2024) | https://www.blueletterbible.org/assets/pdf/dbrp/1Yr_ChronologicalPlan.pdf |
+| "2020 / BST" lineage (anonymous, self-re-mirrored, DISagrees with BLB) | biblestudytools.com chronological plan | https://www.biblestudytools.com/bible-reading-plan/chronological.html |
+| Same lineage, different host/author (a re-mirror, confirms the lineage agrees with itself but not BLB) | crossroadsbaptistbeggs.org "2020 Chronological Bible Reading Plan" (PDF; Author: "Justin") | https://www.crossroadsbaptistbeggs.org/hp_wordpress/wp-content/uploads/2020/01/2020-Bible-Reading-Plan-Chronological.pdf |
+| Distinct named plan (confirms contestation) | Guthrie/CSB "Reader's Guide to the Bible: A Chronological Reading Plan" | https://csbible.com/wp-content/uploads/2018/12/GuthrieChronologicalReadingPlan.pdf |
+| Distinct named plan (confirms contestation) | Tyndale *NLT One Year Chronological Bible* | (print; ISBN 978-1496456854) |
+
+## If chronological is ever revisited (future work, NOT this release)
+
+A genuine GO would require ONE of: (a) a publisher's chronological table that **explicitly publishes**
+its day-by-day ordering AND has a second house independently transcribe/derive the same ordering and
+agree (e.g. an academic chronological harmonization with a corroborating independent edition); or (b)
+the owner *designates* a single named plan (e.g. BLB's) as canonical and accepts a **rigorous
+single-source structural gate** (whole-Bible coverage, every chapter exactly once, the publisher's
+order pinned) IN PLACE OF a second-witness day-by-day gate — a deliberate, owner-signed relaxation of
+FR-ALT-3 for this one plan, recorded as an accepted risk. Until then: NO-GO.
