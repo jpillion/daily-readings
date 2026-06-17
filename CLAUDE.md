@@ -1295,8 +1295,19 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   GitHub is forcing to Node 24 from 2026-06-16** — the 1.5.0 run warned. Bump the action versions
   before the next release so a future tag-to-Play doesn't break (Jordan/devops). A branch
   `ci/actions-node24-bump` (commit `3753b08`, local) has this bump; PR pending owner review.
-- Next up: **owner device pass + string sign-offs on 1.5.0** (closed track), then promote 1.5.0 toward
-  wider release when satisfied. (V2.x release prep remains queued, owner-scheduled independently.)
+- ✅ **Release 1.5.1 / 10501 SHIPPED to the Play alpha/closed-testing track** (`2026-06-17`; tag `v1.5.1`
+  → commit `fa5e68f`; `release.yml` green in 5m35s, run 27673141482 — upload-key-signed AAB **7.75 MiB**
+  < 12 MB, no INTERNET, 735 tests). PATCH bump per the owner's explicit request (chronological is
+  feature-ish but the owner chose 1.5.1). **Ships since 1.5.0:** the **Chronological plan** (Alt Sprint F),
+  the M'Cheyne "Personal" rename, the N-stream one-screen-fit, and the always-visible external-app
+  setting. Ran on the existing Node-20 workflows (still functioning despite the deprecation; the Node24
+  bump stays on its unmerged branch). whatsnew refreshed (Chronological headline). Still owner-side
+  (non-blocking, patchable): a device pass on 1.5.x + the accumulated string/tone sign-offs (M'Cheyne
+  titles, the chronological plan name, the 5 caption strings, the external-app help caption).
+- Next up: **owner device pass + string/tone sign-offs on 1.5.1** (alpha track) — incl. the new
+  Chronological plan's N=1 look (day card / stats / widget) and the live switch to it on glass — then
+  promote toward wider release when satisfied. The Node24 CI bump (`ci/actions-node24-bump`) PR awaits
+  owner review. (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
