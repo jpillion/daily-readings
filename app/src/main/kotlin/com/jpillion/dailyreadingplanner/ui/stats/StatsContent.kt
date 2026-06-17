@@ -255,7 +255,8 @@ private fun StreamGroup(
     // header row cost ~36dp (deliberate removal, pinned by absence in StatsContentTest).
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        // One-screen-fit trim (owner): stream-group gap 10→8dp.
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // D-ALT-9/22: one row per ACTIVE-plan stream (in descriptor order), keyed by stream
         // number; the title is plan data from the descriptor, the denominator is an instance field.
@@ -299,7 +300,8 @@ private fun StreamGroup(
                     states = states,
                     todayIndex = strips.todayIndex,
                     colors = colors,
-                    height = 10.dp,
+                    // One-screen-fit trim (owner): per-stream strip height 10→8dp.
+                    height = 8.dp,
                     modifier =
                         Modifier
                             .testTag("strip-stream-${stream.number}")

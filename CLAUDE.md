@@ -1230,10 +1230,30 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   the four data/Room gates UNTOUCHED (BC plan 11, M'Cheyne 10, BibleText 18, RoomOpen 5). **Docs
   deliberately retain "Secret"** for source-material provenance (M'Cheyne's own historical Family/Secret
   column naming, Matt 6:6) — only the user-facing *display* changed. Ships in the next patch (no bump yet).
+- ✅ **One-screen-fit fix for N-stream plans (owner feedback, `2026-06-16`, for the next patch):**
+  the 4-stream M'Cheyne main screen had BOTH panes scrolling — Priya's analysis found the real cause is
+  the 4th reading card + 4th stats row/strip pushing ~70dp over budget on a P7P, compounded by the V3
+  ~80dp bottom nav bar that the S16/S18 one-screen tuning never subtracted. **Owner picked: relocate the
+  per-card destination hint to ONE list-level caption + small trims, applied CONSISTENTLY to all plans
+  (no stream-count-conditional layout — keeps Sprint C's parameterized-not-forked discipline).** Changes
+  (Priya impl, Riley verified): the per-card "Opens … in [app]" hint (5 `%1$s` `reading_open_hint_*`
+  strings) is GONE from each `ReadingCard`; one reactive caption below the list ("Tap a reading to open
+  it in this app" / "…on Blue Letter Bible" / "…in MySword"; 5 new `reading_list_hint_*` strings; tag
+  `reading-list-hint`; the `readingOpenHintRes`→`readingListHintRes(mode, externalApp)` single-home
+  mapping). Card vertical padding 8→6dp; stats strip height 10→8dp + stream-group gap 10→8dp
+  (`StatsContent.kt`, unconditional). Reclaims ~60dp on the N=4 readings column (~52dp at N=3, which
+  gains slack — no regression); readings stop scrolling at N=4, stats fits clean at the default
+  streaks-off (streaks-on N=4 keeps a small internal scroll, the 45% cap's job). 720 tests (net +1; the
+  four data/Room gates UNTOUCHED — plan 11, M'Cheyne 10, BibleText 18, RoomOpen 5), a11y gate 8/8,
+  StatsContent 11, full pipeline green, Kover 95.0%/96.0% on domain/data, **3 mutations killed**
+  (IN_APP-ignores-external caption, MySword "in" preposition, caption-present branch). 5 new caption
+  strings await owner tone sign-off. **Device-pass:** the actual one-screen fit at default + large font,
+  and the 8dp strip look — neither JVM-provable.
 - ⚠️ **CI follow-up (non-blocking):** the `release.yml`/`ci.yml` actions (`actions/checkout@v4`,
   `setup-java@v4`, `upload-artifact@v4`, `gradle/actions/setup-gradle@v4`) run on **Node 20, which
   GitHub is forcing to Node 24 from 2026-06-16** — the 1.5.0 run warned. Bump the action versions
-  before the next release so a future tag-to-Play doesn't break (Jordan/devops).
+  before the next release so a future tag-to-Play doesn't break (Jordan/devops). A branch
+  `ci/actions-node24-bump` (commit `3753b08`, local) has this bump; PR pending owner review.
 - Next up: **owner device pass + string sign-offs on 1.5.0** (closed track), then promote 1.5.0 toward
   wider release when satisfied. (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan

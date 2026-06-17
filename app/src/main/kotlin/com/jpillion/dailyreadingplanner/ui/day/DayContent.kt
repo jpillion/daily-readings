@@ -100,10 +100,20 @@ private fun ScheduledContent(
                 reading = reading,
                 onToggleReading = onToggleReading,
                 onReadingTapped = onReadingTapped,
-                destinationMode = destinationMode,
-                externalApp = externalApp,
             )
         }
+        // One list-level caption replaces the per-card hint (owner: one-screen-fit). Because it
+        // is list-level it cannot name a specific reading, so it uses NEW wording (no reference
+        // substitution): "Tap a reading to open it …". It still reflects the user's effective
+        // destination reactively (in-app vs the chosen external app), via the same single-home
+        // preposition mapping the day-tile used (readingListHintRes). Placed BELOW the list so the
+        // readings lead and the caption reads as a quiet footnote. One supplementary bodySmall node.
+        Text(
+            text = stringResource(readingListHintRes(destinationMode, externalApp)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("reading-list-hint"),
+        )
     }
 }
 
@@ -112,8 +122,6 @@ private fun ReadingCard(
     reading: ReadingStatus,
     onToggleReading: (ReadingStatus) -> Unit,
     onReadingTapped: (Portion) -> Unit,
-    destinationMode: ReadingDestinationMode,
-    externalApp: ExternalBibleApp,
 ) {
     val portion = reading.portion
     val referenceText = ReadingFormatter.format(portion)
@@ -137,7 +145,9 @@ private fun ReadingCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    // Vertical padding 8→6dp (owner: one-screen-fit). The per-card hint moved to a
+                    // single list-level caption, so the card is stream-title + reference + checkbox.
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -153,11 +163,6 @@ private fun ReadingCard(
                 Text(
                     text = referenceText,
                     style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = stringResource(readingOpenHintRes(destinationMode, externalApp), referenceText),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Checkbox(
@@ -224,10 +229,11 @@ private fun LoadFailedContent(onRetry: () -> Unit) {
 }
 
 /**
- * The reading-tile hint string for the user's effective reading destination (Sprint K, D-23-1):
- * the small supplementary line under each reading reflects where a tap will go, with a natural
- * preposition per destination ("…in this app", "…on Blue Letter Bible", "…in MySword"). `%1$s`
- * is the reference text, e.g. "Genesis 1–2".
+ * The list-level reading hint for the user's effective reading destination: ONE caption below the
+ * day's readings reflecting where a tap will go, with a natural preposition per destination
+ * ("…in this app", "…on Blue Letter Bible", "…in MySword"). Unlike the retired per-card hint this
+ * cannot name a specific reading (it is list-level), so it carries NO `%1$s` reference and uses
+ * "Tap a reading to open it …" wording.
  *
  * This is the SINGLE home of the destination → hint mapping (no second enum). The hint follows the
  * stored setting only: in-app mode reads "…in this app"; in external mode, if MYSWORD is selected
@@ -235,19 +241,19 @@ private fun LoadFailedContent(onRetry: () -> Unit) {
  * — the hint mirrors the *setting*, not the install-aware tap-time resolution.
  */
 @StringRes
-internal fun readingOpenHintRes(
+internal fun readingListHintRes(
     mode: ReadingDestinationMode,
     externalApp: ExternalBibleApp,
 ): Int =
     when (mode) {
         // In-app mode ignores the remembered external app: the tap reads in the app.
-        ReadingDestinationMode.IN_APP -> R.string.reading_open_hint_inapp
+        ReadingDestinationMode.IN_APP -> R.string.reading_list_hint_inapp
         ReadingDestinationMode.EXTERNAL ->
             when (externalApp) {
-                ExternalBibleApp.BLB -> R.string.reading_open_hint_blb
-                ExternalBibleApp.BIBLE_GATEWAY -> R.string.reading_open_hint_gateway
-                ExternalBibleApp.YOUVERSION -> R.string.reading_open_hint_youversion
-                ExternalBibleApp.MYSWORD -> R.string.reading_open_hint_mysword
+                ExternalBibleApp.BLB -> R.string.reading_list_hint_blb
+                ExternalBibleApp.BIBLE_GATEWAY -> R.string.reading_list_hint_gateway
+                ExternalBibleApp.YOUVERSION -> R.string.reading_list_hint_youversion
+                ExternalBibleApp.MYSWORD -> R.string.reading_list_hint_mysword
             }
     }
 
@@ -257,8 +263,8 @@ internal fun readingOpenHintRes(
  * "…on YouVersion" / "…in MySword". `%1$s` is the external app display name
  * ([externalBibleAppNameRes]).
  *
- * This lives next to [readingOpenHintRes] ON PURPOSE: the two hint surfaces (the Schedule day-tile
- * and the reader footer) share ONE home so their per-provider prepositions can never drift. The
+ * This lives next to [readingListHintRes] ON PURPOSE: the two hint surfaces (the Schedule list
+ * caption and the reader footer) share ONE home so their per-provider prepositions can never drift. The
  * reader hint is the external-app axis ALONE — it reflects the chosen external app *regardless of*
  * the [ReadingDestinationMode], because it is most useful precisely when the user reads IN_APP
  * (the read-here / study-there bridge). There is therefore no in-app branch here.

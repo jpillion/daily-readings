@@ -1,7 +1,10 @@
 package com.jpillion.dailyreadingplanner.ui.day
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -141,57 +144,99 @@ class DayContentTest {
         assertThat(retries).isEqualTo(1)
     }
 
-    // Sprint K (D-23-1): the per-tile hint reflects the EFFECTIVE destination — the in-app reader
-    // for in-app mode, otherwise the chosen external app, with a natural preposition. Expectations are
-    // LITERAL strings (never computed from the production mapping) so a wrong destination -> hint
-    // mapping reddens exactly the offending pin.
+    // The list-level destination caption (owner one-screen-fit: the per-card hint was retired and
+    // replaced by ONE caption below the day's readings, testTag "reading-list-hint"). It reflects the
+    // EFFECTIVE destination reactively — the in-app reader for in-app mode, otherwise the chosen
+    // external app, with a natural preposition — and carries NO reference substitution (it is
+    // list-level, can't name a specific reading). Expectations resolve the string through the resource
+    // (so the resource is proven wired) AND are pinned LITERALLY, so a wrong destination -> hint
+    // mapping reddens exactly the offending pin. The node is asserted by tag (one per list) and by text.
+
+    /** Resolve the caption through the resource, mirroring the prod mapping for the assert-by-tag path. */
+    private fun listHint(
+        mode: ReadingDestinationMode,
+        app: ExternalBibleApp,
+    ): String {
+        val ctx =
+            androidx.test.core.app.ApplicationProvider
+                .getApplicationContext<android.content.Context>()
+        return ctx.getString(readingListHintRes(mode, app))
+    }
+
     @Test
-    fun blbApp_hintReadsOnBlueLetterBible() {
+    fun externalBlb_listHintReadsOnBlueLetterBible() {
         setContent(scheduled(), destinationMode = ReadingDestinationMode.EXTERNAL, externalApp = ExternalBibleApp.BLB)
-        composeRule.onNodeWithText("Opens Genesis 1–2 on Blue Letter Bible").assertIsDisplayed()
+        // Resource is wired (resolve == literal) AND the caption node renders that exact text.
+        assertThat(listHint(ReadingDestinationMode.EXTERNAL, ExternalBibleApp.BLB))
+            .isEqualTo("Tap a reading to open it on Blue Letter Bible")
+        composeRule.onNodeWithTag("reading-list-hint").assertTextEquals("Tap a reading to open it on Blue Letter Bible")
+        composeRule.onNodeWithText("Tap a reading to open it on Blue Letter Bible").assertIsDisplayed()
     }
 
     @Test
-    fun inAppMode_hintReadsInThisApp() {
-        // MUTATION (reader-hint provider mapping): in-app MODE reads "in this app" regardless of the
-        // remembered external app — here MySword is stored but the hint must ignore it. A mutation
-        // that maps in-app mode to an external hint reddens here.
+    fun inAppMode_listHintReadsInThisApp_ignoringStoredExternalApp() {
+        // MUTATION-PIN (IN_APP ignores the external axis): in-app MODE reads "in this app" regardless
+        // of the remembered external app — here MySword is stored but the caption must ignore it. A
+        // mutation that maps IN_APP to an external-app string reddens here.
         setContent(scheduled(), destinationMode = ReadingDestinationMode.IN_APP, externalApp = ExternalBibleApp.MYSWORD)
-        composeRule.onNodeWithText("Opens Genesis 1–2 in this app").assertIsDisplayed()
-        composeRule.onNodeWithText("Opens Genesis 1–2 on Blue Letter Bible").assertDoesNotExist()
-        composeRule.onNodeWithText("Opens Genesis 1–2 in MySword").assertDoesNotExist()
+        assertThat(listHint(ReadingDestinationMode.IN_APP, ExternalBibleApp.MYSWORD))
+            .isEqualTo("Tap a reading to open it in this app")
+        composeRule.onNodeWithTag("reading-list-hint").assertTextEquals("Tap a reading to open it in this app")
+        composeRule.onNodeWithText("Tap a reading to open it on Blue Letter Bible").assertDoesNotExist()
+        composeRule.onNodeWithText("Tap a reading to open it in MySword").assertDoesNotExist()
     }
 
     @Test
-    fun bibleGatewayApp_hintReadsOnBibleGateway() {
+    fun externalGateway_listHintReadsOnBibleGateway() {
         setContent(
             scheduled(),
             destinationMode = ReadingDestinationMode.EXTERNAL,
             externalApp = ExternalBibleApp.BIBLE_GATEWAY,
         )
-        composeRule.onNodeWithText("Opens Genesis 1–2 on Bible Gateway").assertIsDisplayed()
+        assertThat(listHint(ReadingDestinationMode.EXTERNAL, ExternalBibleApp.BIBLE_GATEWAY))
+            .isEqualTo("Tap a reading to open it on Bible Gateway")
+        composeRule.onNodeWithText("Tap a reading to open it on Bible Gateway").assertIsDisplayed()
     }
 
     @Test
-    fun youVersionApp_hintReadsOnYouVersion() {
+    fun externalYouVersion_listHintReadsOnYouVersion() {
         setContent(
             scheduled(),
             destinationMode = ReadingDestinationMode.EXTERNAL,
             externalApp = ExternalBibleApp.YOUVERSION,
         )
-        composeRule.onNodeWithText("Opens Genesis 1–2 on YouVersion").assertIsDisplayed()
+        assertThat(listHint(ReadingDestinationMode.EXTERNAL, ExternalBibleApp.YOUVERSION))
+            .isEqualTo("Tap a reading to open it on YouVersion")
+        composeRule.onNodeWithText("Tap a reading to open it on YouVersion").assertIsDisplayed()
     }
 
     @Test
-    fun mySwordApp_hintReadsInMySword() {
-        // The hint mirrors the *setting*, not install-aware tap-time resolution: even when MySword
-        // isn't installed (tap falls back to BLB), the selected external-app hint still reads MySword.
+    fun externalMySword_listHintReadsInMySword_withInPreposition() {
+        // MUTATION-PIN (MySword "in" preposition distinct from the "on …" providers): the caption
+        // mirrors the *setting*, not install-aware tap-time resolution — even when MySword isn't
+        // installed (tap falls back to BLB), the selected external-app hint still reads "in MySword".
         setContent(
             scheduled(),
             destinationMode = ReadingDestinationMode.EXTERNAL,
             externalApp = ExternalBibleApp.MYSWORD,
         )
-        composeRule.onNodeWithText("Opens Genesis 1–2 in MySword").assertIsDisplayed()
+        assertThat(listHint(ReadingDestinationMode.EXTERNAL, ExternalBibleApp.MYSWORD))
+            .isEqualTo("Tap a reading to open it in MySword")
+        composeRule.onNodeWithTag("reading-list-hint").assertTextEquals("Tap a reading to open it in MySword")
+        // Distinguishes the MySword "in" preposition from the "on …" external providers.
+        composeRule.onNodeWithText("Tap a reading to open it on MySword").assertDoesNotExist()
+    }
+
+    @Test
+    fun listHint_isSingleCaption_andNoPerCardHintRemains() {
+        // T4 step 2: exactly ONE list-level caption renders (not one per card), and the retired
+        // per-card hint (with its "%1$s" reference substitution, e.g. "Opens Genesis 1–2 …") is GONE.
+        // A regression re-adding a per-card hint, or rendering the caption per card, reddens here.
+        setContent(scheduled(), destinationMode = ReadingDestinationMode.EXTERNAL, externalApp = ExternalBibleApp.BLB)
+        composeRule.onAllNodesWithTag("reading-list-hint").assertCountEquals(1)
+        // The old per-card, reference-substituted hint must not appear on any card.
+        composeRule.onNodeWithText("Opens Genesis 1–2 on Blue Letter Bible").assertDoesNotExist()
+        composeRule.onNodeWithText("Opens Genesis 1–2 in this app").assertDoesNotExist()
     }
 
     // --- SC-T10 (D-ALT-9/22/23): the card surface renders the active plan's ACTUAL stream count ---

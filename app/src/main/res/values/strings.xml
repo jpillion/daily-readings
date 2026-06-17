@@ -5,13 +5,15 @@
     <string name="jump_to_today">Today</string>
     <string name="open_date_picker">Pick a date</string>
     <string name="date_picker_cancel">Cancel</string>
-    <!-- Reading-tile hint, per "Open readings in" provider (S-? owner fix). %1$s = the
-         reference text, e.g. "Genesis 1–2". One per BibleProvider; mapped in DayContent. -->
-    <string name="reading_open_hint_inapp">Opens %1$s in this app</string>
-    <string name="reading_open_hint_blb">Opens %1$s on Blue Letter Bible</string>
-    <string name="reading_open_hint_gateway">Opens %1$s on Bible Gateway</string>
-    <string name="reading_open_hint_youversion">Opens %1$s on YouVersion</string>
-    <string name="reading_open_hint_mysword">Opens %1$s in MySword</string>
+    <!-- List-level reading hint, ONE caption below the day's readings, per "Open readings in"
+         destination (owner one-screen-fit fix — replaces the per-card reading_open_hint_* set).
+         No reference substitution (it's list-level, can't name a specific reading); per-
+         destination preposition mirrors the readingOpenHintRes idiom, now readingListHintRes. -->
+    <string name="reading_list_hint_inapp">Tap a reading to open it in this app</string>
+    <string name="reading_list_hint_blb">Tap a reading to open it on Blue Letter Bible</string>
+    <string name="reading_list_hint_gateway">Tap a reading to open it on Bible Gateway</string>
+    <string name="reading_list_hint_youversion">Tap a reading to open it on YouVersion</string>
+    <string name="reading_list_hint_mysword">Tap a reading to open it in MySword</string>
     <string name="reading_toggle_description">Mark %1$s as read</string>
     <string name="mark_whole_day_done">Mark whole day done</string>
     <string name="unmark_whole_day">Unmark whole day</string>
@@ -147,7 +149,7 @@
     <!-- V3 Sprint K (reader footer hint): an always-shown italic footer at the END of the
          reading pane keying the verse-tap-out to the user's chosen external Bible app
          (read-here / study-there bridge). %1$s = the external app display name. Per-provider
-         preposition mirrors the day-tile reading_open_hint_* set; mapped in DayContent
+         preposition mirrors the list-caption reading_list_hint_* set; mapped in DayContent
          (readerVerseTapHintRes) so the two surfaces can't drift. Strings await owner tone sign-off. -->
     <string name="reader_verse_tap_hint_blb">Tap a verse to open it on %1$s</string>
     <string name="reader_verse_tap_hint_gateway">Tap a verse to open it on %1$s</string>
