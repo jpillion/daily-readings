@@ -90,8 +90,8 @@ fun ReaderScreen(
             TopAppBar(
                 title = {
                     // Owner request (Priya): the pencil (open the book/chapter picker) sits in the
-                    // title slot, INLINE and to the LEFT of the chapter heading. The version control
-                    // lives on the right (actions). The pencil keeps the prior reader-open-picker tag
+                    // title slot, INLINE and to the RIGHT of the chapter heading. The version control
+                    // lives further right (actions). The pencil keeps the prior reader-open-picker tag
                     // + onOpenPicker callback (the a11y gate pins that tag at a 48dp target).
                     val title = (stateForPage(pagerState.currentPage) as? ReaderUiState.Content)?.title.orEmpty()
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -267,9 +267,10 @@ private fun VerseItem(
  * study-there bridge), and it updates reactively when the app is changed in Settings (the value
  * flows from [ReaderViewModel.externalApp]).
  *
- * Placement: a [LazyColumn] item, NOT the [ReaderAudioSlot] bottom bar (that stays reserved for V4
- * audio). Start-aligned under the 20dp horizontal content padding; ~24dp top padding separates it
- * from the final verse so it reads as a footer, ~16dp bottom gives breathing room.
+ * Placement: pinned below the pager (NOT a [LazyColumn] item, and NOT the [ReaderAudioSlot] bottom
+ * bar — that stays reserved for V4 audio), so it stays visible while reading and does not scroll with
+ * the verses or swipe with chapters. Start-aligned under the 20dp horizontal padding to match the
+ * verse text above; tight 6dp vertical padding (owner — don't waste space).
  *
  * A11y (NFR-V3-C): [Modifier.clearAndSetSemantics] removes it from TalkBack — every verse already
  * speaks "Open <Book> <ch:verse>…" which carries the affordance, so a second vague restatement is
