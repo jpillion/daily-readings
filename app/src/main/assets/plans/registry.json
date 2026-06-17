@@ -9,6 +9,10 @@
   {
    "id": "mcheyne",
    "asset": "plans/mcheyne/plan.json"
+  },
+  {
+   "id": "chronological",
+   "asset": "plans/chronological/plan.json"
   }
  ]
 }

@@ -181,3 +181,46 @@ jobs:
           cmp /tmp/committed_fixture.json app/src/test/resources/plans/mcheyne/plan_verify.json \
             && echo "mcheyne/plan_verify.json (TGC second source) reproduced byte-identically." \
             || (echo "FIXTURE DRIFT: committed plan_verify.json does not match a fresh rebuild." && exit 1)
+
+  chronological-rebuild:
+    name: Chronological plan asset rebuild (deterministic, byte-diff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install poppler (pdftotext)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      # CHR-4 — re-derive plans/chronological/plan.json from the SHA-PINNED designated single source
+      # (Blue Letter Bible "Chronological Plan", Nathan Gammie) and assert a byte-diff of ZERO against
+      # the committed asset, so a hand-edited chronological plan can never sneak past the commit
+      # (mirrors the bible.db / M'Cheyne data-rebuild discipline). The single source's SHA-256 is
+      # verified (the owner-signed single-source structural gate, D-ALT-24). There is NO second-source
+      # fixture for this plan — that is the recorded FR-ALT-3 relaxation (docs/data/README.md).
+      - name: Fetch the pinned Chronological source
+        run: |
+          mkdir -p /tmp/chrsrc
+          curl -sL --retry 3 -A "Mozilla/5.0" -o /tmp/chrsrc/chronological.pdf \
+            "https://www.blueletterbible.org/assets/pdf/dbrp/1Yr_ChronologicalPlan.pdf"
+
+      - name: Verify source checksum (single-source gate, D-ALT-24)
+        run: |
+          echo "b055f5f4a14d86fb876237937478374de7c6811cdb70f951dc178dbd09e7fe54  /tmp/chrsrc/chronological.pdf" | sha256sum -c -
+
+      - name: Re-derive the Chronological asset
+        run: |
+          cp app/src/main/assets/plans/chronological/plan.json /tmp/committed_chronological.json
+          python3 tools/build_chronological_plan.py /tmp/chrsrc/chronological.pdf
+
+      - name: Assert byte-diff of zero vs the committed asset
+        run: |
+          cmp /tmp/committed_chronological.json app/src/main/assets/plans/chronological/plan.json \
+            && echo "chronological/plan.json reproduced byte-identically from the pinned source." \
+            || (echo "ASSET DRIFT: committed chronological/plan.json does not match a fresh rebuild." && exit 1)

@@ -27,13 +27,17 @@ class PlanRegistryTest {
         }
 
     @Test
-    fun `the registry enumerates bible_companion and mcheyne with their asset paths`() =
+    fun `the registry enumerates bible_companion, mcheyne and chronological with their asset paths`() =
         runTest {
             val plans = registry().plans()
-            assertThat(plans.map { it.id }).containsExactly("bible_companion", "mcheyne").inOrder()
+            assertThat(plans.map { it.id })
+                .containsExactly("bible_companion", "mcheyne", "chronological")
+                .inOrder()
             assertThat(plans.first { it.id == "bible_companion" }.asset)
                 .isEqualTo("plans/bible_companion/plan.json")
             assertThat(plans.first { it.id == "mcheyne" }.asset).isEqualTo("plans/mcheyne/plan.json")
+            assertThat(plans.first { it.id == "chronological" }.asset)
+                .isEqualTo("plans/chronological/plan.json")
         }
 
     @Test

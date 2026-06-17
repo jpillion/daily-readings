@@ -95,6 +95,41 @@ class WidgetContentTest {
         }
 
     @Test
+    fun `CHR-5 single-stream N=1 plan renders exactly one reading row with no stream title`() =
+        runGlanceAppWidgetUnitTest {
+            // The chronological plan is N=1: the use case emits ONE ReadingStatus with streamTitle = null
+            // (D-ALT-22/23). The widget must render exactly one reading row and the reference, with no
+            // "which stream" label — the same generalized path Sprint C/D wired, exercised at N=1.
+            val n1 =
+                TodayWidgetState.Loaded(
+                    DayReadings.Scheduled(
+                        date = today,
+                        readings =
+                            listOf(
+                                ReadingStatus(
+                                    portion(1, "Genesis" to 1, "Genesis" to 2, "Genesis" to 3),
+                                    isRead = false,
+                                    streamTitle = null,
+                                ),
+                            ),
+                        dayComplete = false,
+                    ),
+                )
+            setContext(ApplicationProvider.getApplicationContext())
+            provideComposable { WidgetContent(n1) }
+
+            // Exactly one reading row, unread, no completion badge.
+            onAllNodes(hasTestTag("widget-mark-unread")).assertCountEquals(1)
+            onAllNodes(hasTestTag("widget-mark-read")).assertCountEquals(0)
+            onAllNodes(hasTestTag("widget-day-complete")).assertCountEquals(0)
+            // The reference renders; none of the BC stream titles leak into the single-stream view.
+            onNode(hasText("Genesis 1–3")).assertExists()
+            onNode(hasText("Law & History")).assertDoesNotExist()
+            onNode(hasText("Psalms & Prophecy")).assertDoesNotExist()
+            onNode(hasText("New Testament")).assertDoesNotExist()
+        }
+
+    @Test
     fun `multi-book portion renders both books in one row`() =
         runGlanceAppWidgetUnitTest {
             // Jun 19 / Dec 19: 2 John + 3 John are ONE portion — never assume one book.

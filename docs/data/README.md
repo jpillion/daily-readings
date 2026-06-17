@@ -372,16 +372,30 @@ re-run reproduces the corrected data.
 
 ---
 
-# Chronological plan — sourcing investigation (Alternate-Schedules Sprint E) — **NO-GO (do not ship)**
+# Chronological plan — **GO under an owner-designated single-source structural gate (2026-06-16)**
+
+> **STATUS: GO.** The owner has reversed the Sprint E NO-GO by exercising path (b) below — designating
+> Blue Letter Bible's chronological plan as canonical and accepting a **rigorous single-source
+> structural gate** in place of a second-witness day-by-day gate. This is a deliberate, owner-signed
+> relaxation of **FR-ALT-3 / D-ALT-21 for this one plan only**, recorded as an accepted risk (see
+> **The GO decision and the accepted risk**, below). **The original Sprint E NO-GO analysis is
+> preserved verbatim below as history** — it remains the correct reasoning *under the unrelaxed gate*,
+> and it documents exactly why the relaxation was needed and what it trades away.
+
+---
+
+## Original Sprint E NO-GO analysis (history — superseded by the 2026-06-16 GO above)
 
 The third candidate curated plan was a **named, date-anchored, single-stream one-year chronological
 plan** — the proof of the N=1 end of the multi-plan generalization. Per the project's two-independent-
 source discipline (FR-ALT-3, D-ALT-21) a plan ships ONLY if a *specific, named* published ordering has
 a **genuinely independent second witness that agrees day-by-day**. Sprint E's sourcing investigation
-found that **no chronological ordering meets this bar**, so chronological is declared **NO-GO and is
-NOT shipped**. The multi-plan feature ships complete and valuable with **two** gate-verified plans
-(Bible Companion + M'Cheyne). A do-not-ship with a clear, recorded reason is the correct outcome of the
-honesty gate (D-ALT-21), not a failure.
+found that **no chronological ordering meets this bar**, so chronological was declared **NO-GO** *under
+that unrelaxed gate*. The multi-plan feature shipped complete and valuable with **two** gate-verified
+plans (Bible Companion + M'Cheyne). A do-not-ship with a clear, recorded reason was the correct outcome
+of the honesty gate (D-ALT-21) at that time — and it remains the correct outcome *if the second-witness
+requirement is held*. The 2026-06-16 GO does not overturn this reasoning; it **relaxes the gate** for
+this one designated plan, with eyes open (see below).
 
 ## Why NO-GO — the contested-ordering / re-mirror dilemma
 
@@ -446,7 +460,7 @@ standing data gates are unchanged (BC plan 11, McheynePlanVerificationTest 10, B
 | Distinct named plan (confirms contestation) | Guthrie/CSB "Reader's Guide to the Bible: A Chronological Reading Plan" | https://csbible.com/wp-content/uploads/2018/12/GuthrieChronologicalReadingPlan.pdf |
 | Distinct named plan (confirms contestation) | Tyndale *NLT One Year Chronological Bible* | (print; ISBN 978-1496456854) |
 
-## If chronological is ever revisited (future work, NOT this release)
+## The two paths to a GO (recorded at NO-GO time; path (b) was taken on 2026-06-16)
 
 A genuine GO would require ONE of: (a) a publisher's chronological table that **explicitly publishes**
 its day-by-day ordering AND has a second house independently transcribe/derive the same ordering and
@@ -454,4 +468,167 @@ agree (e.g. an academic chronological harmonization with a corroborating indepen
 the owner *designates* a single named plan (e.g. BLB's) as canonical and accepts a **rigorous
 single-source structural gate** (whole-Bible coverage, every chapter exactly once, the publisher's
 order pinned) IN PLACE OF a second-witness day-by-day gate — a deliberate, owner-signed relaxation of
-FR-ALT-3 for this one plan, recorded as an accepted risk. Until then: NO-GO.
+FR-ALT-3 for this one plan, recorded as an accepted risk.
+
+**On 2026-06-16 the owner exercised path (b).** The decision and its accepted risk are recorded next.
+
+---
+
+## The GO decision and the accepted risk (2026-06-16)
+
+**DECISION (owner-designated, signed off via the orchestrator on the owner's behalf, 2026-06-16):**
+ship a chronological plan, with **Blue Letter Bible's "Daily Bible Reading Program — Chronological
+Plan" (Nathan Gammie)** as the **designated canonical ordering**. BLB is already the app's flagship
+reading destination, so this is the natural, attributable, named single authority. The plan is built
+from the **SHA-pinned official PDF** and verified by a **rigorous single-source structural gate** in
+place of the usual second-witness day-by-day gate.
+
+**Designated source (the single canonical authority for this plan):**
+
+| Role | Source | URL / pin |
+|---|---|---|
+| Canonical chronological ordering (designated single source) | Blue Letter Bible "Daily Bible Reading Program — Chronological Plan" (PDF; Author: Nathan Gammie, 2024) | https://www.blueletterbible.org/assets/pdf/dbrp/1Yr_ChronologicalPlan.pdf · SHA-256 `b055f5f4a14d86fb876237937478374de7c6811cdb70f951dc178dbd09e7fe54` |
+
+**Verified facts about the designated source** (extracted from the SHA-pinned PDF, 2026-06-16):
+365 explicit numbered days · **single stream (N=1)** · **whole chapters only — zero verse-level
+splits** (no colon notation anywhere) · all 66 books present · **Day 1 = Genesis 1-3**, **Day 365 =
+Revelation 19-22** · multi-book days use `;` (Day 209 = "2 Kings 19; Psalms 46, 80, 135"),
+non-contiguous chapter lists use `,` (Day 125 = "Psalms 1-2, 15, 22-24, 47, 68"), single-book days
+name the book whole (Day 97 = "Ruth", Day 262 = "Haggai").
+
+**The accepted risk (the precise relaxation of FR-ALT-3 / D-ALT-21 for THIS plan only):**
+
+> The Blue Letter Bible chronological plan ships under a **rigorous single-source structural gate**
+> rather than the project's standard independent second-witness day-by-day gate (FR-ALT-3). **The risk
+> accepted is editorial:** the chronological *ordering* — which IS the IP — rests on **BLB's single
+> authority and is not independently corroborated** by a second house's derivation. A second
+> chronological source would legitimately *disagree* on real editorial choices (where Job sits, how the
+> Psalms interleave, whether a long chapter is split), so no second source can witness this ordering;
+> the contestation is structural, not a typo to reconcile (see the NO-GO analysis above). We therefore
+> accept that *if BLB's ordering contains an editorial choice a reader disputes, that is BLB's choice,
+> carried faithfully — not an independently-verified consensus.*
+>
+> **This risk is bounded and mitigated by what CAN be verified single-source, exactly and very
+> strongly:**
+>
+> 1. **Whole-Bible coverage, exactly once.** Because the plan has **zero verse-level splits**, every
+>    chapter of all 66 books (**1,189 chapters**) must appear **exactly once** across the 365 days —
+>    no gaps, no duplicates. This is an *exact* structural invariant (not approximate), and it is the
+>    strongest possible single-source guarantee that the transcription is complete and correct: a
+>    dropped, duplicated, or mistyped chapter breaks it.
+> 2. **Pinned endpoints:** Day 1 = Genesis 1-3, Day 365 = Revelation 19-22.
+> 3. **Pinned shape:** day count = 365, single stream (N=1), date-anchored.
+> 4. **Reproducible build:** the ordering is derived deterministically from the **SHA-pinned** PDF by a
+>    committed build script and re-derived in CI (byte-diff of zero) — a hand-edited asset can never
+>    reach a release, exactly as for the Bible Companion and M'Cheyne.
+>
+> What the gate does **not** verify, and what we knowingly accept: that BLB's *editorial sequencing
+> decisions* are the "right" chronology. There is no objective right answer (the field genuinely
+> disagrees), so we ship a **named, attributable** publisher's ordering and present it as such — "Blue
+> Letter Bible's chronological plan" — never as "the" chronological order.
+>
+> **Mitigations going forward:** (i) the plan is attributed to its named publisher in provenance; (ii)
+> the exactly-once coverage gate + reproducible build catch every *transcription* error (the only error
+> class a single source can have); (iii) **if** a genuinely independent transcription/rendering of *the
+> same BLB ordering* is ever found, it is added as a **transcription cross-check** (it catches parse
+> errors, it is NOT a second editorial witness and is not required to ship); (iv) the relaxation is
+> scoped to **this one designated plan** — the Bible Companion and M'Cheyne keep the full two-witness
+> gate, and any *future* chronological-class plan must either meet the full gate or get its own
+> explicit owner-signed relaxation.
+
+**Scope of the relaxation:** FR-ALT-3's second-witness requirement is relaxed for the
+`chronological` (BLB) plan **only**. All other plans, present and future, are unaffected.
+
+---
+
+## Chronological plan — sourcing + build record (Diego, Alt Sprint F · CHR-1/3/4/7)
+
+*This is the technical extraction/build record. It COMPLEMENTS the GO-decision and accepted-risk prose
+above (Maya); it does not restate the editorial-risk reasoning — see "The GO decision and the accepted
+risk" for that.*
+
+**Designated source (the single canonical authority, SHA-pinned):**
+
+| Field | Value |
+|---|---|
+| Publisher / title | Blue Letter Bible, "Daily Bible Reading Program — Chronological Plan" |
+| Author | Nathan Gammie (2024) |
+| URL | https://www.blueletterbible.org/assets/pdf/dbrp/1Yr_ChronologicalPlan.pdf |
+| SHA-256 | `b055f5f4a14d86fb876237937478374de7c6811cdb70f951dc178dbd09e7fe54` |
+| Length / pages | 74,050 bytes · 2 pages |
+
+The builder (`tools/build_chronological_plan.py`, stdlib-only + `pdftotext`) **asserts the input's
+SHA-256 and length match the pin before parsing** — it refuses any other bytes, so a different PDF
+revision must be a conscious re-pin, never a silent re-extraction. The asset
+(`app/src/main/assets/plans/chronological/plan.json`, schemaVersion 3, `planId: "chronological"`,
+`name: "Chronological"`, anchoring `DATE`, `dayCount` 365, ONE stream `[{number:1, title:"Chronological"}]`)
+is byte-deterministic: `json.dump(..., indent=1)` + trailing newline, re-running reproduces it exactly.
+
+**The 3-/4-column parse (and how it is made robust).** The PDF is a multi-column wall calendar; `pdftotext
+-layout` interleaves the columns. Each reading day is an **explicit `N. <refs>` cell** (N = 1..365), so
+the build keys days strictly by their printed number — column geometry is never trusted for the day
+number itself. Each line is split into column cells (runs separated by ≥3 spaces). A handful of long
+readings **wrap** to a continuation line in the same column (the line above ends in a trailing `;`); a
+continuation cell (a ref-like fragment with no leading `N.`) is attached to the open, semicolon-ended day
+in its column band — the `;` wrap-marker is what disambiguates the near-tie between two columns whose
+left edges differ by a single character. Ref grammar: multi-book days split on `;`; non-contiguous
+chapter lists split on `,`; chapter spans use `-`; a bare book name (no chapter) = the **whole book**; a
+`&`/`,` book-join (`1 & 2 Thessalonians`, `Colossians, Philemon`, `2 Peter, Jude`, `2, 3 John`) lists
+each whole book. Book names map through `app/src/test/resources/book_catalog.csv` (the chapter
+authority); the **only** spelling the PDF uses that is not the canonical catalog name is singular
+**`Psalm`** for a single-Psalm reading → canonical **`Psalms`** (the catalog name is plural).
+
+**Reconciliation artifacts (documented on evidence — mirrors the M'Cheyne log).** The plan extracted
+cleanly with **no editorial reconciliation** required — the source is a clean digital PDF, not a scanned
+column grid, so there were no clipped/bled day-numbers as in the M'Cheyne edginet calendar. The only
+extraction subtlety handled in code (not a data correction) is the **four wrapped continuation lines**,
+where a long day's last reading flows onto the next text line in its column:
+
+| Day | Printed (with wrap) | Assembled reading |
+|---|---|---|
+| 131 | `2 Samuel 10; 1 Chronicles 19;` ⏎ `Psalm 20` | 2 Samuel 10; 1 Chronicles 19; Psalms 20 |
+| 143 | `2 Samuel 24; 1 Chronicles 21-22;` ⏎ `Psalm 30` | 2 Samuel 24; 1 Chronicles 21-22; Psalms 30 |
+| 200 | `2 Kings 18;` ⏎ `2 Chronicles 29-31; Psalm 48` | 2 Kings 18; 2 Chronicles 29-31; Psalms 48 |
+| 209 | (no wrap) `2 Kings 19; Psalms 46, 80, 135` | 2 Kings 19; Psalms 46, 80, 135 |
+
+(Day 209 is shown to contrast: it fits on one line, no continuation logic involved.) Each wrap is
+verified by the coverage gate — had any continuation been dropped or mis-attached, the missing/extra
+chapters would break "every chapter exactly once" (this is exactly how the day-200 attachment was caught
+and fixed during the build: a missing 2 Chr 29-31 + Ps 48 surfaced as four uncovered chapters).
+
+**BLB's editorial choices, carried faithfully (NOT reconciled away).** Where BLB's ordering legitimately
+differs from the other ("2020 / Bible Study Tools") chronological lineage (the divergence table in the
+NO-GO analysis above), the asset follows **BLB**: e.g. Day 104 = `1 Samuel 21-24; Psalm 91` (BLB includes
+Psalm 91), Day 150 = `Psalm 119` whole (BLB does not split it). These are BLB's authorial decisions,
+shipped as such — not transcription errors to "fix".
+
+**The release gate — `ChronologicalPlanVerificationTest` (8 tests).** Reads the SHIPPED asset the same way
+the M'Cheyne gate does (via `planAssetsDir`). Pins: schema header (schema 3 / planId / DATE / 365 /
+single stream `[1]`); 365 days + per-month counts + no Feb 29 + every date unique; one stream-1 portion
+with non-empty refs per day; **no windowed refs anywhere** (whole-chapters-only, the anti-drift
+counterpart to M'Cheyne's "windows tile"); every ref resolves in the catalog with chapter in range; **THE
+coverage invariant — every chapter of all 66 books read exactly once (total 1,189, each read-count 1, no
+gaps, no dupes, no over-reads)**; pinned endpoints (Day 1 = Genesis 1-3, Day 365 = Revelation 19-22);
+planId matches the registry id. **There is no day-by-day second-source test — that is the owner-signed
+relaxation (D-ALT-24).** The whole-Bible exactly-once coverage is the strongest single-source proof of a
+complete, correct transcription that a zero-verse-split plan can have. CI job `chronological-rebuild`
+re-fetches the pinned URL, verifies the SHA, re-runs the script, and asserts a `cmp` byte-diff of zero
+(no second-source fixture step).
+
+**Standing data gates (after CHR):** Bible Companion plan 11 · M'Cheyne 10 · `ChronologicalPlanVerificationTest`
+8 · `BibleTextVerificationTest` 18 · `BibleDatabaseRoomOpenTest` 5 — all green, the first four untouched
+by this sprint.
+
+### D-ALT-24 — single-source structural-gate relaxation (chronological only)
+
+**Decision.** The `chronological` plan ships under a **rigorous single-source structural gate** in place
+of the project's standard independent second-witness day-by-day gate (FR-ALT-3 / D-ALT-21), for **this one
+owner-designated plan only**. The designated single canonical authority is Blue Letter Bible's
+"Chronological Plan" (Nathan Gammie), SHA-pinned. The structural gate's centrepiece is the **whole-Bible
+"every chapter exactly once" coverage invariant** (valid because the plan has zero verse splits), backed by
+schema/endpoint/no-window pins and a reproducible SHA-pinned build re-verified in CI. **The accepted
+editorial risk** — that BLB's *ordering* is not independently corroborated, because any genuinely
+independent chronological source would legitimately *disagree* and so cannot witness it — is recorded
+authoritatively in "The GO decision and the accepted risk" above (Maya, owner-signed 2026-06-16); D-ALT-24
+is the engineering codification of that path-(b) GO. The Bible Companion and M'Cheyne plans, and any future
+plan, keep the full two-witness gate unless granted their own explicit owner-signed relaxation.

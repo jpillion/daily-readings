@@ -1249,6 +1249,34 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   (IN_APP-ignores-external caption, MySword "in" preposition, caption-present branch). 5 new caption
   strings await owner tone sign-off. **Device-pass:** the actual one-screen fit at default + large font,
   and the 8dp strip look — neither JVM-provable.
+- ✅ **Alt Sprint F (Chronological plan — owner REVERSED the Alt Sprint E NO-GO) is DONE** (`2026-06-17`;
+  uncommitted in the working tree at handoff; the main session verifies + commits; ships in 1.5.1).
+  **A third gate-verified plan ships — and it's the real N=1 single-stream proof of the multi-plan
+  generalization.** The owner exercised the documented GO path ([README:451-457](docs/data/README.md)):
+  **D-ALT-24** — designate a single named plan canonical + accept a **rigorous single-source structural
+  gate** in place of the two-independent-witness day-by-day gate (FR-ALT-3 relaxation, owner-signed
+  accepted risk; scoped to THIS plan only — BC + M'Cheyne keep the full two-witness gate). Designated
+  source: **Blue Letter Bible "Chronological Plan" (Nathan Gammie)**, SHA-pinned PDF
+  `b055f5f4…fe54` (BLB is already the app's flagship destination). The plan is single-stream, date-
+  anchored, 365 days, **WHOLE CHAPTERS ONLY (zero verse splits)**, all 66 books — Day 1 = Gen 1-3,
+  Day 365 = Rev 19-22. New: `tools/build_chronological_plan.py` (stdlib, byte-deterministic, SHA-pinned,
+  parses the 3-column PDF), `assets/plans/chronological/plan.json` (schema 3, planId "chronological",
+  name "Chronological"), registry entry, **`ChronologicalPlanVerificationTest` (8) — THE GATE:** the
+  **exactly-once whole-Bible coverage invariant (all 1,189 chapters read exactly once, no gaps/dupes)**
+  is the single-source structural substitute for a second witness, + pinned endpoints + no-windowed-refs
+  + catalog-in-range + planId anti-drift. CI `chronological-rebuild` job (byte-diff zero, no second-source
+  fixture by design). **N=1 confirmed with ZERO production code change** (Sprint C's generalization holds
+  for a real single-stream plan: `titleFor` null at N≤1 ⇒ no stream label, stats denominators 365×1=365,
+  per-plan progress isolated, widget one row) — pinned by an extended `PlanSwitchIntegrationTest` over the
+  REAL 3 bundled assets. **D-ALT-24 honest limitation (recorded):** the structural gate cannot detect a
+  pure interior between-day chapter SWAP (multiset unchanged); unreachable by a real parse bug (each day's
+  cell parses independently) — interior ordering rests on the SHA-pinned source + byte-diff reproduction.
+  733 tests (net +13; the four prior data/Room gates UNTOUCHED — BC plan 11, M'Cheyne 10, BibleText 18,
+  RoomOpen 5), full pipeline green from clean, byte-diff reproduction zero (re-verified independently from
+  a live fetch), `bundleRelease` 7.75 MB < 12 MB, Kover 95%/96%. ~6 mutations killed incl. the book-join
+  misparse probe (Riley also caught a stale `SettingsViewModelTest` 2→3-plan pin that Diego's
+  assembleDebug-only check had masked). Plan name/title "Chronological" await owner tone sign-off.
+  Device-pass: the N=1 day-card/stats/widget look + the live switch to Chronological on glass.
 - ⚠️ **CI follow-up (non-blocking):** the `release.yml`/`ci.yml` actions (`actions/checkout@v4`,
   `setup-java@v4`, `upload-artifact@v4`, `gradle/actions/setup-gradle@v4`) run on **Node 20, which
   GitHub is forcing to Node 24 from 2026-06-16** — the 1.5.0 run warned. Bump the action versions

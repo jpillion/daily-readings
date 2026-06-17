@@ -729,3 +729,185 @@ The three shape-determining open questions are answered — the engineering spec
 Still open (do NOT block the eng spec; resolve before the relevant build phase): OQ-5 (the per-plan
 data-sourcing burden + second-source availability — confirmed at each plan's sourcing), OQ-7
 (selector placement / first-run — Priya + owner at UI time).
+
+---
+
+## 13. Chronological plan — product spec (GO, owner-designated single-source gate · 2026-06-16)
+
+> **Status: GO — committed scope.** The owner has reversed the Alt Sprint E chronological NO-GO by
+> exercising the documented path (b) in [docs/data/README.md](../data/README.md): designate one named
+> plan as canonical and accept a rigorous single-source structural gate in place of the second-witness
+> day-by-day gate. This section codifies that decision. It is the Phase-2 plan of §9 (M'Cheyne shipped
+> first; chronological is the single-stream proof). The accepted-risk wording lives authoritatively in
+> [docs/data/README.md](../data/README.md) ("The GO decision and the accepted risk, 2026-06-16"); this
+> section is the product definition that consumes it.
+
+### 13.1 What we ship
+
+A **third curated plan: "Chronological"** — Blue Letter Bible's **"Daily Bible Reading Program —
+Chronological Plan" (Nathan Gammie)**, the natural canonical choice because BLB is already the app's
+flagship reading destination (named, published, attributable). It is:
+
+- **Single-stream (N=1)** — one reading per day. This is the **real proof of the N=1 end** of the
+  multi-plan generalization (M'Cheyne proved N=2/4; the Bible Companion is N=3). It exercises the
+  already-shipped "no stream label for a lone stream" path (D-ALT-22/23 — `PlanDescriptor.titleFor`
+  returns `null` when `streamCount <= 1`, verified in code; the day card, widget, strips, and stats all
+  already render the lone reference unlabeled).
+- **Date-anchored, 365-day** — Day N maps to the **Nth non-Feb-29 day of the calendar year** (Jan 1 =
+  Day 1), consistent with the existing date-anchored model; **Feb 29 = no scheduled readings**, exactly
+  as the other two plans. This keeps the date picker, year strip, "% of year," and "everyone in sync"
+  intact (FR-ALT-5 / OQ-4).
+- **Whole chapters only** — the designated source has **zero verse-level splits** (verified: no colon
+  notation anywhere). So no Psalm-119-style verse windows; every ref is a whole chapter. This is what
+  makes the structural gate *exact* (§13.3).
+
+Selecting it makes the **entire app** follow the chronological plan — day screen, date navigation,
+widget, stats, year strip, reminder, persistent notification, in-app-reader handoff — through the
+already-built `ActivePlanRepository` + `combine`-the-active-descriptor machinery (Alt Sprints C/D). No
+new generalization work: a single-stream date-anchored 365-day plan is the *easiest* shape the existing
+N-stream code handles. Per-plan progress (Alt Sprint B) isolates its marks; switching to/from it is
+the existing non-destructive, explained switch (D-ALT-19).
+
+### 13.2 The plan, precisely (verified from the SHA-pinned source)
+
+- **Designated source:** BLB "Daily Bible Reading Program — Chronological Plan" (Nathan Gammie),
+  https://www.blueletterbible.org/assets/pdf/dbrp/1Yr_ChronologicalPlan.pdf, **SHA-256
+  `b055f5f4a14d86fb876237937478374de7c6811cdb70f951dc178dbd09e7fe54`**.
+- **365 numbered days**, single stream, whole chapters only, all 66 books present.
+- **Day 1 = Genesis 1-3**, **Day 365 = Revelation 19-22** (pinned endpoints).
+- **Notation in the source** (the build script parses these): multi-book days use `;`
+  (Day 209 = "2 Kings 19; Psalms 46, 80, 135"); non-contiguous chapter lists within a book use `,`
+  (Day 125 = "Psalms 1-2, 15, 22-24, 47, 68"); a bare book name = the whole book (Day 97 = "Ruth",
+  Day 262 = "Haggai"). Each parsed day becomes **one portion** (stream 1) with a list of
+  `{book, chapter}` refs, matching the existing schema-3 model.
+
+### 13.3 The verification standard — THE key product artifact (relaxed gate, this plan only)
+
+This plan ships under a **deliberate, owner-signed relaxation of FR-ALT-3 / D-ALT-21, scoped to the
+`chronological` (BLB) plan alone.** The Bible Companion and M'Cheyne keep the full two-independent-
+witness day-by-day gate; this plan substitutes a **rigorous single-source structural gate**.
+
+**Why the relaxation is necessary** (not a shortcut): a chronological *ordering is the IP*, and
+different publishers legitimately DISAGREE on it — so a second "chronological" source is a *different
+plan*, not a witness. There is no independent corroborating ordering to gate against; insisting on one
+is what produced the (correct-at-the-time) Sprint E NO-GO.
+
+**What the relaxed gate REQUIRES** (`ChronologicalPlanVerificationTest`, offline, in
+`testDebugUnitTest`, **release-blocking** exactly like the BC and M'Cheyne gates):
+
+1. **Whole-Bible coverage, EXACTLY ONCE (the primary invariant).** Every chapter of all 66 books —
+   **1,189 chapters** — appears **exactly once** across the 365 days. **No gaps, no duplicates.**
+   Because the plan has zero verse splits, this is an *exact* invariant, and it is the strongest
+   single-source guarantee available: a dropped, duplicated, or mistyped chapter fails the gate.
+2. **Pinned endpoints:** Day 1 = Genesis 1-3, Day 365 = Revelation 19-22.
+3. **Pinned shape:** day count = 365; single stream (N=1); anchoring = DATE; Feb-29 absent — all
+   already enforced generically by `ReadingPlanAssetLoader` against the descriptor.
+4. **Reproducible, deterministic build from the SHA-pinned PDF** by a committed script
+   (`tools/build_chronological_plan.py` or equivalent), re-derived in a `chronological-rebuild` CI job
+   asserting a byte-diff of zero — a hand-edited asset can never reach a release.
+
+**What the relaxed gate does NOT require** (the relaxation): a genuinely independent **second-witness
+day-by-day** comparison. There is no second editorial witness for this ordering, and that absence is
+the accepted risk (§13.4).
+
+**Optional nice-to-have, NOT required:** if a genuinely independent *transcription/rendering of the
+same BLB ordering* is ever found, add it as a **transcription cross-check** (catches parse/OCR errors;
+it is **not** a second editorial witness and does not change the GO). Do not block on finding one.
+
+### 13.4 The accepted risk (recorded; authoritative copy in docs/data/README.md)
+
+We accept that the chronological **ordering rests on BLB's single authority and is not independently
+corroborated.** If BLB's sequence contains an editorial choice a reader disputes, that is BLB's choice
+carried faithfully — not an independently-verified consensus. The risk is **editorial only** and is
+bounded by the exactly-once coverage gate (which catches every *transcription* error — the only error
+class a single source can have) and the reproducible build. **Mitigation:** the plan is presented as a
+**named, attributable** publisher's ordering ("Blue Letter Bible's chronological plan"), never as "the"
+chronological order; the relaxation is scoped to this one designated plan.
+
+### 13.5 Stream identity for a single-stream plan (confirmed)
+
+**N=1 ⇒ no stream label is shown.** The plan needs a top-level **`name` = "Chronological"** (for the
+selector and the active-plan-visible affordance), but the lone stream needs **no meaningful title** —
+`PlanDescriptor.titleFor` already returns `null` when `streamCount <= 1` (D-ALT-22/23, verified in
+`GetDayReadingsUseCase`), so the day card, widget rows, year strip, and stats render the reference
+**alone, with no "which stream" label**. The loader already permits a blank stream title when N=1
+(multi-stream plans still require non-blank titles). No code change is needed for the unlabeled-stream
+behavior — it is already built and tested; this plan is its first *shipped* exercise.
+
+### 13.6 User stories (extending §5; chronological-specific)
+
+These are the U-ALT-2 acceptance facts, now concrete for the designated plan:
+
+- **U-ALT-2 (chronological), AC:** I can select **"Chronological"** in the Settings plan selector
+  (and it appears as a third option alongside Bible Companion and M'Cheyne).
+- **AC:** After selecting it, the day screen shows **one** reading for today (the Nth non-Feb-29 day's
+  chronological portion), with **no stream-title label** — not three or four empty stream rows.
+- **AC:** The widget, stats, year strip ( **one** stream row, "n of 365" once, year denominator
+  365 × 1 = 365), and reminder all reflect the single-stream shape truthfully. *(Visual correctness of
+  the single-row strip/widget = device-pass; the count correctness = the structural gate + N-streams
+  generalization already shipped.)*
+- **AC:** Feb 29 shows "No scheduled readings for Feb 29th," same as the other plans.
+- **AC:** Switching to/from Chronological is non-destructive and explained (D-ALT-19); my Bible
+  Companion / M'Cheyne progress is untouched and restored on switch-back (per-plan progress, Alt
+  Sprint B).
+- **U-ALT-5 (trust), AC (release gate):** Chronological passes `ChronologicalPlanVerificationTest`
+  (the §13.3 structural gate) in CI before it ships.
+
+### 13.7 Acceptance criteria (team-verifiable)
+
+**Data / gate (the heart of it):**
+
+- [ ] `app/src/main/assets/plans/chronological/plan.json` exists: schema 3, `planId: "chronological"`,
+      `name: "Chronological"`, `anchoring: "DATE"`, `dayCount: 365`, exactly **one** stream descriptor
+      (blank or absent title permitted at N=1), 365 day entries, Feb-29 absent.
+- [ ] `assets/plans/registry.json` lists `chronological` (default stays `bible_companion`).
+- [ ] A committed deterministic build script derives the asset from the SHA-pinned PDF; a
+      `chronological-rebuild` CI job re-derives it and asserts a byte-diff of zero.
+- [ ] `ChronologicalPlanVerificationTest` (offline, release-blocking) passes and asserts: **1,189
+      chapters covered exactly once** (no gaps, no duplicates), Day 1 = Gen 1-3, Day 365 = Rev 19-22,
+      dayCount 365, single stream, no Feb-29. The other three data/Room gates stay untouched (BC plan
+      11, McheynePlanVerificationTest 10, BibleTextVerificationTest 18, BibleDatabaseRoomOpenTest 5).
+- [ ] Mutation check: dropping a chapter, duplicating a chapter, or corrupting an endpoint each turns
+      the gate red.
+
+**App behavior (mostly free from the existing N-stream machinery — verify, don't rebuild):**
+
+- [ ] Chronological appears as a third option in the Settings plan selector; selecting it persists and
+      drives the whole app live (no app restart).
+- [ ] Day screen shows one unlabeled reading; the day pager, date picker, picker completion dots, and
+      "Today" jump all work on the chronological schedule.
+- [ ] Stats: one stream row / one year strip row; year denominator = 365; "n of 365" for the single
+      stream; **no misleading 100%, no broken strip, no guilt copy** (PRD §13.0 holds at N=1).
+- [ ] Widget shows the chronological day's single reading at every responsive tier; degrades on
+      Feb-29 / error; one tap into the app.
+- [ ] Reminder + persistent notification carry the chronological day's reference(s); "skip when
+      complete" uses the per-plan completion definition (one reading done = complete).
+- [ ] Tapping a reading resolves through the existing provider / in-app-reader handoff unchanged
+      (multi-chapter and multi-book days flow through the existing Portion → verse-id bridge). Per-plan
+      verification confirms every chronological reference resolves to valid provider URLs / verse-id
+      ranges (FR-ALT-11 / the asset's own references are all whole chapters of real books).
+- [ ] Per-plan progress isolates chronological marks; switching away and back restores them; the
+      switch is explained (D-ALT-19).
+
+### 13.8 Scope / non-goals for THIS plan (kept tight)
+
+- **In scope:** the BLB chronological plan as the third curated plan, under the §13.3 relaxed gate;
+  the asset, registry entry, build script, CI job, and verification test.
+- **Out of scope (unchanged from the epic's non-goals):** any *other* chronological ordering (the
+  relaxation is BLB-only); verse-level chronological splits (the designated source has none — if a
+  future chronological source has them, that is a separate sourcing decision); progress-anchored
+  chronological; non-365-day chronological; presenting this as "the" canonical chronology (it is
+  attributed to BLB).
+- **No new generalization work** — single-stream/date-anchored/365-day is the easiest shape the
+  shipped N-stream code handles; this plan is *data + gate + a registry line*, not a code project.
+  (Diego/Morgan confirm scope; product expects this is materially smaller than M'Cheyne was, since
+  the N-streams generalization and the selector are already in.)
+
+### 13.9 Success / what we'd learn
+
+- **Ship criterion:** the structural gate is green in CI and the plan renders truthfully at N=1 on a
+  device (the strip/widget single-row look is the only device-pass item).
+- **What V1-of-this teaches:** whether readers outside the Christadelphian core (chronological is a
+  *general* plan) adopt the app via a well-known plan — a cheap read on the (A)-broadened direction
+  (§2a) without the (B) general-store commitment. With no analytics (settled), the owner's community /
+  tester signal is the measure, exactly as for M'Cheyne.

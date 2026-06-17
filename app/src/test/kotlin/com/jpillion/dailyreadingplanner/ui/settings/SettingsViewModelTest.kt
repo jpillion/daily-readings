@@ -391,12 +391,16 @@ class SettingsViewModelTest {
     fun `the selector lists the registry plans with their descriptor names and the active id`() =
         runTest {
             viewModel.planSelector.test {
-                // Skip the initial empty state; the registry/descriptor load resolves to two plans.
+                // Skip the initial empty state; the registry/descriptor load resolves to three plans
+                // (CHR-5: chronological joined the registry in alt Sprint F).
                 var state = awaitItem()
-                while (state.options.size < 2) state = awaitItem()
-                assertThat(state.options.map { it.id }).containsExactly("bible_companion", "mcheyne").inOrder()
+                while (state.options.size < 3) state = awaitItem()
+                assertThat(state.options.map { it.id })
+                    .containsExactly("bible_companion", "mcheyne", "chronological")
+                    .inOrder()
                 assertThat(state.options.first { it.id == "bible_companion" }.name).isEqualTo("Bible Companion")
                 assertThat(state.options.first { it.id == "mcheyne" }.name).isEqualTo("M'Cheyne")
+                assertThat(state.options.first { it.id == "chronological" }.name).isEqualTo("Chronological")
                 assertThat(state.activeId).isEqualTo("bible_companion")
                 assertThat(state.activeName).isEqualTo("Bible Companion")
                 cancelAndIgnoreRemainingEvents()
