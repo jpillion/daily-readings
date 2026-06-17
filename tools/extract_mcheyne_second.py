@@ -170,8 +170,8 @@ def main():
         "streams": [
             {"number": 1, "title": "Family — Old Testament"},
             {"number": 2, "title": "Family — Gospels"},
-            {"number": 3, "title": "Secret — Psalms & Prophets"},
-            {"number": 4, "title": "Secret — Epistles"},
+            {"number": 3, "title": "Personal — Psalms & Prophets"},
+            {"number": 4, "title": "Personal — Epistles"},
         ],
         "days": days,
     }

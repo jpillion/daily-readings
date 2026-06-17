@@ -201,7 +201,7 @@ class DayContentTest {
         // A 4-stream M'Cheyne day: four cards, each titled from plan data (carried on the reading).
         // A mutation that renders a fixed three would drop the fourth card/title -> reddens here.
         val mcheyneTitles =
-            listOf("Family — Old Testament", "Family — Gospels", "Secret — Psalms & Prophets", "Secret — Epistles")
+            listOf("Family — Old Testament", "Family — Gospels", "Personal — Psalms & Prophets", "Personal — Epistles")
         val state =
             DayUiState.Scheduled(
                 date = date,

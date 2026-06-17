@@ -14,11 +14,11 @@ Sources (docs/data/mcheyne-sourcing.md, docs/data/README.md):
 The INDEPENDENT second witness (Carson/TGC RtB_Reading-Plan_2020.pdf) is parsed by the GATE
 (McheynePlanVerificationTest), not here — so the two lineages stay genuinely independent.
 
-Streams (4, classic M'Cheyne — Family x2, Secret x2; TGC/Carson confirm the column grouping):
+Streams (4, classic M'Cheyne — Family x2, Personal x2; TGC/Carson confirm the column grouping):
   1 Family — OT history          (Genesis ...)
   2 Family — Gospels/NT          (Matthew ...)
-  3 Secret — Psalms/Wisdom/Prophets (Ezra/Psalms ...)
-  4 Secret — Epistles/NT         (Acts ...)
+  3 Personal — Psalms/Wisdom/Prophets (Ezra/Psalms ...)
+  4 Personal — Epistles/NT         (Acts ...)
 
 Usage: build_mcheyne_plan.py [path-to-edginet.pdf]   (fetches the URL if no path given)
 Requires: pdftotext (poppler) for PDF extraction; Python stdlib only otherwise.
@@ -302,8 +302,8 @@ def main():
         "streams": [
             {"number": 1, "title": "Family — Old Testament"},
             {"number": 2, "title": "Family — Gospels"},
-            {"number": 3, "title": "Secret — Psalms & Prophets"},
-            {"number": 4, "title": "Secret — Epistles"},
+            {"number": 3, "title": "Personal — Psalms & Prophets"},
+            {"number": 4, "title": "Personal — Epistles"},
         ],
         "days": days,
     }

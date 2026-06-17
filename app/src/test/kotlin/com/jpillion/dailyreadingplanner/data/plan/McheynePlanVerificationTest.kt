@@ -237,9 +237,9 @@ class McheynePlanVerificationTest {
     }
 
     @Test
-    fun `coverage anchor - Matthew 1 is read in Family on Jan 1 and in Secret on Jun 21`() {
+    fun `coverage anchor - Matthew 1 is read in Family on Jan 1 and in Personal on Jun 21`() {
         // The canonical M'Cheyne "NT twice" witness (sourcing doc): Matthew 1 appears Jan 1 (Family,
-        // stream 2) AND Jun 21 (Secret, stream 4). Pins the double-NT coverage at a named day.
+        // stream 2) AND Jun 21 (Personal, stream 4). Pins the double-NT coverage at a named day.
         val jan1 = plan.days.single { it.month == 1 && it.day == 1 }
         val jun21 = plan.days.single { it.month == 6 && it.day == 21 }
         assertThat(
@@ -258,13 +258,13 @@ class McheynePlanVerificationTest {
 
     @Test
     fun `Psalm 119 is split into seven verse windows that tile 1 to 176 - twice`() {
-        // Ps 119 is read twice (Family Jun 22-28; Secret Oct 25-31). Each occurrence's windows must
+        // Ps 119 is read twice (Family Jun 22-28; Personal Oct 25-31). Each occurrence's windows must
         // TILE verses 1..176 exactly (the Sprint-J tiling invariant; here proven for both readings).
         val ps119Windows =
             windowedRefs()
                 .filter { it.ref.book == "Psalms" && it.ref.chapter == 119 }
                 .groupBy { it.stream }
-        assertWithMessage("Ps 119 read on exactly two streams (Family + Secret)")
+        assertWithMessage("Ps 119 read on exactly two streams (Family + Personal)")
             .that(ps119Windows.keys)
             .containsExactly(2, 4)
         for ((stream, windows) in ps119Windows) {
@@ -310,7 +310,7 @@ class McheynePlanVerificationTest {
         assertThat(refsOn(3, 1, 1)).containsExactly(
             RefDto("Exodus", 12, verseStart = 22, verseEnd = 51),
         )
-        // Aug 8 Secret-Psalms = Jer 36,45 (the non-adjacent double-chapter slot).
+        // Aug 8 Personal-Psalms = Jer 36,45 (the non-adjacent double-chapter slot).
         assertThat(refsOn(8, 8, 3).map { it.book to it.chapter })
             .containsExactly("Jeremiah" to 36, "Jeremiah" to 45)
             .inOrder()

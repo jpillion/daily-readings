@@ -1219,6 +1219,17 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   updated for both. Still owner-side (non-blocking, for a 1.5.x patch): a real **device pass** on the
   closed track, and the **string/tone sign-offs** (M'Cheyne stream titles + selector/switch-dialog copy
   + the broader standing strings backlog) — all currently shipping as DRAFT wording.
+- ✅ **M'Cheyne stream titles — owner sign-off #1 (`2026-06-16`, post-1.5.0, for the next patch):**
+  streams 3 & 4 renamed **"Secret —" → "Personal —"** (display) — "Family — Old Testament/Gospels"
+  unchanged; now "Personal — Psalms & Prophets" / "Personal — Epistles". Done via the **reproducible
+  pipeline** (NOT a hand-edit): the literals changed in `tools/build_mcheyne_plan.py` +
+  `tools/extract_mcheyne_second.py`, assets regenerated from the SHA-pinned sources, asset diff is
+  ONLY the four title lines (day-data byte-identical, source SHAs unchanged), the CI `mcheyne-rebuild`
+  byte-diff gate reproduces locally, and the literal title pins updated (`DayContentTest`,
+  `NStreamCorrectnessTest`, cosmetic `McheynePlanVerificationTest` comment/name refs). 719 tests green;
+  the four data/Room gates UNTOUCHED (BC plan 11, M'Cheyne 10, BibleText 18, RoomOpen 5). **Docs
+  deliberately retain "Secret"** for source-material provenance (M'Cheyne's own historical Family/Secret
+  column naming, Matt 6:6) — only the user-facing *display* changed. Ships in the next patch (no bump yet).
 - ⚠️ **CI follow-up (non-blocking):** the `release.yml`/`ci.yml` actions (`actions/checkout@v4`,
   `setup-java@v4`, `upload-artifact@v4`, `gradle/actions/setup-gradle@v4`) run on **Node 20, which
   GitHub is forcing to Node 24 from 2026-06-16** — the 1.5.0 run warned. Bump the action versions

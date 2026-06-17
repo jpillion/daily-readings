@@ -39,8 +39,8 @@ class NStreamCorrectnessTest {
                 listOf(
                     StreamDescriptor(1, "Family — Old Testament"),
                     StreamDescriptor(2, "Family — Gospels"),
-                    StreamDescriptor(3, "Secret — Psalms & Prophets"),
-                    StreamDescriptor(4, "Secret — Epistles"),
+                    StreamDescriptor(3, "Personal — Psalms & Prophets"),
+                    StreamDescriptor(4, "Personal — Epistles"),
                 ),
         )
 
@@ -190,8 +190,8 @@ class NStreamCorrectnessTest {
                 .containsExactly(
                     "Family — Old Testament",
                     "Family — Gospels",
-                    "Secret — Psalms & Prophets",
-                    "Secret — Epistles",
+                    "Personal — Psalms & Prophets",
+                    "Personal — Epistles",
                 ).inOrder()
         }
 
