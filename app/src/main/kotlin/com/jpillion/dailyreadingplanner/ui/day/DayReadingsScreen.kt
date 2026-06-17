@@ -137,7 +137,7 @@ fun DayReadingsPagerScreen(
     destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
     externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
     onToggleReading: (LocalDate, ReadingStatus) -> Unit,
-    onReadingTapped: (Portion) -> Unit,
+    onReadingTapped: (LocalDate, Portion) -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -233,7 +233,7 @@ fun DayReadingsPagerScreen(
                     DayContent(
                         state = state,
                         onToggleReading = { reading -> onToggleReading(date, reading) },
-                        onReadingTapped = onReadingTapped,
+                        onReadingTapped = { portion -> onReadingTapped(date, portion) },
                         onRetry = onRetry,
                         destinationMode = destinationMode,
                         externalApp = externalApp,

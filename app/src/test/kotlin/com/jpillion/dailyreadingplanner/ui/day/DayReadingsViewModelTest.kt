@@ -17,6 +17,7 @@ import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
+import com.jpillion.dailyreadingplanner.domain.MarkReadOnOpenUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUseCase
@@ -67,6 +68,7 @@ class DayReadingsViewModelTest {
             getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, clock),
             toggleReading = ToggleReadingUseCase(progress, activePlan),
             markWholeDay = MarkWholeDayUseCase(progress, activePlan),
+            markReadOnOpen = MarkReadOnOpenUseCase(progress, activePlan),
             openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = widgetRefresher,
             readerHandoff = readerHandoff,
@@ -249,13 +251,16 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(state.readings[0].portion)
+                    vm.onReadingTapped(today, state.readings[0].portion)
                     assertThat(awaitItem())
                         .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/gen/1/"))
-                    vm.onReadingTapped(state.readings[2].portion)
+                    vm.onReadingTapped(today, state.readings[2].portion)
                     assertThat(awaitItem())
                         .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/mat/1/"))
                 }
+                // sprint-00O: the tap now marks the readings read, so uiStateFor re-emits; this
+                // test only asserts the destination, so ignore the trailing state update.
+                cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -270,7 +275,7 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(state.readings[0].portion)
+                    vm.onReadingTapped(today, state.readings[0].portion)
                     assertThat(awaitItem())
                         .isEqualTo(
                             ReadingDestination.MySwordApp(
@@ -279,6 +284,8 @@ class DayReadingsViewModelTest {
                             ),
                         )
                 }
+                // sprint-00O: ignore the mark-on-open state re-emission (asserted elsewhere).
+                cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -294,10 +301,12 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openReaderEvents.test {
-                    vm.onReadingTapped(state.readings[0].portion)
+                    vm.onReadingTapped(today, state.readings[0].portion)
                     awaitItem() // the navigate-to-Bible-tab signal
                     assertThat(readerHandoff.pending.value).isEqualTo(state.readings[0].portion)
                 }
+                // sprint-00O: ignore the mark-on-open state re-emission (asserted elsewhere).
+                cancelAndIgnoreRemainingEvents()
             }
         }
 
@@ -310,10 +319,79 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(state.readings[0].portion)
+                    vm.onReadingTapped(today, state.readings[0].portion)
                     expectNoEvents()
                 }
+                // sprint-00O: ignore the mark-on-open state re-emission (asserted elsewhere).
+                cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    // --- Sprint 00O: tap-to-open marks the reading read (D-O-1/2/4) ---
+
+    @Test
+    fun `tapping an unread reading marks it read for the displayed date`() =
+        runTest {
+            // Test 3a: opening a reading SETS it read (one-way side effect), for the displayed date.
+            val vm = viewModel()
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                assertThat(state.readings[1].isRead).isFalse()
+                vm.openDestinationEvents.test {
+                    vm.onReadingTapped(today, state.readings[1].portion)
+                    awaitItem() // the destination still opens (proven separately in 3e)
+                }
+                // The tapped stream (number 2) is now read for today.
+                val updated = awaitScheduledWhere { it.readings[1].isRead }
+                assertThat(updated.readings[1].isRead).isTrue()
+            }
+            assertThat(progress.marksFor(today)).containsExactly(2)
+        }
+
+    @Test
+    fun `tapping an already-read reading leaves it read - idempotent, never unmarks`() =
+        runTest {
+            // Test 3b: mark-on-open is one-way. An already-read reading stays read after a tap;
+            // a second tap never toggles it off (the checkbox is the only un-mark affordance).
+            progress.setRead(today, 1, true)
+            val vm = viewModel()
+            vm.uiStateFor(today).test {
+                val initial = awaitScheduled()
+                assertThat(initial.readings[0].isRead).isTrue()
+                vm.openDestinationEvents.test {
+                    vm.onReadingTapped(today, initial.readings[0].portion)
+                    awaitItem()
+                    // Tap the same already-read reading again — still must not unmark.
+                    vm.onReadingTapped(today, initial.readings[0].portion)
+                    awaitItem()
+                }
+                // Idempotent re-writes don't change the day state (distinctUntilChanged), but be
+                // robust: ignore any trailing emission rather than depend on that.
+                cancelAndIgnoreRemainingEvents()
+            }
+            // Stream 1 is still the only mark for today; nothing was unmarked.
+            assertThat(progress.marksFor(today)).containsExactly(1)
+        }
+
+    @Test
+    fun `tapping a reading on another date marks that actual date, not today`() =
+        runTest {
+            // Test 3c: the mark is keyed to the displayed full date (D-S5-3), mirroring the
+            // browsing-another-date toggle test. Today must be untouched.
+            val yesterday = today.minusDays(1)
+            val vm = viewModel()
+            vm.uiStateFor(yesterday).test {
+                val state = awaitScheduled()
+                assertThat(state.date).isEqualTo(yesterday)
+                vm.openDestinationEvents.test {
+                    vm.onReadingTapped(yesterday, state.readings[0].portion)
+                    awaitItem()
+                }
+                val updated = awaitScheduledWhere { it.readings[0].isRead }
+                assertThat(updated.readings[0].isRead).isTrue()
+            }
+            assertThat(progress.marksFor(yesterday)).containsExactly(1)
+            assertThat(progress.marksFor(today)).isEmpty()
         }
 
     // --- Sprint 15: the inline stats panel (D-S15-4/5) ---
@@ -418,18 +496,23 @@ class DayReadingsViewModelTest {
         }
 
     @Test
-    fun `opening a reading on BLB does not refresh the widget`() =
+    fun `opening a reading on BLB now refreshes the widget - intended D-O-4 behavior change`() =
         runTest {
-            // Adversarial: only progress *mutations* refresh; a read-only tap must not.
+            // INTENDED BEHAVIOR CHANGE (sprint-00O, D-O-1/4): tapping a reading to open it now
+            // SETS it read as a side-effect (mark-on-open), which is a progress *mutation* — so it
+            // refreshes the widget. This supersedes the old "a read-only tap must not refresh"
+            // assertion: a tap is no longer read-only. Test 3d.
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(state.readings[0].portion)
+                    vm.onReadingTapped(today, state.readings[0].portion)
                     awaitItem()
                 }
+                // The mark-on-open re-emits the day state (stream 1 now read); ignore it here.
+                cancelAndIgnoreRemainingEvents()
             }
-            assertThat(widgetRefresher.refreshCount).isEqualTo(0)
+            assertThat(widgetRefresher.refreshCount).isEqualTo(1)
         }
 
     private suspend fun app.cash.turbine.ReceiveTurbine<DayUiState>.awaitNonLoading(): DayUiState {

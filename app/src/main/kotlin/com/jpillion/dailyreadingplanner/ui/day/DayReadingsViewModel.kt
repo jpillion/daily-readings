@@ -10,6 +10,7 @@ import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
+import com.jpillion.dailyreadingplanner.domain.MarkReadOnOpenUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUseCase
@@ -67,6 +68,7 @@ class DayReadingsViewModel
         private val getMonthCompletion: GetMonthCompletionUseCase,
         private val toggleReading: ToggleReadingUseCase,
         private val markWholeDay: MarkWholeDayUseCase,
+        private val markReadOnOpen: MarkReadOnOpenUseCase,
         private val openReference: OpenReferenceUseCase,
         private val widgetRefresher: WidgetRefresher,
         private val readerHandoff: ReaderHandoff,
@@ -283,8 +285,20 @@ class DayReadingsViewModel
             }
         }
 
-        fun onReadingTapped(portion: Portion) {
+        /**
+         * Marks the tapped reading read for [date] (D-O-1/2) — one-way, never unmarks — refreshes
+         * the widget (D-O-4), then resolves and opens the destination. The mark applies to ALL
+         * destinations; the checkbox remains the un-mark affordance.
+         */
+        fun onReadingTapped(
+            date: LocalDate,
+            portion: Portion,
+        ) {
             viewModelScope.launch {
+                // D-O-2: mark read before resolving/opening, so the side-effect lands regardless of
+                // destination (in-app / web / MySword app).
+                markReadOnOpen(date, portion.streamNumber)
+                widgetRefresher.refreshTodayWidget()
                 when (val destination = openReference(portion)) {
                     is ReadingDestination.InApp -> {
                         // V3 (D-V3-18, D-D-1): the in-app reader is a navigation target, not an OS

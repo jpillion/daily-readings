@@ -1181,6 +1181,36 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   M'Cheyne; a real migrated-history upgrade) are in the handoff. **Blocking the release:** the owner's
   device pass + the string/tone sign-offs, then the 1.5.0/10500 bump + closed-track tag-to-Play rollout.
   Handoff: [docs/sprints/sprint-alt-E-chronological-hardening-release.md](docs/sprints/sprint-alt-E-chronological-hardening-release.md).
+- ✅ **Sprint 00O (tap-to-mark-read — owner feature) is DONE** (uncommitted in the working tree; the
+  main session/owner commits + ships; no version bump — stays 1.4.3/10403). Team-driven (Maya framed,
+  Morgan planned, Sam implemented, Riley verified). **Tapping a reading card on the Schedule to open it
+  now marks that reading read for the displayed date** — in the in-app reader, on any external Bible
+  site (BLB/Bible Gateway/YouVersion), or in the MySword app — and refreshes the home-screen widget;
+  the checkbox stays the only un-mark affordance. Everything derived from per-reading marks (whole-day
+  completion, widget, picker dots, streaks/stats, year strips) reflects auto-marks for free through the
+  existing seams. **Product (Maya, owner-confirmed):** one-way SET not toggle (re-opening an already-read
+  reading keeps it read); ALL destinations; mark **on tap** (when the open is initiated, NOT gated on a
+  confirmed open — external launches don't report back and the in-app path is a tab switch; the
+  MySword→BLB fallback still opens); **no opt-out Setting** (the on-card checkbox is the one-tap undo).
+  **D-O-1:** a dedicated `domain/MarkReadOnOpenUseCase` (thin clone of `ToggleReadingUseCase` but always
+  `setRead(..., isRead = true)` — the param is `isRead`, not `markRead`), the clean mutation target and
+  the single seam a future opt-out would gate. **D-O-2:** the mark fires in `onReadingTapped` BEFORE
+  destination resolution in one `viewModelScope.launch`, so it lands uniformly for InApp/Web/MySwordApp
+  and is never lost on an early-returning branch; the open isn't blocked on it. **D-O-3:**
+  `onReadingTapped(date, portion)` is threaded the displayed `date` exactly like `onToggleReading`; the
+  card (`DayContent`/`ReadingCard`) keeps its `(Portion) -> Unit` signature (stateless/date-agnostic).
+  **D-O-4:** widget refresh reuses the existing `WidgetRefresher` call. **D-O-5:** Feb 29 renders no
+  cards, so `onReadingTapped` is unreachable — no guard. The intentional behavior change ("opening on
+  BLB now refreshes the widget") was renamed honestly, not silently flipped. 719 tests (net +9; the
+  three data/Room gates UNTOUCHED — plan = 11, `BibleTextVerificationTest` = 18,
+  `BibleDatabaseRoomOpenTest` = 5; M'Cheyne = 10), full pipeline green from clean, a11y gate 8/8,
+  Kover 96.0% on domain/data, **6 mutations killed** (isRead-true→false, drop the mark call, drop the
+  widget refresh, date→today, pager wrapper date-swap, mark-inside-in-app-branch-only), each restored
+  byte-identical. No new strings/deps/permissions, no Room/DataStore/manifest change. **Device-pass:**
+  the on-glass tap-opens-and-checks feel; the widget refreshing read-state on a real launcher.
+  **Queued out (not absorbed):** an opt-out Setting (only if a device pass shows surprise);
+  mark-only-on-successful-open (racy). Handoff:
+  [docs/sprints/sprint-00O-tap-to-mark-read.md](docs/sprints/sprint-00O-tap-to-mark-read.md).
 - Next up: **alt-schedules release cut** — owner runs the consolidated device pass + the string/tone
   sign-offs from the Alt Sprint E handoff; the main session applies the **1.5.0/10500** bump and the
   closed-track tag-to-Play rollout. The alternate-schedules epic (BACKLOG #3) is DONE — two gate-verified

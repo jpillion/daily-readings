@@ -1,6 +1,8 @@
 package com.jpillion.dailyreadingplanner.ui.day
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -9,12 +11,35 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
+import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
+import com.jpillion.dailyreadingplanner.domain.CompleteReadingDestinationPromptUseCase
+import com.jpillion.dailyreadingplanner.domain.CompleteTrackingStartPromptUseCase
+import com.jpillion.dailyreadingplanner.domain.CompleteUpgradeNoteUseCase
+import com.jpillion.dailyreadingplanner.domain.DayCompletionClassifier
+import com.jpillion.dailyreadingplanner.domain.FakeActivePlanRepository
+import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
+import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
+import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
+import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
+import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
+import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
+import com.jpillion.dailyreadingplanner.domain.MarkReadOnOpenUseCase
+import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
+import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
+import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUseCase
+import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
+import com.jpillion.dailyreadingplanner.domain.ResolveUpgradeNoteUseCase
+import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
+import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.bcReadingStats
 import com.jpillion.dailyreadingplanner.testing.bcYearStrips
+import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +49,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 /**
  * Pager-level behavior (Sprint 5): swiping between real calendar days, the Feb 29 and
@@ -74,7 +101,7 @@ class DayReadingsPagerScreenTest {
     private fun setScreen(
         today: LocalDate,
         statsPanel: StatsPanelUiState? = null,
-        onReadingTapped: (Portion) -> Unit = {},
+        onReadingTapped: (LocalDate, Portion) -> Unit = { _, _ -> },
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -270,7 +297,7 @@ class DayReadingsPagerScreenTest {
                     monthCompletionFor = { MutableStateFlow(emptyMap()) },
                     statsPanel = null,
                     onToggleReading = { _, _ -> },
-                    onReadingTapped = {},
+                    onReadingTapped = { _, _ -> },
                     onRetry = {},
                     onOpenSettings = {},
                     showTrackingStartPrompt = true,
@@ -289,5 +316,100 @@ class DayReadingsPagerScreenTest {
     fun `tracking-start prompt is absent by default`() {
         setScreen(today = LocalDate.of(2026, 6, 10))
         composeRule.onNodeWithTag("tracking-start-prompt").assertDoesNotExist()
+    }
+
+    // --- Sprint 00O (T3): the pager wrapper carries the page's date into onReadingTapped. ---
+
+    @Test
+    fun readingCardTap_onTodayPage_carriesTodaysDateAndPortion() {
+        // Pins the `{ portion -> onReadingTapped(date, portion) }` wrapper: a tap on the
+        // displayed (today) page must invoke the callback with TODAY's date and that card's
+        // portion. A dropped/swapped date in the wrapper fails this.
+        val today = LocalDate.of(2026, 6, 10)
+        val taps = mutableListOf<Pair<LocalDate, Int>>()
+        setScreen(today, onReadingTapped = { date, portion -> taps += date to portion.streamNumber })
+        composeRule.onNodeWithTag("reading-3").performClick()
+        assertThat(taps).hasSize(1)
+        assertThat(taps.single()).isEqualTo(today to 3)
+    }
+
+    @Test
+    fun readingCardTap_afterSwipingToNextDay_carriesThatPageActualDate() {
+        // T3 mutation guard with teeth: after swiping forward a day, a card tap must carry the
+        // NEXT day's date — not `today`. Replacing `date` with `today` in the pager wrapper
+        // (or in DayReadingsScreen's lambda) reddens this.
+        val today = LocalDate.of(2026, 6, 10)
+        val tomorrow = today.plusDays(1)
+        val taps = mutableListOf<Pair<LocalDate, Int>>()
+        setScreen(today, onReadingTapped = { date, portion -> taps += date to portion.streamNumber })
+        swipeToNextDay()
+        composeRule.onNodeWithText("Thursday, June 11").assertIsDisplayed()
+        composeRule.onNodeWithTag("reading-1").performClick()
+        assertThat(taps).hasSize(1)
+        assertThat(taps.single()).isEqualTo(tomorrow to 1)
+    }
+
+    // --- Sprint 00O end-to-end: a card tap through the REAL ViewModel marks the reading read
+    // and the checkbox re-renders checked (mark-on-open, D-O-1). Proves T1+T2+T3 together. ---
+
+    @Test
+    fun readingCardTap_throughRealViewModel_marksReadAndChecksTheBox() {
+        val today = LocalDate.of(2026, 6, 10)
+        val progress = FakeProgressRepository()
+        val vm = realViewModel(today, progress)
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                DayReadingsPagerScreen(
+                    today = vm.today,
+                    uiStateFor = vm::uiStateFor,
+                    monthCompletionFor = vm::monthCompletionFor,
+                    statsPanel = null,
+                    onToggleReading = vm::onToggleReading,
+                    onReadingTapped = vm::onReadingTapped,
+                    onRetry = vm::onRetry,
+                    onOpenSettings = {},
+                )
+            }
+        }
+        // Stream 2's checkbox starts unchecked, then a card tap marks it read live.
+        composeRule.onNodeWithTag("toggle-2").assertIsOff()
+        composeRule.onNodeWithTag("reading-2").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("toggle-2").assertIsOn()
+        assertThat(progress.marksFor(today)).containsExactly(2)
+    }
+
+    /** A real DayReadingsViewModel over the fakes — mirrors DayReadingsViewModelTest's harness. */
+    private fun realViewModel(
+        today: LocalDate,
+        progress: FakeProgressRepository,
+    ): DayReadingsViewModel {
+        val resolver = ScheduleDateResolver()
+        val clock = Clock.fixed(today.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
+        val classifier = DayCompletionClassifier(resolver)
+        val activePlan = FakeActivePlanRepository()
+        // EXTERNAL/BLB so a tap resolves a Web destination (no in-app handoff needed here); the
+        // already-initialized marker keeps first-run dialogs out of the way.
+        val settings = FakeSettingsRepository().apply { storedTrackingStartInitialized.value = true }
+        return DayReadingsViewModel(
+            getDayReadings = GetDayReadingsUseCase(resolver, FakeReadingPlanRepository(), progress, activePlan),
+            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, clock),
+            toggleReading = ToggleReadingUseCase(progress, activePlan),
+            markWholeDay = MarkWholeDayUseCase(progress, activePlan),
+            markReadOnOpen = MarkReadOnOpenUseCase(progress, activePlan),
+            openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
+            widgetRefresher = FakeWidgetRefresher(),
+            readerHandoff = ReaderHandoff(),
+            completeTrackingStartPrompt = CompleteTrackingStartPromptUseCase(settings),
+            resolveTrackingStartPrompt = ResolveTrackingStartPromptUseCase(settings, progress),
+            completeReadingDestinationPrompt = CompleteReadingDestinationPromptUseCase(settings),
+            resolveReadingDestinationPrompt = ResolveReadingDestinationPromptUseCase(settings, progress),
+            completeUpgradeNote = CompleteUpgradeNoteUseCase(settings),
+            resolveUpgradeNote = ResolveUpgradeNoteUseCase(settings, progress),
+            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, activePlan, clock),
+            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, activePlan, clock),
+            settingsRepository = settings,
+            clock = clock,
+        )
     }
 }
