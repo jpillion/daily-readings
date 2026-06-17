@@ -1211,10 +1211,20 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   **Queued out (not absorbed):** an opt-out Setting (only if a device pass shows surprise);
   mark-only-on-successful-open (racy). Handoff:
   [docs/sprints/sprint-00O-tap-to-mark-read.md](docs/sprints/sprint-00O-tap-to-mark-read.md).
-- Next up: **alt-schedules release cut** — owner runs the consolidated device pass + the string/tone
-  sign-offs from the Alt Sprint E handoff; the main session applies the **1.5.0/10500** bump and the
-  closed-track tag-to-Play rollout. The alternate-schedules epic (BACKLOG #3) is DONE — two gate-verified
-  plans; chronological is recorded NO-GO. (V2.x release prep remains queued, owner-scheduled independently.)
+- ✅ **Release 1.5.0 / 10500 SHIPPED to the Play closed-testing track** (`2026-06-16`; tag `v1.5.0`
+  → commit `63b7443`; `release.yml` "Test, build & upload to Play" green in 5m39s — upload-key-signed
+  AAB **7.74 MiB** < 12 MB gate, no INTERNET, 719 tests). MINOR bump per D-S9-3. **Ships the
+  alternate-schedules epic (BACKLOG #3 — Bible Companion default + M'Cheyne, per-plan progress,
+  whole-app live switch; chronological recorded NO-GO) AND Sprint 00O tap-to-mark-read.** whatsnew
+  updated for both. Still owner-side (non-blocking, for a 1.5.x patch): a real **device pass** on the
+  closed track, and the **string/tone sign-offs** (M'Cheyne stream titles + selector/switch-dialog copy
+  + the broader standing strings backlog) — all currently shipping as DRAFT wording.
+- ⚠️ **CI follow-up (non-blocking):** the `release.yml`/`ci.yml` actions (`actions/checkout@v4`,
+  `setup-java@v4`, `upload-artifact@v4`, `gradle/actions/setup-gradle@v4`) run on **Node 20, which
+  GitHub is forcing to Node 24 from 2026-06-16** — the 1.5.0 run warned. Bump the action versions
+  before the next release so a future tag-to-Play doesn't break (Jordan/devops).
+- Next up: **owner device pass + string sign-offs on 1.5.0** (closed track), then promote 1.5.0 toward
+  wider release when satisfied. (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
