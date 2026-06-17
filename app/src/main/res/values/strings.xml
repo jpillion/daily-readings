@@ -126,6 +126,7 @@
     <string name="destination_mode_external">My Bible app</string>
     <string name="destination_mode_row_description">Open readings in, %1$s</string>
     <string name="external_app_dropdown_description">My Bible app, %1$s</string>
+    <string name="external_app_help">Used when you tap a verse in the Bible tab — and, if you open readings in your Bible app, for the Schedule too.</string>
     <string name="request_app_title">Request another app or site</string>
     <string name="request_app_subject">Daily Reading Planner — Bible app request</string>
     <string name="request_app_body">I would like my readings to open in: </string>

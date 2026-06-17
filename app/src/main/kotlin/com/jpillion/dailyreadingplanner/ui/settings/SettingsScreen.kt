@@ -249,19 +249,29 @@ fun SettingsScreen(
 
             SectionTitle(stringResource(R.string.provider_section_title))
             // Sprint K (D-23-1): the destination MODE is a segmented toggle ("In this app" |
-            // "My Bible app"); WHICH external app is a separate dropdown shown when the mode is
-            // external. The external choice is remembered while in-app is selected.
+            // "My Bible app"). WHICH external app is a separate dropdown that is ALWAYS shown,
+            // in both modes: even when reading in-app, the external-app choice drives the
+            // per-verse external tap-out from the Bible reader. In external mode it also
+            // determines where Schedule readings open.
             DestinationModeToggle(
                 destinationMode = destinationMode,
                 onDestinationModeSelected = onDestinationModeSelected,
             )
-            if (destinationMode == ReadingDestinationMode.EXTERNAL) {
-                ExternalAppDropdown(
-                    selectedApp = externalBibleApp,
-                    mySwordInstalled = mySwordInstalled,
-                    onExternalBibleAppSelected = onExternalBibleAppSelected,
-                )
-            }
+            ExternalAppDropdown(
+                selectedApp = externalBibleApp,
+                mySwordInstalled = mySwordInstalled,
+                onExternalBibleAppSelected = onExternalBibleAppSelected,
+            )
+            Text(
+                text = stringResource(R.string.external_app_help),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier =
+                    Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp)
+                        .testTag("provider-context-caption"),
+            )
             Row(
                 modifier =
                     Modifier

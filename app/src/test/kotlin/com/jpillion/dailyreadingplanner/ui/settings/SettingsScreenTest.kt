@@ -346,10 +346,58 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun externalAppDropdown_isHidden_whenModeIsInApp() {
-        // The "My Bible app" dropdown is only relevant in external mode.
+    fun externalAppDropdown_isVisible_evenWhenModeIsInApp() {
+        // Priya's Settings UX fix (D-K-VISIBLE): the external-app choice is ALWAYS shown, in both
+        // modes — even when reading in-app it drives the per-verse external tap-out from the Bible
+        // reader. (Was hidden in IN_APP mode before the `if (mode == EXTERNAL)` guard was removed.)
         setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.IN_APP)
-        composeRule.onNodeWithTag("provider-dropdown").assertDoesNotExist()
+        composeRule.onNodeWithTag("provider-dropdown").performScrollTo().assertIsDisplayed()
+    }
+
+    // Priya's Settings UX fix: a non-interactive context caption under the always-visible
+    // external-app dropdown, explaining when the choice applies. Shown in BOTH modes. The
+    // expectation resolves the copy through the resource (proving it is wired) AND is pinned
+    // LITERALLY (the copy is awaiting owner tone sign-off; pin the current literal so a reword
+    // is a deliberate, visible diff).
+
+    /** Resolve the caption through the resource, mirroring the house idiom (assert-by-tag path). */
+    private fun externalAppHelp(): String {
+        val ctx =
+            androidx.test.core.app.ApplicationProvider
+                .getApplicationContext<android.content.Context>()
+        return ctx.getString(com.jpillion.dailyreadingplanner.R.string.external_app_help)
+    }
+
+    @Test
+    fun externalAppHelpCaption_isShown_inExternalMode_withExactCopy() {
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL)
+        // Resource is wired (resolve == literal) AND the caption node renders that exact text.
+        assertThat(externalAppHelp())
+            .isEqualTo(
+                "Used when you tap a verse in the Bible tab — and, if you open readings in " +
+                    "your Bible app, for the Schedule too.",
+            )
+        composeRule
+            .onNodeWithTag("provider-context-caption")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextEquals(externalAppHelp())
+    }
+
+    @Test
+    fun externalAppHelpCaption_isShown_inInAppMode_withExactCopy() {
+        // The caption rides with the always-visible dropdown — present in IN_APP mode too.
+        setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.IN_APP)
+        assertThat(externalAppHelp())
+            .isEqualTo(
+                "Used when you tap a verse in the Bible tab — and, if you open readings in " +
+                    "your Bible app, for the Schedule too.",
+            )
+        composeRule
+            .onNodeWithTag("provider-context-caption")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextEquals(externalAppHelp())
     }
 
     @Test

@@ -1277,6 +1277,19 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   misparse probe (Riley also caught a stale `SettingsViewModelTest` 2→3-plan pin that Diego's
   assembleDebug-only check had masked). Plan name/title "Chronological" await owner tone sign-off.
   Device-pass: the N=1 day-card/stats/widget look + the live switch to Chronological on glass.
+- ✅ **Settings: external-app choice always visible + context (owner feedback, `2026-06-17`, ships 1.5.1)
+  is DONE** (Maya spec, Morgan map, Priya impl, Riley verify; on `main`). The "Open readings in" external
+  Bible-app dropdown (BLB/Gateway/YouVersion/MySword) was hidden when the mode was "In this app"
+  (`SettingsScreen.kt:258` `if (mode == EXTERNAL)`), even though the choice still drives the **per-verse
+  external tap-out in the Bible reader** (Sprint H) regardless of mode. Fix: the dropdown now renders
+  unconditionally (fully active in both modes — it routes through `SettingsDropdownRow`, no disabled
+  path), with a new caption `external_app_help` (tag `provider-context-caption`): "Used when you tap a
+  verse in the Bible tab — and, if you open readings in your Bible app, for the Schedule too." Display
+  + visibility only — NO behavior/persistence/ViewModel change. The stale `SettingsScreenTest`
+  hidden-in-IN_APP pin flipped to visible-in-both-modes (proven to bite via transient revert); 2 caption
+  pins added (literal copy, load-bearing — caption-removal reddens them). 735 tests (+2); five data/Room
+  gates UNTOUCHED (BC 11, M'Cheyne 10, Chronological 8, BibleText 18, RoomOpen 5); a11y 8/8; Kover 96%.
+  Caption copy awaits owner tone sign-off (pinned literally). Device-pass: caption wrap at large font.
 - ⚠️ **CI follow-up (non-blocking):** the `release.yml`/`ci.yml` actions (`actions/checkout@v4`,
   `setup-java@v4`, `upload-artifact@v4`, `gradle/actions/setup-gradle@v4`) run on **Node 20, which
   GitHub is forcing to Node 24 from 2026-06-16** — the 1.5.0 run warned. Bump the action versions
