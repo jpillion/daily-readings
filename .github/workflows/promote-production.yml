@@ -84,7 +84,8 @@ jobs:
             --skip_upload_metadata true \
             --skip_upload_images true \
             --skip_upload_screenshots true \
-            --skip_upload_changelogs true
+            --skip_upload_changelogs true \
+            --verbose
 
       - name: Clean up service account key
         if: always()
