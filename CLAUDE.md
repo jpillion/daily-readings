@@ -1304,10 +1304,24 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   bump stays on its unmerged branch). whatsnew refreshed (Chronological headline). Still owner-side
   (non-blocking, patchable): a device pass on 1.5.x + the accumulated string/tone sign-offs (M'Cheyne
   titles, the chronological plan name, the 5 caption strings, the external-app help caption).
-- Next up: **owner device pass + string/tone sign-offs on 1.5.1** (alpha track) — incl. the new
-  Chronological plan's N=1 look (day card / stats / widget) and the live switch to it on glass — then
-  promote toward wider release when satisfied. The Node24 CI bump (`ci/actions-node24-bump`) PR awaits
-  owner review. (V2.x release prep remains queued, owner-scheduled independently.)
+- 🚀 **Production promotion pipeline added (`2026-07-23`, owner approved release to production).**
+  Owner chose to automate + full 100% rollout. New manual workflow
+  `.github/workflows/promote-production.yml` (`workflow_dispatch`) promotes an already-reviewed
+  build from a testing track (default `alpha`) to **production** via Fastlane
+  `supply --track_promote_to production` — moves the SAME reviewed AAB by `versionCode` (no
+  rebuild/re-sign, no duplicate versionCode, no second review); inputs `version_code`
+  (default `10501`), `source_track` (default `alpha`), `rollout` (default `1` = 100%; a
+  fraction auto-sets status `inProgress`). `release.yml` (tag → alpha) is UNCHANGED — production
+  is now a deliberate manual second stage. `r0adkll` can't promote without re-upload, hence
+  Fastlane. Docs: [docs/RELEASING.md](docs/RELEASING.md) "Promoting a release to production".
+  **⛔ BLOCKING one-time owner step:** the `PLAY_SERVICE_ACCOUNT_JSON` account is scoped to
+  testing tracks only — grant it **"Release to production…"** in Play Console → Users and
+  permissions for `com.jpillion.dailyreadingplanner`, or the workflow 403s. After the grant,
+  run the workflow (Actions → "Promote to Production") to push 1.5.1/10501 live at 100%.
+- Next up: **owner grants the service account production permission, then dispatch "Promote to
+  Production" for 1.5.1/10501** (or ask this session to `gh workflow run` it once granted). Also
+  still pending (non-blocking): device pass + string/tone sign-offs on 1.5.1; the Node24 CI bump
+  (`ci/actions-node24-bump`) PR. (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

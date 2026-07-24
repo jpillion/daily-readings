@@ -1,0 +1,91 @@
+name: Promote to Production
+
+# Manually promotes an already-reviewed release from a testing track (default: alpha) to
+# the PRODUCTION track on Google Play. This does NOT rebuild or re-sign — it moves the exact
+# same reviewed AAB (identified by versionCode) onto production, so there is no duplicate
+# versionCode and no second review. Run it from the Actions tab (Run workflow).
+#
+# ── ONE-TIME PREREQUISITE (owner, in Play Console) ────────────────────────────────────────
+# The PLAY_SERVICE_ACCOUNT_JSON service account was originally scoped to "Release to testing
+# tracks" only (see docs/RELEASING.md). Promotion to production needs the production release
+# permission:
+#   Play Console → Users and permissions → (the service-account user) → App permissions for
+#   com.jpillion.dailyreadingplanner → enable "Release to production, exclude devices, and
+#   use Play App Signing" (Releases). Without it this workflow fails with a 403.
+# ──────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "versionCode to promote (must already be live on the source track)"
+        required: true
+        default: "10501"
+      source_track:
+        description: "Track to promote FROM"
+        required: true
+        default: "alpha"
+        type: choice
+        options:
+          - alpha
+          - beta
+          - internal
+      rollout:
+        description: "Rollout fraction (1 = full 100%, e.g. 0.2 = 20% staged)"
+        required: true
+        default: "1"
+
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Promote ${{ github.event.inputs.source_track }} → production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write service account key
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install Fastlane
+        run: gem install fastlane --no-document
+
+      - name: Promote to production
+        run: |
+          # 100% rollout completes the release (status "completed"); anything less is a
+          # staged rollout still in progress (status "inProgress").
+          STATUS=completed
+          case "${{ github.event.inputs.rollout }}" in
+            1|1.0) STATUS=completed ;;
+            *)     STATUS=inProgress ;;
+          esac
+          echo "Promoting versionCode ${{ github.event.inputs.version_code }} from ${{ github.event.inputs.source_track }} at rollout ${{ github.event.inputs.rollout }} (status $STATUS)"
+          fastlane supply \
+            --package_name com.jpillion.dailyreadingplanner \
+            --json_key play-service-account.json \
+            --track "${{ github.event.inputs.source_track }}" \
+            --track_promote_to production \
+            --version_code "${{ github.event.inputs.version_code }}" \
+            --release_status "$STATUS" \
+            --rollout "${{ github.event.inputs.rollout }}" \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_metadata true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true \
+            --skip_upload_changelogs true
+
+      - name: Clean up service account key
+        if: always()
+        run: rm -f play-service-account.json

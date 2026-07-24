@@ -14,7 +14,36 @@ automatically via `.github/workflows/release.yml`.
    ```
 The workflow verifies the tag matches `versionName`, runs the unit-test gate (incl. the
 plan-data verification gate), builds the signed bundle, and uploads it to the Alpha track
-with the what's-new text. Promotion to production stays a manual Play Console step.
+with the what's-new text.
+
+## Promoting a release to production
+
+Production is a **deliberate, manual second stage**: `tag → Alpha (auto)`, then
+`Alpha → Production (manual promote)`. The promotion moves the *same reviewed AAB* (by
+`versionCode`) onto the production track — no rebuild, no re-sign, no duplicate versionCode,
+no second review.
+
+Run **Actions → "Promote to Production" → Run workflow** (`.github/workflows/promote-production.yml`),
+with:
+- **version_code** — the build already live on the source track (e.g. `10501` for 1.5.1).
+- **source_track** — usually `alpha`.
+- **rollout** — `1` for a full 100% rollout; a fraction (e.g. `0.2`) for a staged rollout
+  (the workflow sets the release status to `inProgress` automatically when rollout < 1).
+
+Equivalent local command (Fastlane `supply`):
+```bash
+fastlane supply --package_name com.jpillion.dailyreadingplanner \
+  --json_key key.json --track alpha --track_promote_to production \
+  --version_code 10501 --release_status completed --rollout 1 \
+  --skip_upload_apk true --skip_upload_aab true --skip_upload_changelogs true
+```
+
+### One-time prerequisite — production permission (owner)
+The `PLAY_SERVICE_ACCOUNT_JSON` account was originally scoped to **testing tracks only**, so
+it **cannot** promote to production until you grant it once:
+Play Console → **Users and permissions** → the service-account user → app permissions for
+`com.jpillion.dailyreadingplanner` → enable **"Release to production, exclude devices, and use
+Play App Signing"**. Until that's granted, the promote workflow fails with a **403**.
 
 ## One-time setup (owner)
 
