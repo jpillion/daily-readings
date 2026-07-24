@@ -1304,10 +1304,12 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   bump stays on its unmerged branch). whatsnew refreshed (Chronological headline). Still owner-side
   (non-blocking, patchable): a device pass on 1.5.x + the accumulated string/tone sign-offs (M'Cheyne
   titles, the chronological plan name, the 5 caption strings, the external-app help caption).
-- 🚀 **1.5.1 / 10501 SUBMITTED TO PRODUCTION at 100% (full rollout) — `2026-07-23`, owner
-  approved.** In Google review now (the "Changes in review" state; reviews typically ≤7 days,
-  faster for an update of an already-tested build) → rolls out to all production users on
-  approval. Done by **promoting the already-reviewed alpha AAB in the Play Console UI** (Test
+- ✅ **1.5.1 / 10501 is LIVE IN PRODUCTION at 100% — `2026-07-23`, owner approved.** Google's
+  review cleared same-day (fast, as updates to an already-reviewed app often are): the Production
+  track shows **Active · Latest release 1.5.1 · "Available on Google Play" · 177 countries/regions**
+  (released Jul 23 10:41 PM). This is the app's FIRST production release — Daily Reading Planner
+  is now public on the Play Store.
+  Reached by **promoting the already-reviewed alpha AAB in the Play Console UI** (Test
   and release → Closed testing → Alpha → 1.5.1 → Promote release → Production → Save → Publishing
   overview → Submit for review); same bundle/notes, no rebuild.
   **Why the UI and not CI:** owner chose to automate, so a `workflow_dispatch` promote pipeline
@@ -1326,10 +1328,12 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   Production" (or `gh workflow run "Promote to Production" -f version_code=<code>`). Both
   `promote-production.yml` prerequisites are documented as satisfied in
   [docs/RELEASING.md](docs/RELEASING.md).
-- Next up: **watch for Google's production review of 1.5.1 to clear** (Play Console → Publishing
-  overview / Submission activity), then confirm it's live at 100% on the store. Still pending
-  (non-blocking): device pass + string/tone sign-offs on 1.5.1; the Node24 CI bump
-  (`ci/actions-node24-bump`) PR. (V2.x release prep remains queued, owner-scheduled independently.)
+- Next up: 1.5.1 is public — monitor early production **crash/ANR vitals + reviews** over the
+  next days (Play Console → Monitor and improve; two minor edge-to-edge "recommended actions" are
+  noted on the release dashboard, non-blocking). Still pending (non-blocking): device pass +
+  string/tone sign-offs on 1.5.1; the Node24 CI bump (`ci/actions-node24-bump`) PR. Future
+  production releases: one-click via Actions → "Promote to Production" (CI promote is armed).
+  (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
