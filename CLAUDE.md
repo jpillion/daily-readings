@@ -1318,14 +1318,17 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   Developer API **cannot create the FIRST release on a track that's never had one** (production
   was Inactive), returning "caller does not have permission" even with correct perms. So the
   first production release HAD to be a manual Console promotion; the CI workflow is for
-  **subsequent** production releases, and still needs the one-time
-  **"Release to production…"** grant on the `PLAY_SERVICE_ACCOUNT_JSON` service account
-  (Play Console → Users and permissions) before it will run. `release.yml` (tag → alpha)
-  unchanged.
-- Next up: **watch for Google's production review to clear** (Play Console → Publishing overview /
-  Submission activity), then confirm 1.5.1 is live at 100% on the store. For the *next* release to
-  promote via CI (not the UI), grant the service account the "Release to production" permission.
-  Still pending (non-blocking): device pass + string/tone sign-offs on 1.5.1; the Node24 CI bump
+  **subsequent** production releases. `release.yml` (tag → alpha) unchanged.
+  **✅ CI promote is now ARMED (2026-07-23):** the `play-publisher@…gserviceaccount.com` service
+  account was granted **"Release to production…"** for the app (minimal scope — testing-tracks
+  permission kept, no Admin/financial; verified persisted), and the first release seeded the
+  production track. So from the NEXT release, promotion is one click: Actions → "Promote to
+  Production" (or `gh workflow run "Promote to Production" -f version_code=<code>`). Both
+  `promote-production.yml` prerequisites are documented as satisfied in
+  [docs/RELEASING.md](docs/RELEASING.md).
+- Next up: **watch for Google's production review of 1.5.1 to clear** (Play Console → Publishing
+  overview / Submission activity), then confirm it's live at 100% on the store. Still pending
+  (non-blocking): device pass + string/tone sign-offs on 1.5.1; the Node24 CI bump
   (`ci/actions-node24-bump`) PR. (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 

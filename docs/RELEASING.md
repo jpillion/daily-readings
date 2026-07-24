@@ -38,27 +38,27 @@ fastlane supply --package_name com.jpillion.dailyreadingplanner \
   --skip_upload_apk true --skip_upload_aab true --skip_upload_changelogs true
 ```
 
-### Two one-time prerequisites before the CI promote can work
-The `promote-production.yml` workflow (and any Play API promotion) needs BOTH of these once —
-after them, subsequent production promotions can run from CI:
+### Two one-time prerequisites — BOTH now satisfied (2026-07-23), so CI promote is ready
+The `promote-production.yml` workflow (and any Play API promotion) needed BOTH of these once.
+They are done, so from the next release the CI promote is one click:
 
-1. **Production permission on the service account.** `PLAY_SERVICE_ACCOUNT_JSON` was originally
-   scoped to **testing tracks only**: Play Console → **Users and permissions** → the
-   service-account user → app permissions for `com.jpillion.dailyreadingplanner` → enable
-   **"Release to production, exclude devices, and use Play App Signing"**. Without it the
-   promote 403s.
-2. **The production track must already have one release.** The Play Developer API cannot
-   create the *first* release on a track that's never had one — it returns
-   `Google Api Error: Invalid request - The caller does not have permission` even with the
-   right permission. So the **first** production release must be made in the Play Console UI.
+1. ✅ **Production permission on the service account** — granted 2026-07-23. The
+   `play-publisher@daily-reading-planner-app.iam.gserviceaccount.com` account (used by
+   `PLAY_SERVICE_ACCOUNT_JSON`) now has **"Release to production, exclude devices, and use Play
+   App Signing"** for `com.jpillion.dailyreadingplanner`, alongside its existing "Release apps to
+   testing tracks" (Play Console → Users and permissions → that user → app permissions). It was
+   originally scoped to testing tracks only, which is why early CI promote attempts 403'd.
+2. ✅ **Production track initialized** — the first production release (1.5.1, below) seeded the
+   track. The Play Developer API cannot create the *first* release on a track that's never had
+   one (it returns `Invalid request - The caller does not have permission` even with the right
+   permission), so the first one had to be a manual Console promotion; subsequent ones can be CI.
 
 ### First production release — done via Console UI (2026-07-23)
 1.5.1 / 10501 was promoted to **production at 100% (full rollout)** through the Play Console UI
 (Test and release → Closed testing → Alpha → the 1.5.1 release → **Promote release → Production**
 → Next → Save → Publishing overview → **Submit change for review**), because of prerequisite #2
-above. It is in Google review now (typically ≤7 days) and rolls out to all users on approval.
-From the **next** release onward — with prerequisite #1 granted and the track now initialized —
-`promote-production.yml` should work.
+above. It went into Google review (typically ≤7 days) and rolls out to all users on approval.
+**From the next release onward, use `promote-production.yml`** (Actions → "Promote to Production").
 
 ## One-time setup (owner)
 
