@@ -38,12 +38,27 @@ fastlane supply --package_name com.jpillion.dailyreadingplanner \
   --skip_upload_apk true --skip_upload_aab true --skip_upload_changelogs true
 ```
 
-### One-time prerequisite — production permission (owner)
-The `PLAY_SERVICE_ACCOUNT_JSON` account was originally scoped to **testing tracks only**, so
-it **cannot** promote to production until you grant it once:
-Play Console → **Users and permissions** → the service-account user → app permissions for
-`com.jpillion.dailyreadingplanner` → enable **"Release to production, exclude devices, and use
-Play App Signing"**. Until that's granted, the promote workflow fails with a **403**.
+### Two one-time prerequisites before the CI promote can work
+The `promote-production.yml` workflow (and any Play API promotion) needs BOTH of these once —
+after them, subsequent production promotions can run from CI:
+
+1. **Production permission on the service account.** `PLAY_SERVICE_ACCOUNT_JSON` was originally
+   scoped to **testing tracks only**: Play Console → **Users and permissions** → the
+   service-account user → app permissions for `com.jpillion.dailyreadingplanner` → enable
+   **"Release to production, exclude devices, and use Play App Signing"**. Without it the
+   promote 403s.
+2. **The production track must already have one release.** The Play Developer API cannot
+   create the *first* release on a track that's never had one — it returns
+   `Google Api Error: Invalid request - The caller does not have permission` even with the
+   right permission. So the **first** production release must be made in the Play Console UI.
+
+### First production release — done via Console UI (2026-07-23)
+1.5.1 / 10501 was promoted to **production at 100% (full rollout)** through the Play Console UI
+(Test and release → Closed testing → Alpha → the 1.5.1 release → **Promote release → Production**
+→ Next → Save → Publishing overview → **Submit change for review**), because of prerequisite #2
+above. It is in Google review now (typically ≤7 days) and rolls out to all users on approval.
+From the **next** release onward — with prerequisite #1 granted and the track now initialized —
+`promote-production.yml` should work.
 
 ## One-time setup (owner)
 
