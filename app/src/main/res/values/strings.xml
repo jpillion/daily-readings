@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Daily Reading Planner</string>
+    <string name="app_name">Daily Readings</string>
     <string name="title_today_date">Today – %1$s</string>
     <string name="jump_to_today">Today</string>
     <string name="open_date_picker">Pick a date</string>
