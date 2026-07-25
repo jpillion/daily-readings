@@ -1418,14 +1418,33 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   `<Book> <ch>:<verse>`…"). A11y is a build requirement: long-press is unreliable under TalkBack, so
   the "Select verses" menu item is its equivalent path. Open for owner sign-off: en dash vs plain
   hyphen in the pasted reference.
-- Also pending (non-blocking): 1.5.1 is public — monitor early production **crash/ANR vitals +
-  reviews** (Play Console → Monitor and improve; two minor edge-to-edge "recommended actions" are
-  noted on the release dashboard, non-blocking). Store-title rename in review. Device pass +
-  string/tone sign-offs on 1.5.1; the Node24 CI bump (`ci/actions-node24-bump`) PR; owner's batch
-  of other changes + the launcher rename ride the next release. **Sprint 00P + 00Q are unreleased
-  — they need a version bump to ship.** Future production releases: one-click via Actions →
-  "Promote to Production" (CI promote is armed). (V2.x release prep remains queued,
-  owner-scheduled independently.)
+- ✅ **Release 1.6.0 / 10600 SHIPPED TO PRODUCTION at 100% — `2026-07-25`** (tag `v1.6.0` →
+  commit `fd136f9`). MINOR bump per D-S9-3 (sprint 00P adds a user-visible feature, not just a
+  fix). **Ships sprint 00P**: the Chronological P0 (tapping a reading opened Genesis 1 on 83 of
+  365 days), per-passage reading cards, and partial per-passage checks. whatsnew rewritten (it
+  still described 1.5.1). `release.yml` green (run 30170033649) — upload-key-signed AAB **7.8 MB**
+  < 12 MB gate, 818 tests.
+  **This was the FIRST fully-automated production promote** (`promote-production.yml`, run
+  30170236003, 39s): `fastlane supply --track alpha --track_promote_to production --version_code
+  10600 --rollout 1 --release_status completed`. Both prerequisites recorded in
+  [docs/RELEASING.md](docs/RELEASING.md) held — no Console UI step needed, unlike 1.5.1. The
+  tag→alpha→promote path is now proven end-to-end; use it for every future release.
+  **CI Node 24 debt CLEARED as part of this release.** GitHub forced Node 20 → Node 24 from
+  2026-06-16 and the pipeline was 5 weeks past it. The branch was `ci/workflows-node24-bump` (NOT
+  `ci/actions-node24-bump` as previously recorded here — that name never existed); it was merged
+  (`99fd3a4`), and it had **missed two files**: `promote-production.yml` (the promote workflow
+  itself) and the `chronological-rebuild` job in `ci.yml`. Both bumped in `fd136f9`, so **no
+  workflow is left on a Node 20 action**: checkout@v6, setup-java@v5, setup-python@v6,
+  upload-artifact@v7, setup-gradle@v5. Both runs went green on the new versions.
+  **New non-blocking CI warning:** the `r0adkll` upload action warns `'track' is deprecated …
+  migrate to 'tracks'` — fix before it becomes an error (Jordan).
+- Next up (non-blocking): monitor 1.6.0 **crash/ANR vitals + reviews** (Play Console → Monitor and
+  improve; the two minor edge-to-edge "recommended actions" remain noted, non-blocking). Store-title
+  rename in review. Still pending: the owner **device pass** on 1.6.0 — especially the sprint-00P
+  items (the P0 on glass; the amber partial tick vs the green complete tick in light/dark and
+  **under dynamic colour**, which is NOT JVM-provable; the 6-card Chronological 04/22 layout) — plus
+  the accumulated **string/tone sign-offs**. Then `sprint-00Q-reader-verse-selection` (spec locked,
+  now unblocked). (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
