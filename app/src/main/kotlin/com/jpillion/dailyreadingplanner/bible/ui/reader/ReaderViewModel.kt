@@ -8,6 +8,7 @@ import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetTranslationsUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
+import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.data.reference.Book
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
@@ -183,16 +184,28 @@ class ReaderViewModel
 
         private val openDestinationChannel = Channel<ReadingDestination>(Channel.BUFFERED)
 
-        /** One-shot resolved verse-tap destinations (BACKLOG #5, D-H-4); collect exactly once from the UI. */
+        /** One-shot resolved verse-tap destinations (BACKLOG #5, D-23-1); collect exactly once from the UI. */
         val openDestinationEvents: Flow<ReadingDestination> = openDestinationChannel.receiveAsFlow()
 
         /**
-         * H7 — a verse was tapped: open it in the user's external Bible app at the exact
-         * (book, chapter, verse) decoded from [verseId] (D-H-3, canonical coords, NOT the display
-         * label). Works UNCHANGED inside the combined portion page — each verse keeps its canonical id.
-         * IN_APP falls back to BLB (D-H-4). The launch side-effect runs in the UI.
+         * H7 — open [verseId] in the user's external Bible app at the exact (book, chapter, verse)
+         * decoded from it (D-H-3, canonical coords, NOT the display label). Works UNCHANGED inside
+         * the combined portion page — each verse keeps its canonical id. The launch side-effect
+         * runs in the UI.
+         *
+         * **Resolution is D-23-1 (Sprint K), not the superseded H4 shim.** A verse tap is always
+         * external by definition — the reader IS the in-app destination — so [OpenVerseUseCase]
+         * resolves from the chosen [ExternalBibleApp] ALONE, independent of the
+         * [com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode]: an in-app-mode
+         * user keeps their remembered external app rather than being mapped to BLB. MySword
+         * resolves to the app intent with a BLB-verse fallback; the persisted choice is never
+         * rewritten.
+         *
+         * **Q2 renamed this from `onVerseTapped`, body unchanged.** A tap no longer opens anything
+         * directly — it opens the [VerseActionMenu], and only its "Open in `<app>`" item lands here.
+         * The old name would now be a lie; [OpenVerseUseCase] itself is deliberately untouched.
          */
-        fun onVerseTapped(verseId: Long) {
+        fun openVerseExternally(verseId: Long) {
             val bookNo = VerseId.book(verseId)
             val chapter = VerseId.chapter(verseId)
             val verse = VerseId.verse(verseId)
@@ -217,10 +230,108 @@ class ReaderViewModel
             loadPage(page, flow)
         }
 
-        /** Records the displayed page as the in-session last-read (called as the pager settles). */
+        /**
+         * Records the displayed page as the in-session last-read (called as the pager settles), and
+         * — **D-Q-3** — applies the page change to the verse selection: a selection lives only on
+         * the page it was made on, so swiping away clears it rather than leaving an invisible
+         * off-screen selection alive. Idempotent for the page it is already on.
+         */
         fun onPageSettled(page: Int) {
             recordLastReadFor(page)
+            _selection.value = _selection.value.onPageChanged(page)
         }
+
+        // --- Q2: verse selection (Ticket 1) and copy (Ticket 2 / D-Q-4). ---
+
+        /**
+         * The reader's multi-select state. Hoisted here (unlike the ephemeral verse menu, D-Q-2)
+         * because it must survive recomposition, drive the contextual action bar, and feed the copy
+         * action. The reducer itself is the pure [VerseSelection] (Q1).
+         */
+        private val _selection = MutableStateFlow(VerseSelection.NONE)
+        val selection: StateFlow<VerseSelection> = _selection.asStateFlow()
+
+        /** Long-press (or the menu's "Select verses"): enter selection with exactly this verse. */
+        fun onVerseLongPressed(
+            page: Int,
+            verseId: Long,
+        ) {
+            _selection.value = VerseSelection.start(page, verseId)
+        }
+
+        /** A tap while selecting: add or remove [verseId]; removing the last one exits the mode. */
+        fun onVerseSelectionToggled(
+            page: Int,
+            verseId: Long,
+        ) {
+            _selection.value = _selection.value.toggle(page, verseId)
+        }
+
+        /** Explicit exit — the action bar's X and system back. */
+        fun onSelectionCleared() {
+            _selection.value = _selection.value.cleared()
+        }
+
+        private val copyChannel = Channel<String>(Channel.BUFFERED)
+
+        /**
+         * **D-Q-4** — one-shot clipboard payloads. The ViewModel BUILDS the string (it owns the
+         * page-content cache and the translation code); the route PERFORMS the side effect
+         * (`copyVerseTextToClipboard`), mirroring the [openDestinationEvents] →
+         * `launchReadingDestination` idiom exactly. Collect exactly once from the UI.
+         */
+        val copyEvents: Flow<String> = copyChannel.receiveAsFlow()
+
+        /**
+         * The action bar's Copy: formats the whole current selection.
+         *
+         * **P-Q-1 — this does NOT clear the selection.** The spec's exits are X, system back and
+         * deselecting the last verse; Copy is not among them, so a copy leaves the selection intact
+         * (extend and copy again; a mis-tap costs nothing). Flagged for owner confirmation.
+         */
+        fun copySelection() {
+            val current = _selection.value
+            val page = current.page ?: return
+            emitCopy(page, current.verseIds)
+        }
+
+        /**
+         * The menu's "Copy this verse" — the SAME path as a one-verse selection, so the two can
+         * never produce different strings (a spec requirement).
+         */
+        fun copyVerse(
+            page: Int,
+            verseId: Long,
+        ) {
+            emitCopy(page, setOf(verseId))
+        }
+
+        private fun emitCopy(
+            page: Int,
+            verseIds: Set<Long>,
+        ) {
+            val text = VerseClipboardFormatter.format(versesOn(page, verseIds), translationCode())
+            if (text.isEmpty()) return
+            viewModelScope.launch { copyChannel.send(text) }
+        }
+
+        /**
+         * The loaded [VerseText]s for [verseIds] on [page]. Reads the already-rendered page content
+         * (a portion page's several blocks flatten into one verse list), so a copy never re-queries
+         * the database and can only ever copy what the user is actually looking at.
+         */
+        private fun versesOn(
+            page: Int,
+            verseIds: Set<Long>,
+        ): List<VerseText> =
+            (pageStates[page]?.value as? ReaderUiState.Content)
+                ?.blocks
+                ?.flatMap { it.verses }
+                ?.filter { it.canonicalId in verseIds }
+                .orEmpty()
+
+        /** The bundled translation code for the citation ("KJV"), from the D-N-1 seam — never hardcoded. */
+        private fun translationCode(): String? = _versionState.value.selected?.code
 
         /**
          * D-I-2 (OQ-A) — entering the Bible tab (or a picker jump) forces the Browse context at the
@@ -270,6 +381,10 @@ class ReaderViewModel
             // The page→content mapping is context-specific; a stale cache would serve the wrong
             // chapter for a reused page index, so drop it on every switch.
             pageStates = mutableMapOf()
+            // Q2 (D-Q-3, taken to its conclusion): a Browse <-> Reading switch is a whole new
+            // page-index space, so a selection made in the old one cannot survive it — the same
+            // page number means a different chapter.
+            _selection.value = VerseSelection.NONE
             _context.value = ctx
             _initialPage.value = initialPage
         }

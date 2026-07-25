@@ -269,9 +269,15 @@ internal fun readingListHintRes(
 
 /**
  * Sprint K (reader footer hint) — the in-app reader's footer hint string for the user's chosen
- * external Bible app: "Tap a verse to open it on Blue Letter Bible" / "…on Bible Gateway" /
- * "…on YouVersion" / "…in MySword". `%1$s` is the external app display name
+ * external Bible app: "Tap a verse to copy it or open it on Blue Letter Bible" / "…on Bible
+ * Gateway" / "…on YouVersion" / "…in MySword". `%1$s` is the external app display name
  * ([externalBibleAppNameRes]).
+ *
+ * **sprint-00Q reworded the string VALUES, not this mapping.** A verse tap now opens the verse
+ * action menu (Open in `<app>` / Copy this verse / Select verses) rather than launching the app
+ * straight away, so the old "Tap a verse to open it on `<app>`" wording had become false. This
+ * function stays the single home of the destination → hint mapping (D-K-HINT-1); the per-app
+ * preposition split ("on" vs MySword's "in") is unchanged.
  *
  * This lives next to [readingListHintRes] ON PURPOSE: the two hint surfaces (the Schedule list
  * caption and the reader footer) share ONE home so their per-provider prepositions can never drift. The

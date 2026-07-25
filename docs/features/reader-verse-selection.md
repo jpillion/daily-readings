@@ -32,9 +32,15 @@ A short tap (when **not** in selection mode) opens a small menu anchored at the 
 contents:
 
 1. **Open in `<external app>`** — the existing Sprint-H behaviour, now behind one deliberate step.
-   Reuses `OpenVerseUseCase` unchanged, including **D-H-4** (when the reading destination is IN_APP
-   the verse tap-out still resolves to BLB, and the persisted choice is never rewritten) and the
-   MySword-app / BLB-fallback path.
+   Reuses `OpenVerseUseCase` **unchanged**, including the MySword-app / BLB-fallback path.
+
+   > **Corrected 2026-07-25 (this line was wrong as originally written).** An earlier draft said
+   > this follows **D-H-4** ("when the reading destination is IN_APP the verse tap-out resolves to
+   > BLB"). **D-H-4 is retired** — it was superseded by **D-23-1** in Sprint K. `OpenVerseUseCase`
+   > resolves from the chosen **external app alone** and never reads `ReadingDestinationMode`; an
+   > in-app-mode user keeps their remembered external app (BLB by default), and the persisted
+   > choice is never rewritten. `grep -rn "D-H-4" app/src/` returns nothing. Do not re-introduce
+   > the retired shim from this document.
 2. **Copy this verse** — copies just that verse, without needing the long-press flow.
 3. **Select verses** — enters selection mode with that verse selected (a discoverable alternative to
    long-press, and the TalkBack-reachable path).

@@ -152,10 +152,14 @@
          (read-here / study-there bridge). %1$s = the external app display name. Per-provider
          preposition mirrors the list-caption reading_list_hint_* set; mapped in DayContent
          (readerVerseTapHintRes) so the two surfaces can't drift. Strings await owner tone sign-off. -->
-    <string name="reader_verse_tap_hint_blb">Tap a verse to open it on %1$s</string>
-    <string name="reader_verse_tap_hint_gateway">Tap a verse to open it on %1$s</string>
-    <string name="reader_verse_tap_hint_youversion">Tap a verse to open it on %1$s</string>
-    <string name="reader_verse_tap_hint_mysword">Tap a verse to open it in %1$s</string>
+    <!-- sprint-00Q: REWORDED. A tap no longer opens the external app directly — it opens the
+         verse action menu (Open in <app> / Copy this verse / Select verses), so the old
+         "Tap a verse to open it on <app>" wording had become a lie. The per-app preposition
+         mapping is unchanged and still lives in DayContent (readerVerseTapHintRes). -->
+    <string name="reader_verse_tap_hint_blb">Tap a verse to copy it or open it on %1$s</string>
+    <string name="reader_verse_tap_hint_gateway">Tap a verse to copy it or open it on %1$s</string>
+    <string name="reader_verse_tap_hint_youversion">Tap a verse to copy it or open it on %1$s</string>
+    <string name="reader_verse_tap_hint_mysword">Tap a verse to copy it or open it in %1$s</string>
     <string name="external_app_name_blb">Blue Letter Bible</string>
     <string name="external_app_name_gateway">Bible Gateway</string>
     <string name="external_app_name_youversion">YouVersion</string>
@@ -193,4 +197,41 @@
     <string name="segment_state_not_read">not read</string>
     <string name="segment_state_partially_read">partially read</string>
     <string name="segment_state_read">read</string>
+
+    <!-- sprint-00Q (reader verse selection + verse action menu). Owner: "there are times I want to
+         copy a verse … and there is currently no way to do that because the click takes you out."
+
+         The MENU (a short tap on a verse, when not selecting). Exactly three items, owner-chosen and
+         owner-ordered; Share was explicitly declined. The menu exists to be grown — cross-references
+         is the named next entry. %1$s in verse_menu_open_in is the external Bible app display name
+         (externalBibleAppNameRes), so the item reads "Open in Blue Letter Bible" / "Open in MySword".
+
+         The SELECTION affordance labels. verse_menu_select doubles as the long-press label
+         (onLongClickLabel) — long-press is not reliably reachable under TalkBack, so the menu item
+         and the label are the required equivalent paths. verse_actions_label /
+         verse_selection_toggle_label are the tap (onClickLabel) announcements outside / inside
+         selection mode.
+
+         The SELECTED STATE is spoken, never colour alone: verse_state_selected /
+         verse_state_not_selected back a stateDescription on every verse while selecting.
+
+         The CONTEXTUAL ACTION BAR replaces the reader top bar while selecting: %1$d selected
+         (announced as a polite live region so entering selection and every count change is spoken),
+         a visible "Copy" text action, and an X that exits.
+
+         verse_copied is the copy confirmation toast, shown ONLY below API 33 (D-Q-5) — Android 13+
+         posts its own system clipboard confirmation and a second toast would double up.
+
+         All of these await owner tone sign-off. -->
+    <string name="verse_menu_open_in">Open in %1$s</string>
+    <string name="verse_menu_copy">Copy this verse</string>
+    <string name="verse_menu_select">Select verses</string>
+    <string name="verse_actions_label">Open verse actions</string>
+    <string name="verse_selection_toggle_label">Change selection</string>
+    <string name="verse_selection_count">%1$d selected</string>
+    <string name="verse_selection_copy">Copy</string>
+    <string name="verse_selection_close">Exit selection</string>
+    <string name="verse_state_selected">selected</string>
+    <string name="verse_state_not_selected">not selected</string>
+    <string name="verse_copied">Copied</string>
 </resources>

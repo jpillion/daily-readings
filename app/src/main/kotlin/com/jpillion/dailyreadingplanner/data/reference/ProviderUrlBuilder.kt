@@ -43,8 +43,10 @@ class ProviderUrlBuilder
          * Verse forms live-verified 2026-06-15 across providers and awkward books (Psalms, Philemon,
          * 2/3 John) — docs/data/provider-link-checks.md; pinned field-by-field in ProviderUrlBuilderTest.
          * There is no in-app arm here by construction (Sprint K, D-23-1): the in-app destination is a
-         * [ReadingDestinationMode], not an [ExternalBibleApp]; OpenVerseUseCase maps in-app mode to
-         * BLB (D-H-4) before calling this, so every value here builds a real external URL.
+         * [ReadingDestinationMode], not an [ExternalBibleApp]. A verse tap is always external, so
+         * OpenVerseUseCase resolves the app from the [ExternalBibleApp] axis ALONE — it never reads
+         * the mode and never maps it (that H4 shim is superseded) — so every value here builds a
+         * real external URL.
          */
         fun buildVerse(
             app: ExternalBibleApp,

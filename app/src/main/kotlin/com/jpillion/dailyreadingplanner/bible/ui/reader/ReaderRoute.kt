@@ -1,5 +1,7 @@
 package com.jpillion.dailyreadingplanner.bible.ui.reader
 
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.bible.ui.picker.BookChapterPickerSheet
 import com.jpillion.dailyreadingplanner.ui.browser.launchReadingDestination
 import kotlinx.coroutines.flow.collectLatest
@@ -31,6 +34,11 @@ import kotlinx.coroutines.launch
  * the page-index space and initial page are always those of the active context.
  *
  * The picker forces Browse and jumps the pager to the chosen chapter's global page (D-I-2).
+ *
+ * **Q2 side effects.** Two one-shot event streams are performed here, by the same idiom: resolved
+ * verse-open destinations go to the OS launcher, and clipboard payloads built by the VM (D-Q-4) go
+ * to the system clipboard, with the sub-API-33 "Copied" toast (D-Q-5). The verse *selection* state
+ * is read from the VM and passed down; the verse *menu* is the screen's own state (D-Q-2).
  */
 @Composable
 fun ReaderRoute(
@@ -43,6 +51,7 @@ fun ReaderRoute(
     val initialPage by viewModel.initialPage.collectAsStateWithLifecycle()
     val externalApp by viewModel.externalApp.collectAsStateWithLifecycle()
     val versionState by viewModel.versionState.collectAsStateWithLifecycle()
+    val selection by viewModel.selection.collectAsStateWithLifecycle()
 
     // A fresh PagerState per context (and per portion / initial page): switching Browse <-> Reading
     // changes the page-index space, so the pager must be rebuilt — wrapped in key(...) on the
@@ -59,10 +68,24 @@ fun ReaderRoute(
         snapshotFlow { pagerState.currentPage }.distinctUntilChanged().collect(viewModel::onPageSettled)
     }
 
-    // One-shot verse-tap destinations → the OS launcher (Custom Tab / MySword intent + BLB fallback).
+    // One-shot verse-open destinations → the OS launcher (Custom Tab / MySword intent + BLB
+    // fallback). Q2: these now arrive from the verse menu's "Open in <app>" item, not from a bare tap.
     LaunchedEffect(Unit) {
         viewModel.openDestinationEvents.collectLatest { destination ->
             launchReadingDestination(context, destination)
+        }
+    }
+
+    // D-Q-4 — one-shot clipboard payloads: the VM builds the string, the route performs the side
+    // effect. Plain collect (not collectLatest): every copy must land, none may be cancelled by the
+    // next. D-Q-5: below API 33 the app confirms with a short toast; on 33+ the system posts its
+    // own clipboard confirmation and a second one would double up.
+    LaunchedEffect(Unit) {
+        viewModel.copyEvents.collect { text ->
+            copyVerseTextToClipboard(context, text)
+            if (shouldShowCopyConfirmation(Build.VERSION.SDK_INT)) {
+                Toast.makeText(context, R.string.verse_copied, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -71,9 +94,15 @@ fun ReaderRoute(
         stateForPage = { page -> viewModel.uiStateForPage(page).collectAsStateValue() },
         externalApp = externalApp,
         versionState = versionState,
+        selection = selection,
         onOpenPicker = { showPicker = true },
         onSelectVersion = viewModel::selectVersion,
-        onVerseTapped = { _, verseId -> viewModel.onVerseTapped(verseId) },
+        onVerseLongPressed = viewModel::onVerseLongPressed,
+        onVerseSelectionToggled = viewModel::onVerseSelectionToggled,
+        onOpenVerseExternally = viewModel::openVerseExternally,
+        onCopyVerse = viewModel::copyVerse,
+        onCopySelection = viewModel::copySelection,
+        onClearSelection = viewModel::onSelectionCleared,
         onRetry = { page -> viewModel.retry(page) },
         modifier = modifier,
     )

@@ -1,14 +1,21 @@
 package com.jpillion.dailyreadingplanner.ui
 
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionContains
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -17,12 +24,19 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
 import com.jpillion.dailyreadingplanner.bible.ui.picker.BookChapterPicker
 import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderScreen
 import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderUiState
+import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderVersionState
+import com.jpillion.dailyreadingplanner.bible.ui.reader.VerseActionMenu
+import com.jpillion.dailyreadingplanner.bible.ui.reader.VerseSelection
+import com.jpillion.dailyreadingplanner.bible.ui.reader.VerseSelectionBar
+import com.jpillion.dailyreadingplanner.bible.ui.reader.cleared
+import com.jpillion.dailyreadingplanner.bible.ui.reader.toggle
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
@@ -68,6 +82,18 @@ class AccessibilityGateTest {
     private val today = LocalDate.of(2026, 6, 10)
 
     private fun hasAnyContentDescription() = SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentDescription)
+
+    /** Q2: the announced label for the node's click action ("what a tap will do right now"). */
+    private fun hasClickLabel(expected: String) =
+        SemanticsMatcher("onClick label == '$expected'") { node ->
+            node.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.OnClick)?.label == expected
+        }
+
+    /** Q2: the announced label for the node's long-click action — the TalkBack-visible way in. */
+    private fun hasLongClickLabel(expected: String) =
+        SemanticsMatcher("onLongClick label == '$expected'") { node ->
+            node.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.OnLongClick)?.label == expected
+        }
 
     /** Asserts the node's *touch* bounds (incl. minimum-target expansion) are at least [min] square. */
     private fun SemanticsNodeInteraction.assertTouchTargetAtLeast(min: Dp): SemanticsNodeInteraction {
@@ -378,9 +404,15 @@ class AccessibilityGateTest {
                                 com.jpillion.dailyreadingplanner.bible.domain.model
                                     .BibleTranslation("KJV", "King James Version"),
                         ),
+                    selection = VerseSelection.NONE,
                     onSelectVersion = {},
                     onOpenPicker = {},
-                    onVerseTapped = { _, _ -> },
+                    onVerseLongPressed = { _, _ -> },
+                    onVerseSelectionToggled = { _, _ -> },
+                    onOpenVerseExternally = {},
+                    onCopyVerse = { _, _ -> },
+                    onCopySelection = {},
+                    onClearSelection = {},
                     onRetry = {},
                 )
             }
@@ -397,6 +429,194 @@ class AccessibilityGateTest {
         composeRule
             .onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}")
             .assertContentDescriptionContains("The LORD is my shepherd", substring = true)
+        // Q2: a verse announces what its gestures do. Long-press is NOT reliably reachable under
+        // TalkBack, so the long-click label ("Select verses") plus the menu item of the same name
+        // are the required equivalent paths into selection; the click label says what a tap does.
+        composeRule
+            .onNodeWithTag("reader-verse-${VerseId.encode(19, 23, 1)}")
+            .assert(hasClickLabel("Open verse actions"))
+            .assert(hasLongClickLabel("Select verses"))
+    }
+
+    @Test
+    fun `Q2 verse action menu items meet 48dp touch targets and are spoken words`() {
+        // The menu is the reader's new tap destination; every item is an authored interactive
+        // control, so each must be a >=48dp target with a visible (spoken) label — never a glyph.
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                VerseActionMenu(
+                    expanded = true,
+                    externalApp = com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp.BLB,
+                    onDismissRequest = {},
+                    onOpenExternally = {},
+                    onCopy = {},
+                    onSelectVerses = {},
+                )
+            }
+        }
+        for (tag in listOf("verse-menu-open", "verse-menu-copy", "verse-menu-select")) {
+            composeRule.onNodeWithTag(tag).assertTouchTargetAtLeast(48.dp)
+        }
+        composeRule.onNodeWithText("Open in Blue Letter Bible").assertIsDisplayed()
+        composeRule.onNodeWithText("Copy this verse").assertIsDisplayed()
+        composeRule.onNodeWithText("Select verses").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Q2 selection action bar controls meet 48dp touch targets and the count is a live region`() {
+        // The contextual action bar replaces the reader top bar while selecting: the X is a labelled
+        // icon button, Copy is a VISIBLE WORD (Icons.Filled.ContentCopy does not exist in the frozen
+        // icons-core, and a word beats a guessed glyph anyway — the "Restart" snackbar precedent),
+        // and the count is announced politely on entry and on every change.
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                VerseSelectionBar(count = 2, onCopy = {}, onClose = {})
+            }
+        }
+        composeRule.onNodeWithTag("verse-selection-close").assertTouchTargetAtLeast(48.dp)
+        composeRule.onNodeWithTag("verse-selection-copy").assertTouchTargetAtLeast(48.dp)
+        composeRule
+            .onNodeWithTag("verse-selection-close")
+            .assertContentDescriptionContains("Exit selection", substring = true)
+        composeRule.onNodeWithText("Copy").assertIsDisplayed()
+        // POLITE specifically: entering selection mode must be announced without interrupting
+        // whatever TalkBack is already saying (Assertive would talk over the verse being read).
+        composeRule
+            .onNodeWithTag("verse-selection-count")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+    }
+
+    // --- Q2 end-to-end a11y: the menu and the action bar as the USER reaches them. ---
+    //
+    // The two tests above compose VerseActionMenu / VerseSelectionBar directly, which pins the
+    // controls but not that they are reachable. These drive the real flow through ReaderScreen with
+    // the selection state hoisted the way ReaderRoute hoists it into the ViewModel, so a wiring
+    // break (a tap that opens nothing, a menu item that fires a callback nobody honours) fails the
+    // a11y gate rather than passing it on a technicality.
+
+    private val psalm23Title = VerseId.encode(19, 23, 0)
+    private val psalm23Verse1 = VerseId.encode(19, 23, 1)
+    private val psalm23Verse2 = VerseId.encode(19, 23, 2)
+
+    private fun psalm23Content(): ReaderUiState.Content =
+        ReaderUiState.Content(
+            blocks =
+                listOf(
+                    ChapterContent(
+                        bookNo = 19,
+                        bookName = "Psalms",
+                        chapter = 23,
+                        verses =
+                            listOf(
+                                VerseText(psalm23Title, "", isTitle = true, markup = "A Psalm of David."),
+                                VerseText(
+                                    psalm23Verse1,
+                                    "1",
+                                    isTitle = false,
+                                    markup = "The <a>LORD</a> is my shepherd",
+                                ),
+                                VerseText(psalm23Verse2, "2", isTitle = false, markup = "He maketh me to lie down"),
+                            ),
+                    ),
+                ),
+            title = "Psalm 23",
+        )
+
+    /**
+     * Composes the reader with its [VerseSelection] HOISTED into the test — the same contract
+     * [com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderRoute] gives it from the ViewModel —
+     * so selection genuinely turns on and the contextual action bar genuinely appears.
+     */
+    private fun setStatefulReader(initialSelection: VerseSelection = VerseSelection.NONE) {
+        composeRule.setContent {
+            DailyReadingPlannerTheme(dynamicColor = false) {
+                var selection by remember { mutableStateOf(initialSelection) }
+                val kjv = BibleTranslation("KJV", "King James Version")
+                ReaderScreen(
+                    pagerState = rememberPagerState(initialPage = 0) { 1 },
+                    stateForPage = { psalm23Content() },
+                    externalApp = ExternalBibleApp.BLB,
+                    versionState = ReaderVersionState(available = listOf(kjv), selected = kjv),
+                    selection = selection,
+                    onOpenPicker = {},
+                    onSelectVersion = {},
+                    onVerseLongPressed = { page, id -> selection = VerseSelection.start(page, id) },
+                    onVerseSelectionToggled = { page, id -> selection = selection.toggle(page, id) },
+                    onOpenVerseExternally = {},
+                    onCopyVerse = { _, _ -> },
+                    onCopySelection = {},
+                    onClearSelection = { selection = selection.cleared() },
+                    onRetry = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `Q2 the menu a real verse tap opens is fully reachable - three items, 48dp, spoken words`() {
+        // Reached the way the user reaches it: a short tap on a verse while nothing is selected.
+        // A menu that never opens would silently pass the direct-composition pin above.
+        setStatefulReader()
+        composeRule.onNodeWithTag("reader-verse-$psalm23Verse1").performClick()
+        composeRule.waitForIdle()
+        for (tag in listOf("verse-menu-open", "verse-menu-copy", "verse-menu-select")) {
+            composeRule.onNodeWithTag(tag).assertIsDisplayed().assertTouchTargetAtLeast(48.dp)
+        }
+        // Every item is a spoken WORD, never a bare glyph.
+        composeRule.onNodeWithText("Open in Blue Letter Bible").assertIsDisplayed()
+        composeRule.onNodeWithText("Copy this verse").assertIsDisplayed()
+        composeRule.onNodeWithText("Select verses").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Q2 the Select verses menu item genuinely enters selection mode (the TalkBack path)`() {
+        // THE spec requirement: long-press is not reliably reachable under TalkBack, so this menu
+        // item is the equivalent path into selection — and it must actually get there, not merely
+        // fire a callback. Proven end-to-end: the contextual action bar appears, the tapped verse
+        // is `selected`, and it SPEAKS that state.
+        setStatefulReader()
+        composeRule.onNodeWithTag("verse-selection-count").assertDoesNotExist()
+        composeRule.onNodeWithTag("reader-verse-$psalm23Verse1").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("verse-menu-select").performClick()
+        composeRule.waitForIdle()
+
+        composeRule
+            .onNodeWithTag("verse-selection-count")
+            .assertTextEquals("1 selected")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        composeRule.onNodeWithTag("verse-selection-close").assertTouchTargetAtLeast(48.dp)
+        composeRule.onNodeWithTag("verse-selection-copy").assertTouchTargetAtLeast(48.dp)
+        composeRule
+            .onNodeWithTag("reader-verse-$psalm23Verse1")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "selected"))
+    }
+
+    @Test
+    fun `Q2 while selecting every verse carries selected semantics and a state description`() {
+        // Never colour alone: the highlight is decoration, `selected` + stateDescription are the
+        // mechanism — and BOTH states are spoken, so a screen-reader user can tell them apart.
+        setStatefulReader(initialSelection = VerseSelection.start(page = 0, verseId = psalm23Verse1))
+        composeRule
+            .onNodeWithTag("reader-verse-$psalm23Verse1")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "selected"))
+        composeRule
+            .onNodeWithTag("reader-verse-$psalm23Verse2")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Selected, false))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "not selected"))
+        // The superscription shares the one interaction modifier, so it speaks its state too.
+        composeRule
+            .onNodeWithTag("reader-title-$psalm23Title")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Selected, false))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "not selected"))
+        // The tap label changes to match what a tap now does (toggle, not open the menu).
+        composeRule
+            .onNodeWithTag("reader-verse-$psalm23Verse2")
+            .assert(hasClickLabel("Change selection"))
+            .assert(hasLongClickLabel("Select verses"))
     }
 
     @Test

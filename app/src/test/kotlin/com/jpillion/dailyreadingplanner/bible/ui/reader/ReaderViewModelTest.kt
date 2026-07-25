@@ -279,7 +279,9 @@ class ReaderViewModelTest {
             val job = launch { model.openDestinationEvents.collect { results += it } }
             // James 2:3 — a verse in the SECOND chapter of the combined page; the tap-out must use
             // its own canonical coords (chapter 2), not the portion's first chapter (chapter 1).
-            model.onVerseTapped(VerseId.encode(james.order, 2, 3))
+            // Q2 renamed onVerseTapped -> openVerseExternally (a tap opens the menu now; only its
+            // "Open in <app>" item lands here); the resolution path is deliberately unchanged.
+            model.openVerseExternally(VerseId.encode(james.order, 2, 3))
             advanceUntilIdle()
             assertThat(results).containsExactly(
                 ReadingDestination.Web("https://www.blueletterbible.org/kjv/jas/2/3/"),
@@ -301,6 +303,166 @@ class ReaderViewModelTest {
             settings.setExternalBibleApp(ExternalBibleApp.MYSWORD)
             advanceUntilIdle()
             assertThat(model.externalApp.value).isEqualTo(ExternalBibleApp.MYSWORD)
+            job.cancel()
+        }
+
+    // --- Q2: verse selection state (Ticket 1) and the copy pipeline (D-Q-4). ---
+
+    @Test
+    fun `long-press starts a selection on that page with exactly that verse`() =
+        runTest {
+            val model = vm()
+            assertThat(model.selection.value).isEqualTo(VerseSelection.NONE)
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            assertThat(model.selection.value.isActive).isTrue()
+            assertThat(model.selection.value.page).isEqualTo(genesis1Page)
+            assertThat(model.selection.value.verseIds).containsExactly(VerseId.encode(1, 1, 1))
+        }
+
+    @Test
+    fun `toggling adds a second verse and deselecting the last exits selection mode`() =
+        runTest {
+            val model = vm()
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            model.onVerseSelectionToggled(genesis1Page, VerseId.encode(1, 1, 2))
+            assertThat(model.selection.value.count).isEqualTo(2)
+            model.onVerseSelectionToggled(genesis1Page, VerseId.encode(1, 1, 2))
+            assertThat(model.selection.value.count).isEqualTo(1)
+            model.onVerseSelectionToggled(genesis1Page, VerseId.encode(1, 1, 1))
+            assertThat(model.selection.value).isEqualTo(VerseSelection.NONE)
+        }
+
+    @Test
+    fun `the X affordance and system back clear the selection`() =
+        runTest {
+            val model = vm()
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            model.onSelectionCleared()
+            assertThat(model.selection.value).isEqualTo(VerseSelection.NONE)
+        }
+
+    @Test
+    fun `settling on another page clears the selection (D-Q-3)`() =
+        runTest {
+            // Selection scope is the current page: swiping away must not leave an invisible
+            // off-screen selection alive. (Mutation target: dropping the onPageChanged call.)
+            val model = vm()
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            model.onPageSettled(genesis1Page) // same page: survives
+            assertThat(model.selection.value.isActive).isTrue()
+            model.onPageSettled(genesis1Page + 1) // a swipe: clears
+            assertThat(model.selection.value).isEqualTo(VerseSelection.NONE)
+        }
+
+    @Test
+    fun `a context switch resets the selection (a whole new page-index space)`() =
+        runTest {
+            val model = vm()
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            handoff.request(nt(Reference(james, 1), Reference(james, 2)))
+            advanceUntilIdle()
+            assertThat(model.context.value).isInstanceOf(ReaderContext.Reading::class.java)
+            assertThat(model.selection.value).isEqualTo(VerseSelection.NONE)
+        }
+
+    @Test
+    fun `copySelection emits the D-Q-1 clipboard string for the selected verses`() =
+        runTest {
+            val model = vm()
+            advanceUntilIdle() // let the version list (the "KJV" citation code) load
+            model.uiStateForPage(genesis1Page)
+            advanceUntilIdle()
+            val gen11 = VerseId.encode(1, 1, 1)
+            val gen12 = VerseId.encode(1, 1, 2)
+            val copied = mutableListOf<String>()
+            val job = launch { model.copyEvents.collect { copied += it } }
+            model.onVerseLongPressed(genesis1Page, gen11)
+            model.onVerseSelectionToggled(genesis1Page, gen12)
+            model.copySelection()
+            advanceUntilIdle()
+            // Text first, reference at the end, translation code from the seam (never hardcoded).
+            assertThat(copied).containsExactly("verse 1 of 1:1 verse 2 of 1:1\n\n— Genesis 1:1–2 (KJV)")
+            job.cancel()
+        }
+
+    @Test
+    fun `copySelection does NOT clear the selection (P-Q-1, spec-literal, flagged for the owner)`() =
+        runTest {
+            // The spec's exits are X, system back and deselecting the last verse — Copy is not one
+            // of them, so a copy leaves the selection intact (extend and copy again).
+            val model = vm()
+            advanceUntilIdle()
+            model.uiStateForPage(genesis1Page)
+            advanceUntilIdle()
+            val job = launch { model.copyEvents.collect { } }
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            model.copySelection()
+            advanceUntilIdle()
+            assertThat(model.selection.value.isActive).isTrue()
+            assertThat(model.selection.value.count).isEqualTo(1)
+            job.cancel()
+        }
+
+    @Test
+    fun `copyVerse produces exactly the same string as a one-verse selection`() =
+        runTest {
+            // A spec requirement: the menu's "Copy this verse" and a one-verse selection Copy must
+            // never drift, so both route through the identical helper.
+            val model = vm()
+            advanceUntilIdle()
+            model.uiStateForPage(genesis1Page)
+            advanceUntilIdle()
+            val gen11 = VerseId.encode(1, 1, 1)
+            val copied = mutableListOf<String>()
+            val job = launch { model.copyEvents.collect { copied += it } }
+
+            model.copyVerse(genesis1Page, gen11)
+            advanceUntilIdle()
+            model.onVerseLongPressed(genesis1Page, gen11)
+            model.copySelection()
+            advanceUntilIdle()
+
+            assertThat(copied).hasSize(2)
+            assertThat(copied[0]).isEqualTo(copied[1])
+            assertThat(copied[0]).isEqualTo("verse 1 of 1:1\n\n— Genesis 1:1 (KJV)")
+            job.cancel()
+        }
+
+    @Test
+    fun `copy emits nothing when there is no selection and nothing when the verses are not loaded`() =
+        runTest {
+            val model = vm()
+            advanceUntilIdle()
+            val copied = mutableListOf<String>()
+            val job = launch { model.copyEvents.collect { copied += it } }
+            // No selection at all.
+            model.copySelection()
+            // A verse on a page that was never loaded — nothing to format, so nothing is emitted
+            // (an empty clipboard write would be worse than a no-op).
+            model.copyVerse(genesis1Page, VerseId.encode(1, 1, 1))
+            advanceUntilIdle()
+            assertThat(copied).isEmpty()
+            job.cancel()
+        }
+
+    @Test
+    fun `a copy from the combined portion page spans its chapters (the reader's real selection scope)`() =
+        runTest {
+            // D-Q-3: a page is one chapter in Browse but a WHOLE portion in Reading, so a selection
+            // inside a portion legitimately crosses chapters — the citation must group by chapter.
+            val model = vm()
+            handoff.request(nt(Reference(james, 1), Reference(james, 2)))
+            advanceUntilIdle()
+            val portionPage = (model.context.value as ReaderContext.Reading).index.portionPage
+            model.uiStateForPage(portionPage)
+            advanceUntilIdle()
+            val copied = mutableListOf<String>()
+            val job = launch { model.copyEvents.collect { copied += it } }
+            model.onVerseLongPressed(portionPage, VerseId.encode(james.order, 1, 1))
+            model.onVerseSelectionToggled(portionPage, VerseId.encode(james.order, 2, 3))
+            model.copySelection()
+            advanceUntilIdle()
+            assertThat(copied.single()).endsWith("— James 1:1; 2:3 (KJV)")
             job.cancel()
         }
 

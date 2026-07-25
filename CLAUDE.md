@@ -1438,6 +1438,101 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   upload-artifact@v7, setup-gradle@v5. Both runs went green on the new versions.
   **New non-blocking CI warning:** the `r0adkll` upload action warns `'track' is deprecated …
   migrate to 'tracks'` — fix before it becomes an error (Jordan).
+- ✅ **CI GREEN ON `main` FOR THE FIRST TIME SINCE 2026-06-15** (`2026-07-25`, merge `b37629c`,
+  run 30177507487 — all five jobs). CI had been red for ~6 weeks across **two independent
+  defects**, unnoticed because `release.yml` is a separate workflow that stayed green (1.5.1 AND
+  1.6.0 both shipped over a red build).
+  **(1) Source checksum guard** (failing ~2026-07-24): **BOTH** KJV source URLs tracked
+  `/master/` — a **moving branch ref**, so neither was ever truly pinned (the brief assumed only
+  scrollmapper was affected; open-bibles had the identical flaw and passed only because nothing
+  has touched that file since 2015). Upstream scrollmapper re-serialized
+  (`9ba72c78…`→`a1051b43…`) and broke the digest. **Classification (all 31,102 rows compared
+  key-by-key): PURE RE-SERIALIZATION — ZERO wording changes.** CRLF conversion + 1,266
+  whitespace-only trims + 138 **strict prepends** (117 inlined Psalm superscriptions, 21 Ps-119
+  acrostic markers; `new == prefix + old` for every one). **The new revision was deliberately NOT
+  adopted** — its inlined superscriptions overlap what the primary stores as verse-0 titles, so
+  adopting it is a data-reconciliation decision, not a checksum bump. Both sources are now pinned
+  to **immutable commit SHAs**; scrollmapper → `ba07bc99…` = the exact revision the committed
+  asset was verified against, **so the asset's provenance is unchanged**.
+  **(2) Byte-diff reproduction** (failing since **2026-06-15**, a month earlier, then MASKED by
+  (1)): `build_bible_db.py` is deterministic but its **bytes depend on the SQLite library**, which
+  nothing pinned. SQLite stamps `SQLITE_VERSION_NUMBER` into the header (offsets 96–99);
+  `ubuntu-latest` moved 3.43.2 → 3.45.1 and every run differed by **exactly those 2 bytes**.
+  Measured in CI: pinning Python does NOT pin SQLite (all `setup-python` builds link the image's
+  `libsqlite3`); 3.43.2 **without** `SECURE_DELETE` leaves 6,025 further bytes of stale B-tree
+  residue; **3.43.2 + `-DSQLITE_SECURE_DELETE` → byte-identical**. The job now compiles the
+  SHA-pinned 3.43.2 amalgamation, `LD_PRELOAD`s it, and **asserts the preload took effect** so it
+  fails loudly rather than silently falling back.
+  **Also pinned:** `r0adkll/upload-google-play` (a **moving tag on the step that holds the Play
+  secret**) → commit `e738b9dd` (v1.1.5); Fastlane → 2.237.0. **`track` → `tracks`** in
+  `release.yml` (the deprecated singular); `promote-production.yml` (Fastlane supply) has no
+  equivalent deprecation. Node 24 action versions untouched.
+  **New permanent tool `tools/compare_bible_db.py`** — runs automatically when the byte-diff
+  fails and classifies **CONTENT drift** (real, exit 1) vs **ENCODING drift** (toolchain, exit 0)
+  over schema + all 31,219 rows; verified both directions (a mutated John 11:35 → CONTENT DRIFT at
+  canonical row 26747). It exists because `cmp`'s "byte 99 differs" is what let this sit red for
+  six weeks. **Zero files under `app/` touched**; the five gates untouched by construction.
+  **Standing risks recorded:** the three vendor PDFs (edginet M'Cheyne, TGC/Carson, BLB
+  Chronological) have **no immutable ref available** — the SHA *is* the pin, checked before
+  parsing; if a publisher replaces one, that job goes red permanently and the correct fix is to
+  **mirror the pinned bytes, not re-pin to whatever is served that day** (not done here — repo
+  bloat + third-party copyright; owner's call). `tracks: alpha` and the Fastlane pin are
+  **unexercised** until the next real tag/promote (failure mode is loud, not silent).
+  **Known stale doc:** `docs/data/README.md` records the asset SHA as `ce174e9…29da4909`; the real
+  committed asset is `ad46a777…9099` (regenerated in sprint-00F). Left as-is — worth correcting.
+- ✅ **Sprint 00Q (reader verse selection + verse action menu — owner feature) is DONE**
+  (uncommitted at handoff; verified + committed by the main session; NO version bump — stays
+  1.6.0/10600, so it is **unreleased**). Spec locked up front at
+  [docs/features/reader-verse-selection.md](docs/features/reader-verse-selection.md).
+  **The owner's problem — "there are times I want to copy a verse … and there is currently no way
+  to do that because the click takes you out" — is closed.**
+  **(1) Long-press a verse → selection mode**; tap more verses to add/remove. A contextual action
+  bar replaces the reader top bar with the live count, **Copy**, and an X. Exits: X, **system
+  back**, or deselecting the last verse. **D-Q-3:** selection scope is the current page, and a
+  page change clears it — in the Reading context a "page" is the WHOLE combined portion, so
+  multi-chapter selection inside a day's reading works.
+  **(2) Short tap → a 3-item verse menu** — *Open in `<app>`* (the Sprint-H behaviour, now one
+  deliberate step behind the tap), *Copy this verse*, *Select verses* (also the TalkBack-reachable
+  path to selection). **Share deliberately absent (owner declined).** The menu is the slot the
+  owner asked for: **cross-references is one line + one string + one callback.**
+  **(3) Clipboard (D-Q-1, owner-chosen: text first, reference last)** — `In the beginning… \n\n—
+  Genesis 1:1–2 (KJV)`. Contiguous verses collapse to a range, non-contiguous join with commas,
+  cross-chapter groups by chapter, cross-book by book, superscriptions contribute text but no
+  verse number, and **Psalm 23 cites singular because the rule DELEGATES to
+  `ReadingFormatter.singularizeBookName`** (mutation-proven, never re-derived).
+  **Both strings that would have started lying were reworded:** the footer hint is now "Tap a
+  verse to copy it or open it on `<app>`", and the verse spoken label dropped its "Open " prefix
+  (the affordance moved to `onClickLabel`/`onLongClickLabel` — the honest fix).
+  **818 → 878 tests** (+60), 0 failures; pipeline green from clean (independently re-run by the
+  main session with `--rerun-tasks`, 74/74 executed — not cached); Kover domain **99.8%** / data
+  **94.4%**; **a11y gate 8 → 13**; **the five data/Room gates UNCHANGED** (11/10/8/18/5).
+  **12 mutations killed**, each restored byte-identically. **TWO MUTATIONS SURVIVED and exposed
+  real gaps** (both then closed by NEW tests, no production change): deleting the `BackHandler`
+  entirely left all 878 green (system back is a spec-named exit and was wholly unpinned → new
+  `ReaderSelectionBackTest`, incl. that back is intercepted ONLY while selecting so the user is
+  never trapped); and Copy firing without dismissing the menu was invisible (on the "Open in
+  `<app>`" path that leaves a menu over the reader while a Custom Tab launches → new per-item
+  dismissal test).
+  **SPEC DEFECT FOUND AND CORRECTED (main session's error):** the spec said the verse tap-out
+  follows **D-H-4** (IN_APP → BLB). **D-H-4 is RETIRED — superseded by D-23-1 in Sprint K.**
+  `OpenVerseUseCase` resolves from the chosen **external app alone** and never reads
+  `ReadingDestinationMode`. The team preserved real behaviour, left the use case untouched, and
+  corrected three drifted KDoc blocks (`ReaderViewModel` ×2, `ProviderUrlBuilder` — the last
+  asserted a mapping that never existed); `grep -rn "D-H-4" app/src/` now returns nothing. The
+  spec line is annotated so a future session cannot re-introduce the retired shim.
+  **Open for owner decision:** *P-Q-1* — Copy does NOT exit selection mode (spec-literal; Copy is
+  not among the listed exits), copy-then-exit is the other common idiom, two lines to flip. And
+  the **en dash** in `Genesis 1:1–2` vs a plain hyphen (one character + 6 expected-string updates).
+  **15 strings need tone sign-off** (11 new, 4 reworded) — table in the handoff.
+  **NOT JVM-provable (not claimed to work):** the big one is **long-press inside a
+  `HorizontalPager`** — `performTouchInput { longClick() }` is synthetic and says nothing about
+  whether the gesture fights the pager's horizontal drag or the list's vertical scroll. Also
+  unproven: the **real clipboard write and paste** (only the pure formatter + the API-33
+  copy-confirmation rule are pinned), the toast, menu anchoring at chapter top/bottom edges,
+  selection-highlight contrast (colour-only; the pinned `selected`/`stateDescription` semantics
+  are the real mechanism), real TalkBack traversal + live-region announcement, predictive back on
+  API 33+, and the cost of one `VerseActionMenu` per verse on Psalm 119 (176 verses; no profile).
+  Handoff: [docs/sprints/sprint-00Q-reader-verse-selection.md](docs/sprints/sprint-00Q-reader-verse-selection.md).
 - Next up (non-blocking): monitor 1.6.0 **crash/ANR vitals + reviews** (Play Console → Monitor and
   improve; the two minor edge-to-edge "recommended actions" remain noted, non-blocking). Store-title
   rename in review. Still pending: the owner **device pass** on 1.6.0 — especially the sprint-00P
