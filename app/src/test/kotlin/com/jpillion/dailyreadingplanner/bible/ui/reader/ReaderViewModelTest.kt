@@ -48,6 +48,7 @@ class ReaderViewModelTest {
     private val james = BookCatalog.requireByName("James")
     private val firstPeter = BookCatalog.requireByName("1 Peter")
     private val psalms = BookCatalog.requireByName("Psalms")
+    private val isaiah = BookCatalog.requireByName("Isaiah")
     private val genesis1Page = GlobalChapterIndex.indexOf(genesis, 1)
     private val psalms23Page = GlobalChapterIndex.indexOf(psalms, 23)
 
@@ -196,6 +197,37 @@ class ReaderViewModelTest {
                 .containsExactly("2 John" to 1, "3 John" to 1)
                 .inOrder()
             assertThat(state.title).isEqualTo("2 John 1; 3 John 1")
+        }
+
+    @Test
+    fun `a non-contiguous portion opens the first ref's chapter in Browse, never Genesis 1 (D-SEG-7)`() =
+        runTest {
+            // THE Ticket-1 regression pin. Chronological 07/25 is ONE portion whose refs are NOT a
+            // contiguous ascending global-chapter run: Psalms 76 precedes Isaiah 37 in canon order,
+            // so ReadingPagerIndex's init throws. Before D-SEG-7 that throw was swallowed by a silent
+            // `return`, the reader never left Browse, and it opened at its DEFAULT page — Genesis 1,
+            // the wrong end of the Bible. It must now degrade to the portion's FIRST ref's chapter.
+            val model = vm()
+            handoff.request(
+                Portion(
+                    1,
+                    listOf(
+                        Reference(isaiah, 37),
+                        Reference(isaiah, 38),
+                        Reference(isaiah, 39),
+                        Reference(psalms, 76),
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertThat(model.context.value).isEqualTo(ReaderContext.Browse)
+            assertThat(model.initialPage.value).isEqualTo(GlobalChapterIndex.indexOf(isaiah, 37))
+            // Explicitly: NOT the Genesis 1 page. This is the bug the owner saw on device.
+            assertThat(model.initialPage.value).isNotEqualTo(genesis1Page)
+            // And the page it opens on really renders Isaiah 37 as a single Browse chapter.
+            val state = model.uiStateForPage(model.initialPage.value).value as ReaderUiState.Content
+            assertThat(state.blocks.map { it.bookName to it.chapter }).containsExactly("Isaiah" to 37)
         }
 
     @Test

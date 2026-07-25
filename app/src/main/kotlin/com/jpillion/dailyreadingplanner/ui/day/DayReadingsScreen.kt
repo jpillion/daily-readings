@@ -38,9 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
-import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.ui.browser.launchReadingDestination
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
@@ -102,8 +100,8 @@ fun DayReadingsRoute(
         statsPanel = statsPanel,
         destinationMode = destinationMode,
         externalApp = externalApp,
-        onToggleReading = viewModel::onToggleReading,
-        onReadingTapped = viewModel::onReadingTapped,
+        onToggleSegment = viewModel::onToggleSegment,
+        onSegmentTapped = viewModel::onSegmentTapped,
         onRetry = viewModel::onRetry,
         onOpenSettings = onOpenSettings,
         showTrackingStartPrompt = showTrackingStartPrompt,
@@ -136,8 +134,10 @@ fun DayReadingsPagerScreen(
     // non-prompt/test callers on the historical BLB-in-browser wording.
     destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
     externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
-    onToggleReading: (LocalDate, ReadingStatus) -> Unit,
-    onReadingTapped: (LocalDate, Portion) -> Unit,
+    // sprint-00P: the callbacks are segment-level (one card = one contiguous passage); the page
+    // still binds its own date into them (D-S5-3).
+    onToggleSegment: (LocalDate, ReadingSegmentUiState) -> Unit,
+    onSegmentTapped: (LocalDate, ReadingSegmentUiState) -> Unit,
     onRetry: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -232,8 +232,8 @@ fun DayReadingsPagerScreen(
                     val state by uiStateFor(date).collectAsStateWithLifecycle()
                     DayContent(
                         state = state,
-                        onToggleReading = { reading -> onToggleReading(date, reading) },
-                        onReadingTapped = { portion -> onReadingTapped(date, portion) },
+                        onToggleSegment = { segment -> onToggleSegment(date, segment) },
+                        onSegmentTapped = { segment -> onSegmentTapped(date, segment) },
                         onRetry = onRetry,
                         destinationMode = destinationMode,
                         externalApp = externalApp,

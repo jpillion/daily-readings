@@ -33,3 +33,16 @@ val IndicatorGreenLight = Color(0xFF2E7D32)
 val IndicatorGreenDark = Color(0xFF81C784)
 val IndicatorRedLight = Color(0xFFC62828)
 val IndicatorRedDark = Color(0xFFEF9A9A)
+
+// Partial-check indicator (sprint-00P, D-SEG-4): the PARTIAL fill of the tri-state reading check
+// and the tick drawn inside it. Chosen exactly the way the green/red pair above was — a FIXED
+// semantic hue, independent of dynamic color, so "started but not finished" reads consistently —
+// and deliberately amber, NOT the missed-red: a partial reading is progress, not a failure. It
+// completes the green/red language the user already reads in the strips and picker dots.
+// Light surfaces take a dark fill with a white tick; dark surfaces take a light fill with a dark
+// tick, mirroring M3's primary/onPrimary inversion. Never the only signal — the control always
+// speaks its state ("partially read"). Consumed ONLY through SegmentCheckColors (ui/day).
+val IndicatorAmberLight = Color(0xFFE65100)
+val IndicatorAmberDark = Color(0xFFFFB74D)
+val IndicatorOnAmberLight = Color(0xFFFFFFFF)
+val IndicatorOnAmberDark = Color(0xFF3E2723)

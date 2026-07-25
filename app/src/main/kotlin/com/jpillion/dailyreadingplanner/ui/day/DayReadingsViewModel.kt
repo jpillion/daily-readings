@@ -8,19 +8,22 @@ import com.jpillion.dailyreadingplanner.domain.CompleteTrackingStartPromptUseCas
 import com.jpillion.dailyreadingplanner.domain.CompleteUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
+import com.jpillion.dailyreadingplanner.domain.GetPartialSegmentsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
-import com.jpillion.dailyreadingplanner.domain.MarkReadOnOpenUseCase
+import com.jpillion.dailyreadingplanner.domain.MarkSegmentReadOnOpenUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
+import com.jpillion.dailyreadingplanner.domain.ReadingSegments
 import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveUpgradeNoteUseCase
-import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
+import com.jpillion.dailyreadingplanner.domain.SegmentCheckPolicy
+import com.jpillion.dailyreadingplanner.domain.ToggleSegmentCheckUseCase
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
-import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingCheckState
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
@@ -37,7 +40,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -66,9 +68,14 @@ class DayReadingsViewModel
     constructor(
         private val getDayReadings: GetDayReadingsUseCase,
         private val getMonthCompletion: GetMonthCompletionUseCase,
-        private val toggleReading: ToggleReadingUseCase,
+        private val getPartialSegments: GetPartialSegmentsUseCase,
+        // sprint-00P: the two per-reading write use cases are reached THROUGH their segment-level
+        // wrappers (which run the pure SegmentCheckPolicy and then delegate to them), so this
+        // ViewModel no longer injects ToggleReadingUseCase / MarkReadOnOpenUseCase directly.
+        // markWholeDay stays — it is the widget seam (D-SEG-8).
+        private val toggleSegmentCheck: ToggleSegmentCheckUseCase,
+        private val markSegmentReadOnOpen: MarkSegmentReadOnOpenUseCase,
         private val markWholeDay: MarkWholeDayUseCase,
-        private val markReadOnOpen: MarkReadOnOpenUseCase,
         private val openReference: OpenReferenceUseCase,
         private val widgetRefresher: WidgetRefresher,
         private val readerHandoff: ReaderHandoff,
@@ -193,8 +200,13 @@ class DayReadingsViewModel
             dayStates.getOrPut(date) {
                 loadAttempt
                     .flatMapLatest {
-                        getDayReadings(date)
-                            .map<DayReadings, DayUiState> { it.toUiState() }
+                        // sprint-00P: the day's readings joined with the cosmetic partial-check
+                        // cache (D-SEG-4). Both sources are live, so a mark OR a token write
+                        // re-renders the cards.
+                        combine(
+                            getDayReadings(date),
+                            getPartialSegments(date),
+                        ) { readings, partials -> readings.toUiState(partials) }
                             // The loader throws on a missing/invalid asset (a build defect, gate-
                             // verified) — but a release build must degrade, not crash (D-S4-3).
                             .catch { emit(DayUiState.LoadFailed(date)) }
@@ -262,13 +274,24 @@ class DayReadingsViewModel
          */
         val openReaderEvents: Flow<Unit> = openReaderChannel.receiveAsFlow()
 
-        /** Toggles [reading] for the *displayed* [date] — never implicitly "today" (D-S5-3). */
-        fun onToggleReading(
+        /**
+         * Toggles the check on one reading-card [segment] for the *displayed* [date] — never
+         * implicitly "today" (D-S5-3). The next state is decided by the pure `SegmentCheckPolicy`
+         * inside [ToggleSegmentCheckUseCase], never by a boolean flip here; this only supplies the
+         * segment's coordinates and its CURRENT real-mark state (COMPLETE ⇔ the Room mark is set).
+         */
+        fun onToggleSegment(
             date: LocalDate,
-            reading: ReadingStatus,
+            segment: ReadingSegmentUiState,
         ) {
             viewModelScope.launch {
-                toggleReading(date, reading.portion.streamNumber, markRead = !reading.isRead)
+                toggleSegmentCheck(
+                    date,
+                    segment.streamNumber,
+                    segment.segmentIndex,
+                    segment.segmentCount,
+                    streamMarked = segment.checkState == ReadingCheckState.COMPLETE,
+                )
                 // Keep the home-screen widget's completion state consistent (ESpec §7).
                 widgetRefresher.refreshTodayWidget()
             }
@@ -286,20 +309,32 @@ class DayReadingsViewModel
         }
 
         /**
-         * Marks the tapped reading read for [date] (D-O-1/2) — one-way, never unmarks — refreshes
-         * the widget (D-O-4), then resolves and opens the destination. The mark applies to ALL
-         * destinations; the checkbox remains the un-mark affordance.
+         * Marks the tapped [segment] read for [date] (D-O-1/2, at segment level) — one-way, never
+         * unmarks — refreshes the widget (D-O-4), then resolves and opens the destination. The mark
+         * applies to ALL destinations; the checkbox remains the un-mark affordance.
+         *
+         * **D-SEG-6:** what gets opened is `segment.portion` — the tapped run's refs alone, never
+         * the whole reading. That is what makes the in-app reader open exactly the passage the card
+         * names (Ticket 1: a non-contiguous portion used to fail to build a `ReadingPagerIndex` and
+         * silently fall back to Genesis 1), and what makes an external URL carry "Isaiah 37-39"
+         * rather than the whole day.
          */
-        fun onReadingTapped(
+        fun onSegmentTapped(
             date: LocalDate,
-            portion: Portion,
+            segment: ReadingSegmentUiState,
         ) {
             viewModelScope.launch {
                 // D-O-2: mark read before resolving/opening, so the side-effect lands regardless of
                 // destination (in-app / web / MySword app).
-                markReadOnOpen(date, portion.streamNumber)
+                markSegmentReadOnOpen(
+                    date,
+                    segment.streamNumber,
+                    segment.segmentIndex,
+                    segment.segmentCount,
+                    streamMarked = segment.checkState == ReadingCheckState.COMPLETE,
+                )
                 widgetRefresher.refreshTodayWidget()
-                when (val destination = openReference(portion)) {
+                when (val destination = openReference(segment.portion)) {
                     is ReadingDestination.InApp -> {
                         // V3 (D-V3-18, D-D-1): the in-app reader is a navigation target, not an OS
                         // launch. Publish the portion to the handoff seam and signal the root to
@@ -318,9 +353,50 @@ class DayReadingsViewModel
             loadAttempt.value += 1
         }
 
-        private fun DayReadings.toUiState(): DayUiState =
+        private fun DayReadings.toUiState(partials: Map<Int, Set<Int>>): DayUiState =
             when (this) {
-                is DayReadings.Scheduled -> DayUiState.Scheduled(date, readings, dayComplete)
+                is DayReadings.Scheduled ->
+                    DayUiState.Scheduled(date, segmentUiStates(readings, partials), dayComplete)
                 is DayReadings.NoScheduledReadings -> DayUiState.NoScheduledReadings(date)
             }
+    }
+
+/**
+ * **D-SEG-8** — THE segment split, and its only home: per-portion [readings] → one card state per
+ * contiguous passage. It happens HERE, in the UI layer, and never in `GetDayReadingsUseCase`, which
+ * also feeds the Glance widget and the reminder / persistent-notification bodies — splitting there
+ * would give the widget six rows on a Chronological day and break its row-count tier policy.
+ *
+ * Pure (no I/O, no state) and `internal` rather than private so it is directly unit-testable.
+ * Flattened in stream order: all of stream 1's segments, then stream 2's, etc.
+ *
+ * [partials] is the live partial-check cache for this date (`streamNumber -> segment indexes`,
+ * D-SEG-4); a stream with no partial segments is simply absent. The displayed state is decided by
+ * the pure `SegmentCheckPolicy.stateFor`, which is mark-dominant and ignores tokens at N == 1.
+ */
+internal fun segmentUiStates(
+    readings: List<ReadingStatus>,
+    partials: Map<Int, Set<Int>>,
+): List<ReadingSegmentUiState> =
+    readings.flatMap { reading ->
+        val streamNumber = reading.portion.streamNumber
+        val segments = ReadingSegments.segmentsOf(reading.portion)
+        val tokens = partials[streamNumber] ?: emptySet()
+        segments.mapIndexed { index, segment ->
+            ReadingSegmentUiState(
+                streamNumber = streamNumber,
+                segmentIndex = index,
+                segmentCount = segments.size,
+                // The title repeats on every card of a multi-segment stream (spec); null for a
+                // single-stream plan (D-ALT-23).
+                streamTitle = reading.streamTitle,
+                portion = segment,
+                checkState =
+                    SegmentCheckPolicy.stateFor(
+                        streamMarked = reading.isRead,
+                        segmentCount = segments.size,
+                        hasToken = index in tokens,
+                    ),
+            )
+        }
     }

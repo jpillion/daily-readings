@@ -1338,13 +1338,94 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   ships with the next release. **Package id `com.jpillion.dailyreadingplanner` unchanged** (never
   changes). Known follow-up flagged to owner: `request_app_subject` (the "Request another app"
   mailto subject) still reads "Daily Reading Planner" — owner to decide the wording at next batch.
-- Next up: 1.5.1 is public — monitor early production **crash/ANR vitals + reviews** over the
-  next days (Play Console → Monitor and improve; two minor edge-to-edge "recommended actions" are
-  noted on the release dashboard, non-blocking). Store-title rename in review. Still pending
-  (non-blocking): device pass + string/tone sign-offs on 1.5.1; the Node24 CI bump
-  (`ci/actions-node24-bump`) PR; owner's batch of other changes + the launcher rename ride the
-  next release. Future production releases: one-click via Actions → "Promote to Production" (CI
-  promote is armed). (V2.x release prep remains queued, owner-scheduled independently.)
+- ✅ **Sprint 00P (reading card segments + partial checks — owner P0 bug + feature) is DONE**
+  (uncommitted at handoff; verified + committed by the main session; NO version bump — stays
+  1.5.1/10501). Two owner tickets, one sprint; spec locked up front at
+  [docs/features/reading-card-segments.md](docs/features/reading-card-segments.md).
+  **(1) THE P0 (owner, on device):** on the Chronological plan, tapping a reading opened
+  **Genesis 1** instead of the reading — **83 of 365 days** affected (63 cross-book + 24
+  non-consecutive-chapter, 4 overlapping). **Root cause:** `ReadingPagerIndex.init` requires a
+  portion's refs to be a contiguous ascending global-chapter run; Chronological 07/25 =
+  `Isaiah 37, 38, 39, Psalms 76` spans **backwards** in canon order (Isaiah 37 = global chapter
+  715, Psalms 76 = 553) so it threw `portion global span is reversed: 715..553`, and
+  `ReaderViewModel.enterReading` swallowed it via `runCatching{}.getOrNull() ?: return`, leaving
+  the reader in Browse at its default `GENESIS_1_PAGE`. Reproduced as a failing JVM pin against
+  unmodified prod code (`expected: 715 but was: 0`) BEFORE the fix.
+  **(2) One card per contiguous passage.** **D-SEG-1 — THE segmentation rule:** a card = a maximal
+  run of refs with the **same book and consecutive ascending chapters**; a book change splits, a
+  chapter gap splits, **a verse window does NOT** (M'Cheyne 02/28 `Exodus 11 + Exodus 12:1–21`
+  stays ONE card — 8 such pairs). `domain/ReadingSegments.segmentsOf` **delegates to the existing
+  `bible/domain/ConsecutiveChapterRuns`** — one home, so card boundaries and external-URL grouping
+  cannot drift (a "drifted second grouper" mutation is pinned in both directions). Deliberately
+  distinct from `ReadingFormatter`'s private `consecutiveRuns` (which also breaks on verse
+  windows) — that governs display *within* a card and is untouched.
+  **D-SEG-2 — the invariant that makes the P0 non-recurring:** every segment is by construction a
+  contiguous ascending global-chapter run, so `ReadingPagerIndex(segment)` can never throw —
+  **gate-pinned over the real bundled assets by the new `PlanSegmentGateTest` (6): 0 violations
+  across all 2,920 portions in all three plans.** Distribution: BC {1:1093, 2:2}; Chronological
+  {1:282, 2:57, 3:13, 4:7, 5:5, 6:1}; M'Cheyne {1:1459, 2:1} (+132 cards overall).
+  **D-SEG-8 — split at the UI layer, NOT in `GetDayReadingsUseCase`** (which also feeds the Glance
+  widget + reminder/persistent bodies — splitting there would have given the widget 6 rows and
+  broken its tier policy): `DayReadings`/`ReadingStatus` stay per-portion, and
+  `DayReadingsViewModel` builds segment-level card states into `DayUiState.Scheduled`.
+  **D-SEG-6:** the tapped **segment** (not the day's portion) flows to `OpenReferenceUseCase` →
+  `ReaderHandoff`/`ProviderUrlBuilder` — this is the line that delivers the P0 fix
+  (`openReference(segment.portion)`), and an external link now carries just that run
+  ("Isaiah 37-39") instead of the whole day (intentional, matches the card's own text).
+  **D-SEG-7 (defensive):** `enterReading` no longer silently returns — a failed index now opens
+  the portion's **first ref's chapter** in Browse, never Genesis 1.
+  **(3) Partial checks (owner design) — NO Room migration.** **D-SEG-3:** progress storage is
+  UNCHANGED (one mark per (plan, date, stream)); stats, streaks, strips, picker dots, widget,
+  reminders and day-completion are untouched, and a part-read reading counts as not-read
+  everywhere off the day screen. **D-SEG-4:** a cosmetic DataStore cache (key
+  `partial_reading_segments`, tokens `<planId>|<epochDay>|<stream>|<segIndex>`, self-healing
+  codec) + `ReadingCheckState` UNCHECKED/PARTIAL/COMPLETE. **D-SEG-5:** 400-day pruning on write
+  via the injected `Clock`. Pure `domain/SegmentCheckPolicy` is the single home of the transition
+  table (tap the last needed segment → clear tokens + write the real mark → all COMPLETE; tap a
+  COMPLETE reading → clear the mark, tapped segment UNCHECKED, **all others PARTIAL**); **N == 1
+  is deliberately NOT a special case** — it falls out of the general rules, so single-segment
+  behaviour is today's by construction. Card-body tap keeps Sprint-00O one-way SET (never unmarks).
+  Tags are now `reading-<stream>-<segIndex>` / `toggle-<stream>-<segIndex>`.
+  **735 → 818 tests** (net +83), 0 failures, full pipeline green from clean (independently
+  re-run by the main session, tests forced with `--rerun-tasks` — not cached), Kover **96.38%**
+  line on domain/data, a11y gate green, **the five data/Room gates UNCHANGED and byte-identical**
+  (BC 11, M'Cheyne 10, Chronological 8, BibleText 18, RoomOpen 5; `PlanSegmentGateTest` 6 is
+  additive), plan assets untouched. **14 mutations killed**, each restored byte-identically
+  (SHA-256-verified), incl. the P0 mutation (hand the portion instead of the segment), the
+  `refs.first()`→`.last()` fallback, the drifted-grouper both ways, and two non-vacuity probes.
+  **Honest gaps:** the partial-vs-complete **colour** is NOT JVM-provable (mutating the partial
+  colour to equal the completed colour left all 10 component tests green — the mandatory
+  `stateDescription` is the real mitigation, not the colour); `segmentUiStates` is `internal` not
+  `private` (test-source reachability). **Queued, not absorbed:** a no-op DataStore write when
+  re-tapping an already-PARTIAL card; `streamMarked` read from the UI snapshot while `partials` is
+  read fresh (cosmetic — proven it can never unmark); a shared-fake refactor.
+  **Device-pass items:** the P0 on glass; the **6-card** Chronological 04/22 and 5-card M'Cheyne
+  08/08 layouts against the ~80dp bottom nav bar (the readings column will now scroll on those
+  rare days — accepted cost of the owner's request, 6 days of 365 exceed 4 segments); the amber
+  partial tick vs the green complete tick in light/dark and **especially under dynamic colour**;
+  48dp targets at real density on a 6-card day; DataStore token durability across force-stop.
+  Handoff: [docs/sprints/sprint-00P-reading-card-segments.md](docs/sprints/sprint-00P-reading-card-segments.md).
+- Next up: **`sprint-00Q-reader-verse-selection`** (owner-requested, spec locked at
+  [docs/features/reader-verse-selection.md](docs/features/reader-verse-selection.md); it declared a
+  hard dependency on 00P being committed — now satisfied). Long-press a verse in the reader to
+  enter selection mode (tap to add more) with a Copy action, and a short tap opens a small verse
+  menu — **Open in `<external app>` / Copy this verse / Select verses** (owner declined Share) —
+  creating the slot for **cross-references** next. Owner-chosen clipboard format: text first,
+  reference at end ("… — Genesis 1:1–2 (KJV)"); book name MUST come from
+  `ReadingFormatter.singularizeBookName` (D-UI-2, one home). Two strings start lying the moment tap
+  stops opening the app and MUST be reworded: the reader footer hint
+  (`reader_verse_tap_hint_*`, "Tap a verse to open it on…") and the verse spoken label ("Open
+  `<Book> <ch>:<verse>`…"). A11y is a build requirement: long-press is unreliable under TalkBack, so
+  the "Select verses" menu item is its equivalent path. Open for owner sign-off: en dash vs plain
+  hyphen in the pasted reference.
+- Also pending (non-blocking): 1.5.1 is public — monitor early production **crash/ANR vitals +
+  reviews** (Play Console → Monitor and improve; two minor edge-to-edge "recommended actions" are
+  noted on the release dashboard, non-blocking). Store-title rename in review. Device pass +
+  string/tone sign-offs on 1.5.1; the Node24 CI bump (`ci/actions-node24-bump`) PR; owner's batch
+  of other changes + the launcher rename ride the next release. **Sprint 00P + 00Q are unreleased
+  — they need a version bump to ship.** Future production releases: one-click via Actions →
+  "Promote to Production" (CI promote is armed). (V2.x release prep remains queued,
+  owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:

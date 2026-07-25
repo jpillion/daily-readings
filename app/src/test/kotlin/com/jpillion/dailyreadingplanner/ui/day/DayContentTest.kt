@@ -1,21 +1,25 @@
 package com.jpillion.dailyreadingplanner.ui.day
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
-import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingCheckState
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
+import com.jpillion.dailyreadingplanner.testing.singleSegmentStates
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import org.junit.Rule
 import org.junit.Test
@@ -40,22 +44,22 @@ class DayContentTest {
     private fun scheduled(read: Set<Int> = emptySet()): DayUiState.Scheduled =
         DayUiState.Scheduled(
             date = date,
-            readings =
-                threePortions.map { portion ->
-                    ReadingStatus(
-                        portion = portion,
-                        isRead = portion.streamNumber in read,
-                        // D-ALT-22: the title is plan data carried onto the reading by the use case.
-                        streamTitle = bcStreamDescriptors.first { it.number == portion.streamNumber }.title,
-                    )
-                },
+            // sprint-00P: each Bible-Companion reading is ONE contiguous passage, so the familiar
+            // three cards are three single-segment card states (segmentIndex 0, segmentCount 1).
+            segments =
+                singleSegmentStates(
+                    portions = threePortions,
+                    read = read,
+                    // D-ALT-22: the title is plan data carried onto the reading by the use case.
+                    titleFor = { stream -> bcStreamDescriptors.first { it.number == stream }.title },
+                ),
             dayComplete = read == setOf(1, 2, 3),
         )
 
     private fun setContent(
         state: DayUiState,
-        onToggleReading: (ReadingStatus) -> Unit = {},
-        onReadingTapped: (Portion) -> Unit = {},
+        onToggleSegment: (ReadingSegmentUiState) -> Unit = {},
+        onSegmentTapped: (ReadingSegmentUiState) -> Unit = {},
         onRetry: () -> Unit = {},
         destinationMode: ReadingDestinationMode = ReadingDestinationMode.EXTERNAL,
         externalApp: ExternalBibleApp = ExternalBibleApp.BLB,
@@ -64,8 +68,8 @@ class DayContentTest {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 DayContent(
                     state = state,
-                    onToggleReading = onToggleReading,
-                    onReadingTapped = onReadingTapped,
+                    onToggleSegment = onToggleSegment,
+                    onSegmentTapped = onSegmentTapped,
                     onRetry = onRetry,
                     destinationMode = destinationMode,
                     externalApp = externalApp,
@@ -91,21 +95,23 @@ class DayContentTest {
     }
 
     @Test
-    fun checkboxClick_invokesToggleForThatReading() {
-        val toggled = mutableListOf<ReadingStatus>()
-        setContent(scheduled(), onToggleReading = { toggled += it })
-        composeRule.onNodeWithTag("toggle-2").performClick()
+    fun checkboxClick_invokesToggleForThatSegment() {
+        val toggled = mutableListOf<ReadingSegmentUiState>()
+        setContent(scheduled(), onToggleSegment = { toggled += it })
+        composeRule.onNodeWithTag("toggle-2-0").performClick()
         assertThat(toggled).hasSize(1)
-        assertThat(toggled.single().portion.streamNumber).isEqualTo(2)
+        assertThat(toggled.single().streamNumber).isEqualTo(2)
+        assertThat(toggled.single().segmentIndex).isEqualTo(0)
     }
 
     @Test
-    fun cardClick_invokesReadingTappedForThatPortion() {
-        val tapped = mutableListOf<Portion>()
-        setContent(scheduled(), onReadingTapped = { tapped += it })
-        composeRule.onNodeWithTag("reading-3").performClick()
+    fun cardClick_invokesSegmentTappedForThatSegment() {
+        val tapped = mutableListOf<ReadingSegmentUiState>()
+        setContent(scheduled(), onSegmentTapped = { tapped += it })
+        composeRule.onNodeWithTag("reading-3-0").performClick()
         assertThat(tapped).hasSize(1)
         assertThat(tapped.single().streamNumber).isEqualTo(3)
+        assertThat(tapped.single().portion.streamNumber).isEqualTo(3)
     }
 
     @Test
@@ -115,7 +121,7 @@ class DayContentTest {
         setContent(scheduled(read = setOf(1, 2, 3)))
         composeRule.onNodeWithText("All readings done").assertDoesNotExist()
         composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
-        for (stream in 1..3) composeRule.onNodeWithTag("toggle-$stream").assertIsDisplayed()
+        for (stream in 1..3) composeRule.onNodeWithTag("toggle-$stream-0").assertIsDisplayed()
     }
 
     @Test
@@ -132,7 +138,7 @@ class DayContentTest {
         setContent(DayUiState.NoScheduledReadings(LocalDate.of(2028, 2, 29)))
         composeRule.onNodeWithText("No scheduled readings for Feb 29th").assertIsDisplayed()
         composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
-        composeRule.onNodeWithTag("toggle-1").assertDoesNotExist()
+        composeRule.onNodeWithTag("toggle-1-0").assertDoesNotExist()
     }
 
     @Test
@@ -250,19 +256,16 @@ class DayContentTest {
         val state =
             DayUiState.Scheduled(
                 date = date,
-                readings =
-                    (1..4).map { n ->
-                        ReadingStatus(
-                            portion = portion(n, "Genesis" to n),
-                            isRead = false,
-                            streamTitle = mcheyneTitles[n - 1],
-                        )
-                    },
+                segments =
+                    singleSegmentStates(
+                        portions = (1..4).map { n -> portion(n, "Genesis" to n) },
+                        titleFor = { stream -> mcheyneTitles[stream - 1] },
+                    ),
                 dayComplete = false,
             )
         setContent(state)
         mcheyneTitles.forEach { composeRule.onNodeWithText(it).assertIsDisplayed() }
-        for (n in 1..4) composeRule.onNodeWithTag("reading-$n").assertExists()
+        for (n in 1..4) composeRule.onNodeWithTag("reading-$n-0").assertExists()
     }
 
     @Test
@@ -273,16 +276,103 @@ class DayContentTest {
         val state =
             DayUiState.Scheduled(
                 date = date,
-                readings =
-                    listOf(
-                        ReadingStatus(portion(1, "Genesis" to 1, "Genesis" to 2), isRead = false, streamTitle = null),
-                    ),
+                segments = singleSegmentStates(listOf(portion(1, "Genesis" to 1, "Genesis" to 2))),
                 dayComplete = false,
             )
         setContent(state)
         composeRule.onNodeWithText("Genesis 1–2").assertIsDisplayed()
-        composeRule.onNodeWithTag("reading-1").assertExists()
+        composeRule.onNodeWithTag("reading-1-0").assertExists()
         // None of the Bible-Companion stream titles appear for a single-stream plan.
         composeRule.onNodeWithText("Law & History").assertDoesNotExist()
+    }
+
+    // --- sprint-00P (SEG-6): one card per contiguous passage ---
+
+    /** The Chronological 07/25 reading (`Isaiah 37, 38, 39, Psalms 76`) split into its two D-SEG-1
+     * segments, as card states. Built LITERALLY, not via the ViewModel mapping, so these render pins
+     * stand on their own.
+     */
+    private fun twoSegmentStates(
+        first: ReadingCheckState = ReadingCheckState.UNCHECKED,
+        second: ReadingCheckState = ReadingCheckState.UNCHECKED,
+    ): List<ReadingSegmentUiState> =
+        listOf(
+            ReadingSegmentUiState(
+                streamNumber = 1,
+                segmentIndex = 0,
+                segmentCount = 2,
+                streamTitle = "Law & History",
+                portion = portion(1, "Isaiah" to 37, "Isaiah" to 38, "Isaiah" to 39),
+                checkState = first,
+            ),
+            ReadingSegmentUiState(
+                streamNumber = 1,
+                segmentIndex = 1,
+                segmentCount = 2,
+                streamTitle = "Law & History",
+                portion = portion(1, "Psalms" to 76),
+                checkState = second,
+            ),
+        )
+
+    private fun scheduledSegments(segments: List<ReadingSegmentUiState>): DayUiState.Scheduled =
+        DayUiState.Scheduled(date = date, segments = segments, dayComplete = false)
+
+    private fun hasStateDescription(expected: String): SemanticsMatcher =
+        SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, expected)
+
+    @Test
+    fun twoSegmentReading_rendersOneCardPerPassage_withTheStreamTitleOnBoth() {
+        // The owner's rule: two different passages on one day's reading => two cards. Each card
+        // shows ONLY its own passage, and the stream title repeats on both (per spec).
+        setContent(scheduledSegments(twoSegmentStates()))
+        composeRule.onNodeWithTag("reading-1-0").assertExists()
+        composeRule.onNodeWithTag("reading-1-1").assertExists()
+        composeRule.onNodeWithText("Isaiah 37\u201339").assertIsDisplayed()
+        composeRule.onNodeWithText("Psalm 76").assertIsDisplayed()
+        // No card carries the whole reading's combined reference any more.
+        composeRule.onNodeWithText("Isaiah 37\u201339; Psalm 76").assertDoesNotExist()
+        composeRule.onAllNodesWithText("Law & History").assertCountEquals(2)
+        // Two cards => two checks, each segment-indexed.
+        composeRule.onNodeWithTag("toggle-1-0").assertExists()
+        composeRule.onNodeWithTag("toggle-1-1").assertExists()
+    }
+
+    @Test
+    fun tappingTheSecondCard_handsBackThatSegmentAlone() {
+        // D-SEG-6 at the render layer: the card hands out ITS segment, so the ViewModel (and from
+        // there the reader / the external URL) can only ever see the tapped passage.
+        val tapped = mutableListOf<ReadingSegmentUiState>()
+        setContent(scheduledSegments(twoSegmentStates()), onSegmentTapped = { tapped += it })
+        composeRule.onNodeWithTag("reading-1-1").performClick()
+        assertThat(tapped).hasSize(1)
+        assertThat(
+            tapped
+                .single()
+                .portion.refs
+                .map { it.book.canonicalName to it.chapter },
+        ).containsExactly("Psalms" to 76)
+        assertThat(tapped.single().segmentIndex).isEqualTo(1)
+        assertThat(tapped.single().streamNumber).isEqualTo(1)
+    }
+
+    @Test
+    fun partialAndCompleteCards_areDistinguishableBySpokenState() {
+        // Never colour alone: PARTIAL and COMPLETE differ in the checkbox's spoken stateDescription,
+        // so TalkBack (and this test) can tell them apart without seeing the hue. Literal strings.
+        val segments =
+            twoSegmentStates(first = ReadingCheckState.PARTIAL) +
+                ReadingSegmentUiState(
+                    streamNumber = 3,
+                    segmentIndex = 0,
+                    segmentCount = 1,
+                    streamTitle = "New Testament",
+                    portion = portion(3, "Matthew" to 1, "Matthew" to 2),
+                    checkState = ReadingCheckState.COMPLETE,
+                )
+        setContent(scheduledSegments(segments))
+        composeRule.onNodeWithTag("toggle-1-0").assert(hasStateDescription("partially read"))
+        composeRule.onNodeWithTag("toggle-1-1").assert(hasStateDescription("not read"))
+        composeRule.onNodeWithTag("toggle-3-0").assert(hasStateDescription("read"))
     }
 }

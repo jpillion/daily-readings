@@ -9,13 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,9 +25,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
-import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingCheckState
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 
 /**
  * Stateless content for one day's readings — directly testable without Hilt or a ViewModel.
@@ -41,12 +38,16 @@ import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
  * removed — the three per-reading checkboxes are the only mark affordance and the only
  * completion cue (owner: the visible checkboxes are enough). [MarkWholeDayUseCase] remains for
  * the widget; only the on-screen button UI is gone.
+ *
+ * sprint-00P: one card per **segment** (a contiguous passage), not per portion — the day's
+ * readings arrive already split as [DayUiState.Scheduled.segments] (the split itself is the
+ * ViewModel's job, D-SEG-8).
  */
 @Composable
 fun DayContent(
     state: DayUiState,
-    onToggleReading: (ReadingStatus) -> Unit,
-    onReadingTapped: (Portion) -> Unit,
+    onToggleSegment: (ReadingSegmentUiState) -> Unit,
+    onSegmentTapped: (ReadingSegmentUiState) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     // Sprint K (D-23-1): the per-tile hint reflects the effective destination — the in-app
@@ -61,8 +62,8 @@ fun DayContent(
             is DayUiState.Scheduled ->
                 ScheduledContent(
                     state = state,
-                    onToggleReading = onToggleReading,
-                    onReadingTapped = onReadingTapped,
+                    onToggleSegment = onToggleSegment,
+                    onSegmentTapped = onSegmentTapped,
                     destinationMode = destinationMode,
                     externalApp = externalApp,
                 )
@@ -82,8 +83,8 @@ private fun LoadingContent() {
 @Composable
 private fun ScheduledContent(
     state: DayUiState.Scheduled,
-    onToggleReading: (ReadingStatus) -> Unit,
-    onReadingTapped: (Portion) -> Unit,
+    onToggleSegment: (ReadingSegmentUiState) -> Unit,
+    onSegmentTapped: (ReadingSegmentUiState) -> Unit,
     destinationMode: ReadingDestinationMode,
     externalApp: ExternalBibleApp,
 ) {
@@ -95,11 +96,13 @@ private fun ScheduledContent(
                 .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        state.readings.forEach { reading ->
+        // sprint-00P: one card per contiguous passage. A single-segment reading (the overwhelming
+        // majority) contributes exactly one card, so the familiar three-card day is unchanged.
+        state.segments.forEach { segment ->
             ReadingCard(
-                reading = reading,
-                onToggleReading = onToggleReading,
-                onReadingTapped = onReadingTapped,
+                segment = segment,
+                onToggleSegment = onToggleSegment,
+                onSegmentTapped = onSegmentTapped,
             )
         }
         // One list-level caption replaces the per-card hint (owner: one-screen-fit). Because it
@@ -117,24 +120,31 @@ private fun ScheduledContent(
     }
 }
 
+/**
+ * One reading card = one D-SEG-1 segment. The reference text is formatted from the SEGMENT's
+ * portion, so a card shows only its own passage ("Isaiah 37–39", "Psalm 76"), and a tap hands that
+ * same segment out (D-SEG-6) — what the card says is exactly what opens.
+ */
 @Composable
 private fun ReadingCard(
-    reading: ReadingStatus,
-    onToggleReading: (ReadingStatus) -> Unit,
-    onReadingTapped: (Portion) -> Unit,
+    segment: ReadingSegmentUiState,
+    onToggleSegment: (ReadingSegmentUiState) -> Unit,
+    onSegmentTapped: (ReadingSegmentUiState) -> Unit,
 ) {
-    val portion = reading.portion
-    val referenceText = ReadingFormatter.format(portion)
+    val referenceText = ReadingFormatter.format(segment.portion)
     Card(
-        onClick = { onReadingTapped(portion) },
+        onClick = { onSegmentTapped(segment) },
         modifier =
             Modifier
                 .fillMaxWidth()
-                .testTag("reading-${portion.streamNumber}"),
+                .testTag("reading-${segment.streamNumber}-${segment.segmentIndex}"),
         colors =
             CardDefaults.cardColors(
+                // The completed container colour is reserved for COMPLETE. PARTIAL keeps the
+                // UNCHECKED container on purpose: a partially-read reading is NOT done, and the
+                // partial-hue tick already carries the distinction (with a spoken state behind it).
                 containerColor =
-                    if (reading.isRead) {
+                    if (segment.checkState == ReadingCheckState.COMPLETE) {
                         MaterialTheme.colorScheme.secondaryContainer
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -153,7 +163,8 @@ private fun ReadingCard(
             Column(modifier = Modifier.weight(1f)) {
                 // D-ALT-22/23: the stream title is plan data, resolved upstream onto the reading.
                 // A single-stream plan supplies null — a lone reading needs no "which stream" label.
-                reading.streamTitle?.let { title ->
+                // sprint-00P: it repeats on every card of a multi-segment stream (per spec).
+                segment.streamTitle?.let { title ->
                     Text(
                         text = title,
                         style = MaterialTheme.typography.labelMedium,
@@ -165,14 +176,13 @@ private fun ReadingCard(
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
-            Checkbox(
-                checked = reading.isRead,
-                onCheckedChange = { onToggleReading(reading) },
-                modifier =
-                    Modifier
-                        // G-A11Y: keep the toggle a ≥48dp target.
-                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                        .testTag("toggle-${portion.streamNumber}"),
+            // The tri-state check (sprint-00P). It already owns the ≥48dp target and the spoken
+            // stateDescription ("not read" / "partially read" / "read"); the caller supplies only
+            // the segment-indexed testTag.
+            SegmentCheckbox(
+                state = segment.checkState,
+                onClick = { onToggleSegment(segment) },
+                modifier = Modifier.testTag("toggle-${segment.streamNumber}-${segment.segmentIndex}"),
             )
         }
     }

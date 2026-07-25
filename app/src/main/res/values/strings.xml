@@ -185,4 +185,12 @@
          framing (new-version-notice G4). Strings await owner tone sign-off. -->
     <string name="update_downloaded_message">An update is ready to install.</string>
     <string name="update_restart_action">Restart</string>
+
+    <!-- sprint-00P: the spoken state of a reading card's tri-state check (SegmentCheckbox).
+         "Never color alone" — these replace TalkBack's generic "ticked / not ticked" so the
+         partial tick is distinguishable from the completed one without seeing the hue.
+         Strings await owner tone sign-off. -->
+    <string name="segment_state_not_read">not read</string>
+    <string name="segment_state_partially_read">partially read</string>
+    <string name="segment_state_read">read</string>
 </resources>

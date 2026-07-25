@@ -22,23 +22,26 @@ import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
+import com.jpillion.dailyreadingplanner.domain.GetPartialSegmentsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkReadOnOpenUseCase
+import com.jpillion.dailyreadingplanner.domain.MarkSegmentReadOnOpenUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
-import com.jpillion.dailyreadingplanner.domain.model.Portion
-import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
+import com.jpillion.dailyreadingplanner.domain.ToggleSegmentCheckUseCase
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.FakePartialReadingRepository
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.bcReadingStats
 import com.jpillion.dailyreadingplanner.testing.bcYearStrips
+import com.jpillion.dailyreadingplanner.testing.singleSegmentStates
 import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
@@ -75,7 +78,7 @@ class DayReadingsPagerScreenTest {
                 } else {
                     DayUiState.Scheduled(
                         date = date,
-                        readings = threePortions.map { ReadingStatus(it, false) },
+                        segments = singleSegmentStates(threePortions),
                         dayComplete = false,
                     )
                 },
@@ -101,7 +104,7 @@ class DayReadingsPagerScreenTest {
     private fun setScreen(
         today: LocalDate,
         statsPanel: StatsPanelUiState? = null,
-        onReadingTapped: (LocalDate, Portion) -> Unit = { _, _ -> },
+        onSegmentTapped: (LocalDate, ReadingSegmentUiState) -> Unit = { _, _ -> },
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -110,8 +113,8 @@ class DayReadingsPagerScreenTest {
                     uiStateFor = ::stateFor,
                     monthCompletionFor = { MutableStateFlow(emptyMap()) },
                     statsPanel = statsPanel,
-                    onToggleReading = { date, reading -> toggleCalls += date to reading.portion.streamNumber },
-                    onReadingTapped = onReadingTapped,
+                    onToggleSegment = { date, segment -> toggleCalls += date to segment.streamNumber },
+                    onSegmentTapped = onSegmentTapped,
                     onRetry = {},
                     onOpenSettings = { openSettingsCalls++ },
                 )
@@ -169,7 +172,7 @@ class DayReadingsPagerScreenTest {
         val today = LocalDate.of(2026, 6, 10)
         setScreen(today)
         swipeToNextDay()
-        composeRule.onNodeWithTag("toggle-2").performClick()
+        composeRule.onNodeWithTag("toggle-2-0").performClick()
         assertThat(toggleCalls).containsExactly(today.plusDays(1) to 2)
     }
 
@@ -179,10 +182,10 @@ class DayReadingsPagerScreenTest {
         setScreen(today)
         swipeToNextDay()
         composeRule.onNodeWithText("No scheduled readings for Feb 29th").assertIsDisplayed()
-        composeRule.onNodeWithTag("toggle-1").assertDoesNotExist()
+        composeRule.onNodeWithTag("toggle-1-0").assertDoesNotExist()
         swipeToNextDay()
         composeRule.onNodeWithText("Wednesday, March 1").assertIsDisplayed()
-        composeRule.onNodeWithTag("toggle-1").assertExists()
+        composeRule.onNodeWithTag("toggle-1-0").assertExists()
     }
 
     @Test
@@ -296,8 +299,8 @@ class DayReadingsPagerScreenTest {
                     uiStateFor = ::stateFor,
                     monthCompletionFor = { MutableStateFlow(emptyMap()) },
                     statsPanel = null,
-                    onToggleReading = { _, _ -> },
-                    onReadingTapped = { _, _ -> },
+                    onToggleSegment = { _, _ -> },
+                    onSegmentTapped = { _, _ -> },
                     onRetry = {},
                     onOpenSettings = {},
                     showTrackingStartPrompt = true,
@@ -318,17 +321,17 @@ class DayReadingsPagerScreenTest {
         composeRule.onNodeWithTag("tracking-start-prompt").assertDoesNotExist()
     }
 
-    // --- Sprint 00O (T3): the pager wrapper carries the page's date into onReadingTapped. ---
+    // --- Sprint 00O (T3): the pager wrapper carries the page's date into onSegmentTapped. ---
 
     @Test
-    fun readingCardTap_onTodayPage_carriesTodaysDateAndPortion() {
-        // Pins the `{ portion -> onReadingTapped(date, portion) }` wrapper: a tap on the
+    fun readingCardTap_onTodayPage_carriesTodaysDateAndSegment() {
+        // Pins the `{ segment -> onSegmentTapped(date, segment) }` wrapper: a tap on the
         // displayed (today) page must invoke the callback with TODAY's date and that card's
         // portion. A dropped/swapped date in the wrapper fails this.
         val today = LocalDate.of(2026, 6, 10)
         val taps = mutableListOf<Pair<LocalDate, Int>>()
-        setScreen(today, onReadingTapped = { date, portion -> taps += date to portion.streamNumber })
-        composeRule.onNodeWithTag("reading-3").performClick()
+        setScreen(today, onSegmentTapped = { date, segment -> taps += date to segment.streamNumber })
+        composeRule.onNodeWithTag("reading-3-0").performClick()
         assertThat(taps).hasSize(1)
         assertThat(taps.single()).isEqualTo(today to 3)
     }
@@ -341,10 +344,10 @@ class DayReadingsPagerScreenTest {
         val today = LocalDate.of(2026, 6, 10)
         val tomorrow = today.plusDays(1)
         val taps = mutableListOf<Pair<LocalDate, Int>>()
-        setScreen(today, onReadingTapped = { date, portion -> taps += date to portion.streamNumber })
+        setScreen(today, onSegmentTapped = { date, segment -> taps += date to segment.streamNumber })
         swipeToNextDay()
         composeRule.onNodeWithText("Thursday, June 11").assertIsDisplayed()
-        composeRule.onNodeWithTag("reading-1").performClick()
+        composeRule.onNodeWithTag("reading-1-0").performClick()
         assertThat(taps).hasSize(1)
         assertThat(taps.single()).isEqualTo(tomorrow to 1)
     }
@@ -364,18 +367,18 @@ class DayReadingsPagerScreenTest {
                     uiStateFor = vm::uiStateFor,
                     monthCompletionFor = vm::monthCompletionFor,
                     statsPanel = null,
-                    onToggleReading = vm::onToggleReading,
-                    onReadingTapped = vm::onReadingTapped,
+                    onToggleSegment = vm::onToggleSegment,
+                    onSegmentTapped = vm::onSegmentTapped,
                     onRetry = vm::onRetry,
                     onOpenSettings = {},
                 )
             }
         }
         // Stream 2's checkbox starts unchecked, then a card tap marks it read live.
-        composeRule.onNodeWithTag("toggle-2").assertIsOff()
-        composeRule.onNodeWithTag("reading-2").performClick()
+        composeRule.onNodeWithTag("toggle-2-0").assertIsOff()
+        composeRule.onNodeWithTag("reading-2-0").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag("toggle-2").assertIsOn()
+        composeRule.onNodeWithTag("toggle-2-0").assertIsOn()
         assertThat(progress.marksFor(today)).containsExactly(2)
     }
 
@@ -391,12 +394,16 @@ class DayReadingsPagerScreenTest {
         // EXTERNAL/BLB so a tap resolves a Web destination (no in-app handoff needed here); the
         // already-initialized marker keeps first-run dialogs out of the way.
         val settings = FakeSettingsRepository().apply { storedTrackingStartInitialized.value = true }
+        val partials = FakePartialReadingRepository()
         return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, FakeReadingPlanRepository(), progress, activePlan),
             getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, clock),
-            toggleReading = ToggleReadingUseCase(progress, activePlan),
+            getPartialSegments = GetPartialSegmentsUseCase(partials, activePlan),
+            toggleSegmentCheck =
+                ToggleSegmentCheckUseCase(ToggleReadingUseCase(progress, activePlan), partials, activePlan),
+            markSegmentReadOnOpen =
+                MarkSegmentReadOnOpenUseCase(MarkReadOnOpenUseCase(progress, activePlan), partials, activePlan),
             markWholeDay = MarkWholeDayUseCase(progress, activePlan),
-            markReadOnOpen = MarkReadOnOpenUseCase(progress, activePlan),
             openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = FakeWidgetRefresher(),
             readerHandoff = ReaderHandoff(),

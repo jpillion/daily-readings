@@ -6,6 +6,8 @@ import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
 import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepositoryImpl
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepositoryImpl
+import com.jpillion.dailyreadingplanner.data.prefs.PartialReadingRepository
+import com.jpillion.dailyreadingplanner.data.prefs.PartialReadingRepositoryImpl
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepositoryImpl
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
@@ -34,6 +36,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPartialReadingRepository(impl: PartialReadingRepositoryImpl): PartialReadingRepository
 
     @Binds
     @Singleton

@@ -232,9 +232,35 @@ class ReaderViewModel
             switchContext(ReaderContext.Browse, restoredBrowsePage())
         }
 
+        /**
+         * Enters the Reading context for a tapped Schedule reading.
+         *
+         * **D-SEG-7 — never fall back to Genesis 1.** [ReadingPagerIndex] requires the portion's refs
+         * to be a contiguous ascending global-chapter run. If that invariant is ever violated (the
+         * Ticket-1 bug: Chronological 07/25 = `Isaiah 37, Isaiah 38, Isaiah 39, Psalms 76`, where
+         * Psalms precedes Isaiah in canon order), its `init` throws. The previous fallback was a
+         * silent `return`, which left the reader in the Browse context at its DEFAULT page — Genesis
+         * 1, the wrong end of the Bible, with no hint that anything failed.
+         *
+         * So a failed index now degrades to the portion's **first ref's chapter** in Browse: always
+         * the right neighbourhood, and the reader is one swipe from the rest of the passage. Only if
+         * even that resolution fails (an unresolvable ref) do we do nothing — no path may crash.
+         *
+         * Belt-and-braces only: segmentation (D-SEG-1/2) guarantees every card is a contiguous run,
+         * gate-proven across all bundled plans, so the fallback is unreachable for today's data.
+         */
         private fun enterReading(portion: Portion) {
-            val index = runCatching { ReadingPagerIndex(portion) }.getOrNull() ?: return
-            switchContext(ReaderContext.Reading(portion, index), index.portionPage)
+            val index = runCatching { ReadingPagerIndex(portion) }.getOrNull()
+            if (index != null) {
+                switchContext(ReaderContext.Reading(portion, index), index.portionPage)
+                return
+            }
+            val firstRefPage =
+                runCatching {
+                    val first = portion.refs.first()
+                    GlobalChapterIndex.indexOf(first.book, first.chapter)
+                }.getOrNull() ?: return
+            switchContext(ReaderContext.Browse, firstRefPage)
         }
 
         private fun switchContext(

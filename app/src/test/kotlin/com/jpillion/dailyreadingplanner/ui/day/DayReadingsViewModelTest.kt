@@ -15,20 +15,26 @@ import com.jpillion.dailyreadingplanner.domain.FakeProgressRepository
 import com.jpillion.dailyreadingplanner.domain.FakeReadingPlanRepository
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetMonthCompletionUseCase
+import com.jpillion.dailyreadingplanner.domain.GetPartialSegmentsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkReadOnOpenUseCase
+import com.jpillion.dailyreadingplanner.domain.MarkSegmentReadOnOpenUseCase
 import com.jpillion.dailyreadingplanner.domain.MarkWholeDayUseCase
 import com.jpillion.dailyreadingplanner.domain.OpenReferenceUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveReadingDestinationPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveTrackingStartPromptUseCase
 import com.jpillion.dailyreadingplanner.domain.ResolveUpgradeNoteUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
+import com.jpillion.dailyreadingplanner.domain.ToggleSegmentCheckUseCase
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
+import com.jpillion.dailyreadingplanner.domain.model.ReadingCheckState
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
+import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.testing.FakePartialReadingRepository
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
 import com.jpillion.dailyreadingplanner.testing.MainDispatcherRule
@@ -38,6 +44,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
+import java.net.URLDecoder
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -47,6 +54,7 @@ class DayReadingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val progress = FakeProgressRepository()
+    private val partials = FakePartialReadingRepository()
     private val widgetRefresher = FakeWidgetRefresher()
     private val readerHandoff = ReaderHandoff()
     private val today = LocalDate.of(2026, 6, 10)
@@ -66,9 +74,14 @@ class DayReadingsViewModelTest {
         return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress, activePlan),
             getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, clock),
-            toggleReading = ToggleReadingUseCase(progress, activePlan),
+            getPartialSegments = GetPartialSegmentsUseCase(partials, activePlan),
+            // The segment-level use cases are the REAL ones over the same fakes (sprint-00P), so
+            // these tests exercise the pure policy + both stores end to end, not a stub.
+            toggleSegmentCheck =
+                ToggleSegmentCheckUseCase(ToggleReadingUseCase(progress, activePlan), partials, activePlan),
+            markSegmentReadOnOpen =
+                MarkSegmentReadOnOpenUseCase(MarkReadOnOpenUseCase(progress, activePlan), partials, activePlan),
             markWholeDay = MarkWholeDayUseCase(progress, activePlan),
-            markReadOnOpen = MarkReadOnOpenUseCase(progress, activePlan),
             openReference = OpenReferenceUseCase(settings, ProviderUrlBuilder()),
             widgetRefresher = widgetRefresher,
             readerHandoff = readerHandoff,
@@ -97,11 +110,14 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 assertThat(state.date).isEqualTo(today)
-                assertThat(state.readings).hasSize(3)
-                assertThat(state.readings.map { it.portion.streamNumber })
+                // sprint-00P: each Bible-Companion reading is ONE contiguous passage, so the three
+                // readings still yield exactly three cards (segmentCount 1 => PARTIAL unreachable).
+                assertThat(state.segments).hasSize(3)
+                assertThat(state.segments.map { it.streamNumber })
                     .containsExactly(1, 2, 3)
                     .inOrder()
-                assertThat(state.readings.none { it.isRead }).isTrue()
+                assertThat(state.segments.map { it.segmentCount }).containsExactly(1, 1, 1)
+                assertThat(state.segments.all { it.checkState == ReadingCheckState.UNCHECKED }).isTrue()
                 assertThat(state.dayComplete).isFalse()
             }
         }
@@ -112,11 +128,11 @@ class DayReadingsViewModelTest {
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
-                vm.onToggleReading(today, initial.readings[1])
+                vm.onToggleSegment(today, initial.segments[1])
                 val updated = awaitScheduled()
-                assertThat(updated.readings[1].isRead).isTrue()
-                assertThat(updated.readings[0].isRead).isFalse()
-                assertThat(updated.readings[2].isRead).isFalse()
+                assertThat(updated.segments[1].checkState).isEqualTo(ReadingCheckState.COMPLETE)
+                assertThat(updated.segments[0].checkState).isEqualTo(ReadingCheckState.UNCHECKED)
+                assertThat(updated.segments[2].checkState).isEqualTo(ReadingCheckState.UNCHECKED)
                 assertThat(updated.dayComplete).isFalse()
             }
         }
@@ -128,10 +144,10 @@ class DayReadingsViewModelTest {
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
-                assertThat(initial.readings[2].isRead).isTrue()
-                vm.onToggleReading(today, initial.readings[2])
+                assertThat(initial.segments[2].checkState).isEqualTo(ReadingCheckState.COMPLETE)
+                vm.onToggleSegment(today, initial.segments[2])
                 val updated = awaitScheduled()
-                assertThat(updated.readings[2].isRead).isFalse()
+                assertThat(updated.segments[2].checkState).isEqualTo(ReadingCheckState.UNCHECKED)
             }
         }
 
@@ -143,7 +159,7 @@ class DayReadingsViewModelTest {
                 val initial = awaitScheduled()
                 vm.onMarkWholeDay(today, initial.dayComplete)
                 val updated = awaitScheduled()
-                assertThat(updated.readings.all { it.isRead }).isTrue()
+                assertThat(updated.segments.all { it.checkState == ReadingCheckState.COMPLETE }).isTrue()
                 assertThat(updated.dayComplete).isTrue()
             }
         }
@@ -158,7 +174,7 @@ class DayReadingsViewModelTest {
                 assertThat(initial.dayComplete).isTrue()
                 vm.onMarkWholeDay(today, initial.dayComplete)
                 val updated = awaitScheduled()
-                assertThat(updated.readings.none { it.isRead }).isTrue()
+                assertThat(updated.segments.all { it.checkState == ReadingCheckState.UNCHECKED }).isTrue()
                 assertThat(updated.dayComplete).isFalse()
             }
         }
@@ -171,9 +187,9 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(yesterday).test {
                 val initial = awaitScheduled()
                 assertThat(initial.date).isEqualTo(yesterday)
-                vm.onToggleReading(yesterday, initial.readings[0])
+                vm.onToggleSegment(yesterday, initial.segments[0])
                 val updated = awaitScheduled()
-                assertThat(updated.readings[0].isRead).isTrue()
+                assertThat(updated.segments[0].checkState).isEqualTo(ReadingCheckState.COMPLETE)
             }
             // D-S5-3: progress is keyed to the displayed full date — today is untouched.
             assertThat(progress.marksFor(yesterday)).containsExactly(1)
@@ -240,7 +256,7 @@ class DayReadingsViewModelTest {
                 flaky.failing = false
                 vm.onRetry()
                 val recovered = awaitScheduled()
-                assertThat(recovered.readings).hasSize(3)
+                assertThat(recovered.segments).hasSize(3)
             }
         }
 
@@ -251,10 +267,10 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(today, state.readings[0].portion)
+                    vm.onSegmentTapped(today, state.segments[0])
                     assertThat(awaitItem())
                         .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/gen/1/"))
-                    vm.onReadingTapped(today, state.readings[2].portion)
+                    vm.onSegmentTapped(today, state.segments[2])
                     assertThat(awaitItem())
                         .isEqualTo(ReadingDestination.Web("https://www.blueletterbible.org/kjv/mat/1/"))
                 }
@@ -275,7 +291,7 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(today, state.readings[0].portion)
+                    vm.onSegmentTapped(today, state.segments[0])
                     assertThat(awaitItem())
                         .isEqualTo(
                             ReadingDestination.MySwordApp(
@@ -301,9 +317,9 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openReaderEvents.test {
-                    vm.onReadingTapped(today, state.readings[0].portion)
+                    vm.onSegmentTapped(today, state.segments[0])
                     awaitItem() // the navigate-to-Bible-tab signal
-                    assertThat(readerHandoff.pending.value).isEqualTo(state.readings[0].portion)
+                    assertThat(readerHandoff.pending.value).isEqualTo(state.segments[0].portion)
                 }
                 // sprint-00O: ignore the mark-on-open state re-emission (asserted elsewhere).
                 cancelAndIgnoreRemainingEvents()
@@ -319,7 +335,7 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(today, state.readings[0].portion)
+                    vm.onSegmentTapped(today, state.segments[0])
                     expectNoEvents()
                 }
                 // sprint-00O: ignore the mark-on-open state re-emission (asserted elsewhere).
@@ -336,14 +352,14 @@ class DayReadingsViewModelTest {
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
-                assertThat(state.readings[1].isRead).isFalse()
+                assertThat(state.segments[1].checkState).isEqualTo(ReadingCheckState.UNCHECKED)
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(today, state.readings[1].portion)
+                    vm.onSegmentTapped(today, state.segments[1])
                     awaitItem() // the destination still opens (proven separately in 3e)
                 }
                 // The tapped stream (number 2) is now read for today.
-                val updated = awaitScheduledWhere { it.readings[1].isRead }
-                assertThat(updated.readings[1].isRead).isTrue()
+                val updated = awaitScheduledWhere { it.segments[1].checkState == ReadingCheckState.COMPLETE }
+                assertThat(updated.segments[1].checkState).isEqualTo(ReadingCheckState.COMPLETE)
             }
             assertThat(progress.marksFor(today)).containsExactly(2)
         }
@@ -357,12 +373,12 @@ class DayReadingsViewModelTest {
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
-                assertThat(initial.readings[0].isRead).isTrue()
+                assertThat(initial.segments[0].checkState).isEqualTo(ReadingCheckState.COMPLETE)
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(today, initial.readings[0].portion)
+                    vm.onSegmentTapped(today, initial.segments[0])
                     awaitItem()
                     // Tap the same already-read reading again — still must not unmark.
-                    vm.onReadingTapped(today, initial.readings[0].portion)
+                    vm.onSegmentTapped(today, initial.segments[0])
                     awaitItem()
                 }
                 // Idempotent re-writes don't change the day state (distinctUntilChanged), but be
@@ -384,11 +400,11 @@ class DayReadingsViewModelTest {
                 val state = awaitScheduled()
                 assertThat(state.date).isEqualTo(yesterday)
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(yesterday, state.readings[0].portion)
+                    vm.onSegmentTapped(yesterday, state.segments[0])
                     awaitItem()
                 }
-                val updated = awaitScheduledWhere { it.readings[0].isRead }
-                assertThat(updated.readings[0].isRead).isTrue()
+                val updated = awaitScheduledWhere { it.segments[0].checkState == ReadingCheckState.COMPLETE }
+                assertThat(updated.segments[0].checkState).isEqualTo(ReadingCheckState.COMPLETE)
             }
             assertThat(progress.marksFor(yesterday)).containsExactly(1)
             assertThat(progress.marksFor(today)).isEmpty()
@@ -477,7 +493,7 @@ class DayReadingsViewModelTest {
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
-                vm.onToggleReading(today, initial.readings[0])
+                vm.onToggleSegment(today, initial.segments[0])
                 awaitScheduled()
             }
             assertThat(widgetRefresher.refreshCount).isEqualTo(1)
@@ -506,7 +522,7 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val state = awaitScheduled()
                 vm.openDestinationEvents.test {
-                    vm.onReadingTapped(today, state.readings[0].portion)
+                    vm.onSegmentTapped(today, state.segments[0])
                     awaitItem()
                 }
                 // The mark-on-open re-emits the day state (stream 1 now read); ignore it here.
@@ -587,6 +603,157 @@ class DayReadingsViewModelTest {
             // D-S19-1: dismiss == the superseded D-S14-1 default, marker set => never again.
             assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 1, 1))
             assertThat(settings.storedTrackingStartInitialized.value).isTrue()
+        }
+
+    // --- sprint-00P (SEG-6): the segment split, D-SEG-6, and the partial-check transitions ---
+
+    /**
+     * The Chronological 07/25 reading — `Isaiah 37, 38, 39, Psalms 76` — i.e. the P0 repro. Its refs
+     * are NOT a contiguous ascending global-chapter run (Psalms precedes Isaiah in canon order),
+     * which is exactly what made `ReadingPagerIndex` throw and the reader silently fall back to
+     * Genesis 1 when the WHOLE portion was handed over.
+     */
+    private val isaiahPsalmsReading = portion(1, "Isaiah" to 37, "Isaiah" to 38, "Isaiah" to 39, "Psalms" to 76)
+
+    private fun twoSegmentViewModel(settings: FakeSettingsRepository = FakeSettingsRepository()) =
+        viewModel(planRepository = FakeReadingPlanRepository(listOf(isaiahPsalmsReading)), settings = settings)
+
+    @Test
+    fun `a reading with two passages becomes two segment cards`() =
+        runTest {
+            // D-SEG-1/D-SEG-8: the book change splits, so one portion renders as two cards, each
+            // naming only its own run. Both carry the same stream number (the progress key).
+            val vm = twoSegmentViewModel()
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                assertThat(state.segments).hasSize(2)
+                assertThat(state.segments.map { ReadingFormatter.format(it.portion) })
+                    .containsExactly("Isaiah 37–39", "Psalm 76")
+                    .inOrder()
+                assertThat(state.segments.map { it.segmentIndex }).containsExactly(0, 1).inOrder()
+                assertThat(state.segments.map { it.segmentCount }).containsExactly(2, 2)
+                assertThat(state.segments.map { it.streamNumber }).containsExactly(1, 1)
+                // The title repeats on both cards of the multi-segment stream (spec).
+                assertThat(state.segments.map { it.streamTitle }).containsExactly("Law & History", "Law & History")
+            }
+        }
+
+    @Test
+    fun `tapping the second card hands the in-app reader exactly that segment`() =
+        runTest {
+            // THE P0 PIN (D-SEG-6). What reaches ReaderHandoff must be the tapped run alone —
+            // [Psalms 76] — never the four-ref portion (which cannot build a ReadingPagerIndex and
+            // used to degrade to Genesis 1).
+            val settings = FakeSettingsRepository()
+            settings.setReadingDestinationMode(ReadingDestinationMode.IN_APP)
+            val vm = twoSegmentViewModel(settings)
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                vm.openReaderEvents.test {
+                    vm.onSegmentTapped(today, state.segments[1])
+                    awaitItem() // the navigate-to-Bible-tab signal
+                }
+                val handed = readerHandoff.pending.value
+                assertThat(handed).isNotNull()
+                assertThat(handed!!.streamNumber).isEqualTo(1)
+                assertThat(handed.refs.map { it.book.canonicalName to it.chapter })
+                    .containsExactly("Psalms" to 76)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `tapping the first card opens only that run on Bible Gateway`() =
+        runTest {
+            // D-SEG-6's second consequence: an external URL now carries just the tapped run, so it
+            // agrees with what the card says. Bible Gateway is the multi-ref-capable provider, so
+            // the whole-portion regression would be visible in its search term.
+            val settings = FakeSettingsRepository()
+            settings.setExternalBibleApp(ExternalBibleApp.BIBLE_GATEWAY)
+            val vm = twoSegmentViewModel(settings)
+            vm.uiStateFor(today).test {
+                val state = awaitScheduled()
+                vm.openDestinationEvents.test {
+                    vm.onSegmentTapped(today, state.segments[0])
+                    val destination = awaitItem()
+                    assertThat(destination)
+                        .isEqualTo(
+                            ReadingDestination.Web(
+                                "https://www.biblegateway.com/passage/?search=Isaiah+37-39&version=KJV",
+                            ),
+                        )
+                    val url = (destination as ReadingDestination.Web).url
+                    assertThat(URLDecoder.decode(url, "UTF-8")).contains("Isaiah 37-39")
+                    assertThat(url).doesNotContain("Psalm")
+                }
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `checking the segments one at a time goes PARTIAL then COMPLETE`() =
+        runTest {
+            // The transition table, driven through the REAL use cases and both stores: the first
+            // check writes only a cosmetic token (nothing outside the day screen changes), the last
+            // one sets the real stream mark and clears every token.
+            val vm = twoSegmentViewModel()
+            vm.uiStateFor(today).test {
+                val initial = awaitScheduled()
+                vm.onToggleSegment(today, initial.segments[0])
+                val partial = awaitScheduledWhere { it.segments[0].checkState == ReadingCheckState.PARTIAL }
+                assertThat(partial.segments[1].checkState).isEqualTo(ReadingCheckState.UNCHECKED)
+                assertThat(partial.dayComplete).isFalse()
+                // D-SEG-3: a partially-read reading is NOT read anywhere outside this screen.
+                assertThat(progress.marksFor(today)).isEmpty()
+
+                vm.onToggleSegment(today, partial.segments[1])
+                val complete =
+                    awaitScheduledWhere { state -> state.segments.all { it.checkState == ReadingCheckState.COMPLETE } }
+                assertThat(complete.dayComplete).isTrue()
+                assertThat(progress.marksFor(today)).containsExactly(1)
+                assertThat(partials.stored.value).isEmpty()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `unchecking one segment of a COMPLETE reading leaves the other PARTIAL`() =
+        runTest {
+            // The last row of the table: clearing the real mark keeps every OTHER segment checked
+            // (it was read) — only the tapped one is taken back.
+            progress.setRead(today, 1, true)
+            val vm = twoSegmentViewModel()
+            vm.uiStateFor(today).test {
+                val initial = awaitScheduled()
+                assertThat(initial.segments.all { it.checkState == ReadingCheckState.COMPLETE }).isTrue()
+
+                vm.onToggleSegment(today, initial.segments[0])
+                val after = awaitScheduledWhere { it.segments[0].checkState == ReadingCheckState.UNCHECKED }
+                assertThat(after.segments[1].checkState).isEqualTo(ReadingCheckState.PARTIAL)
+                assertThat(after.dayComplete).isFalse()
+                assertThat(progress.marksFor(today)).isEmpty()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `N==1 parity - a single-segment reading toggles the real mark and never reaches PARTIAL`() =
+        runTest {
+            // D-SEG-4: at one segment the behaviour is byte-for-byte pre-sprint — one card, the real
+            // mark, and no token ever written.
+            val vm = viewModel()
+            vm.uiStateFor(today).test {
+                val initial = awaitScheduled()
+                assertThat(initial.segments).hasSize(3)
+                assertThat(initial.segments.map { it.segmentCount }).containsExactly(1, 1, 1)
+
+                vm.onToggleSegment(today, initial.segments[1])
+                val after = awaitScheduledWhere { it.segments[1].checkState != ReadingCheckState.UNCHECKED }
+                assertThat(after.segments[1].checkState).isEqualTo(ReadingCheckState.COMPLETE)
+                assertThat(progress.marksFor(today)).containsExactly(2)
+                assertThat(partials.stored.value).isEmpty()
+                cancelAndIgnoreRemainingEvents()
+            }
         }
 }
 

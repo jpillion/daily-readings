@@ -25,12 +25,12 @@ import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderScreen
 import com.jpillion.dailyreadingplanner.bible.ui.reader.ReaderUiState
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.bcReadingStats
 import com.jpillion.dailyreadingplanner.testing.bcYearStrips
+import com.jpillion.dailyreadingplanner.testing.singleSegmentStates
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.day.DayContent
 import com.jpillion.dailyreadingplanner.ui.day.DayUiState
@@ -88,17 +88,19 @@ class AccessibilityGateTest {
                     state =
                         DayUiState.Scheduled(
                             date = today,
-                            readings = threePortions.map { ReadingStatus(it, false) },
+                            // sprint-00P: one card per segment; a Bible-Companion reading is a
+                            // single segment, so the tags gain a "-0" index.
+                            segments = singleSegmentStates(threePortions),
                             dayComplete = false,
                         ),
-                    onToggleReading = {},
-                    onReadingTapped = {},
+                    onToggleSegment = {},
+                    onSegmentTapped = {},
                     onRetry = {},
                 )
             }
         }
         for (stream in 1..3) {
-            composeRule.onNodeWithTag("toggle-$stream").assertTouchTargetAtLeast(48.dp)
+            composeRule.onNodeWithTag("toggle-$stream-0").assertTouchTargetAtLeast(48.dp)
         }
     }
 
