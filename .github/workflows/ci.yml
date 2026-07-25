@@ -111,25 +111,85 @@ jobs:
       # byte-diff of ZERO against the committed asset, so a hand-edited binary can never sneak
       # past the commit (mirrors the Sprint-1/Sprint-9 rebuild discipline). The two source
       # SHA-256s are verified here; the importer uses only the Python stdlib (tools/requirements.txt).
-      - name: Fetch pinned PD KJV sources
+      #
+      # BOTH URLs address an IMMUTABLE COMMIT SHA, never a branch. A `/master/` raw URL is NOT a
+      # pin — it re-resolves on every run, so any upstream commit turns this guard into a false
+      # alarm. That is exactly what happened: scrollmapper commit e1b254ce (2026-07-10) re-serialised
+      # KJV.csv (CRLF + trailing-whitespace trim + Psalm superscriptions inlined into verse 1) with
+      # ZERO verse-wording changes, and the checksum step went red for five weeks. The commit SHAs
+      # below are the exact revisions the committed bible.db and the R-V3-3 gate were verified
+      # against; adopting a newer upstream revision is a deliberate data decision (re-run the
+      # reconciliation in docs/data/README.md and update BibleTextVerificationTest), never a
+      # checksum bump. See docs/data/README.md "Source pinning".
+      - name: Fetch pinned PD KJV sources (immutable commit refs)
         run: |
           mkdir -p /tmp/kjvsrc
-          curl -sL --retry 3 -o /tmp/kjvsrc/eng-kjv.osis.xml             "https://raw.githubusercontent.com/seven1m/open-bibles/master/eng-kjv.osis.xml"
-          curl -sL --retry 3 -o /tmp/kjvsrc/scrollmapper_KJV.csv             "https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/csv/KJV.csv"
+          # seven1m/open-bibles @ 7768dacf (2015-05-08) — latest commit touching this file
+          curl -sL --retry 3 -o /tmp/kjvsrc/eng-kjv.osis.xml \
+            "https://raw.githubusercontent.com/seven1m/open-bibles/7768dacf2653164dd036d14a2d3f877d925015d3/eng-kjv.osis.xml"
+          # scrollmapper/bible_databases @ ba07bc99 (2024-11-19) — the revision this asset was built from
+          curl -sL --retry 3 -o /tmp/kjvsrc/scrollmapper_KJV.csv \
+            "https://raw.githubusercontent.com/scrollmapper/bible_databases/ba07bc991644d82b24426b920245eb4422daa769/formats/csv/KJV.csv"
 
       - name: Verify source checksums (re-mirror / drift guard, R-V3-3)
         run: |
           echo "eeeae647fc28360ce47f9c0d5cc3b397b7fdd9913fe53dc9f44eb6deee50e253  /tmp/kjvsrc/eng-kjv.osis.xml" | sha256sum -c -
           echo "9ba72c78bdac0e60bd37ee453e1ae787ea778297fb2b78b73edc0921a136ab09  /tmp/kjvsrc/scrollmapper_KJV.csv" | sha256sum -c -
 
+      # The SQLite LIBRARY is an input to this build and must be pinned like the sources are.
+      # build_bible_db.py is deterministic, but SQLite stamps SQLITE_VERSION_NUMBER into the file
+      # header (offsets 96..99) and its page-slack handling depends on build flags, so the bytes
+      # are a function of the writing library. The committed asset was written by SQLite 3.43.2
+      # with SQLITE_SECURE_DELETE (the Debian/Ubuntu default, which zeroes freed page slack).
+      # ubuntu-latest moved to 3.45.1 on 2026-06-15 and the byte-diff below failed on every run
+      # for a month — a 2-byte header difference, content untouched.
+      #
+      # Pinning the Python version does NOT pin SQLite (every setup-python build links the runner
+      # image's system libsqlite3 — measured across 3.10..3.13, all 3.45.1), so we build the
+      # pinned amalgamation ourselves and preload it. Measured: 3.43.2 + SECURE_DELETE reproduces
+      # the committed asset exactly; 3.45.1 + SECURE_DELETE differs by 2 bytes; 3.43.2 without
+      # SECURE_DELETE differs by a further 6,025 bytes of stale B-tree residue.
+      - name: Build the pinned SQLite the asset was written with (3.43.2)
+        run: |
+          curl -sL --retry 3 -o /tmp/sqlite-amalgamation.zip \
+            "https://sqlite.org/2023/sqlite-amalgamation-3430200.zip"
+          echo "a17ac8792f57266847d57651c5259001d1e4e4b46be96ec0d985c953925b2a1c  /tmp/sqlite-amalgamation.zip" | sha256sum -c -
+          unzip -q /tmp/sqlite-amalgamation.zip -d /tmp
+          gcc -O2 -fPIC -shared -DSQLITE_SECURE_DELETE -DSQLITE_THREADSAFE=1 \
+            /tmp/sqlite-amalgamation-3430200/sqlite3.c \
+            -o /tmp/libsqlite3.so.0 -lpthread -lm -ldl
+
+      # Fail loudly if the preload ever stops taking effect (a linkage change in a future runner
+      # image), instead of silently rebuilding with the wrong SQLite and reporting a mystery diff.
+      - name: Assert Python is using the pinned SQLite
+        run: |
+          ACTUAL=$(LD_PRELOAD=/tmp/libsqlite3.so.0 python3 -c "import sqlite3; print(sqlite3.sqlite_version)")
+          echo "python sqlite3 reports: ${ACTUAL} (expected 3.43.2)"
+          if [ "$ACTUAL" != "3.43.2" ]; then
+            echo "::error::LD_PRELOAD did not take effect — Python is using SQLite ${ACTUAL}, not the pinned 3.43.2. The byte-diff below would be meaningless; fix the preload rather than relaxing the gate."
+            exit 1
+          fi
+
       - name: Re-derive bible.db
         run: |
           cp app/src/main/assets/bible/bible.db /tmp/committed.db
-          python3 tools/build_bible_db.py --osis /tmp/kjvsrc/eng-kjv.osis.xml --second /tmp/kjvsrc/scrollmapper_KJV.csv
+          LD_PRELOAD=/tmp/libsqlite3.so.0 python3 tools/build_bible_db.py \
+            --osis /tmp/kjvsrc/eng-kjv.osis.xml --second /tmp/kjvsrc/scrollmapper_KJV.csv
 
+      # Strict byte-diff of zero. On failure, compare_bible_db.py says in one click whether the
+      # asset's CONTENT drifted (a real problem: a hand-edited or mis-derived asset) or only its
+      # binary encoding did (a toolchain problem) — the distinction that took five weeks to make
+      # by hand the last time this went red.
       - name: Assert byte-diff of zero vs the committed asset
         run: |
-          cmp /tmp/committed.db app/src/main/assets/bible/bible.db             && echo "bible.db reproduced byte-identically from pinned sources."             || (echo "ASSET DRIFT: committed bible.db does not match a fresh rebuild." && exit 1)
+          if cmp /tmp/committed.db app/src/main/assets/bible/bible.db; then
+            echo "bible.db reproduced byte-identically from the pinned sources and pinned SQLite."
+          else
+            echo "ASSET DRIFT: committed bible.db does not match a fresh rebuild. Diagnosing:"
+            python3 tools/compare_bible_db.py \
+              --committed /tmp/committed.db --rebuilt app/src/main/assets/bible/bible.db || true
+            exit 1
+          fi
 
   mcheyne-rebuild:
     name: M'Cheyne plan asset rebuild (deterministic, byte-diff)
@@ -153,6 +213,16 @@ jobs:
       # second-source fixture is re-derived from the INDEPENDENT Carson/TGC source and likewise
       # byte-diffed. The two source SHA-256s are verified (re-mirror / drift guard). edginet.org
       # blocks default user-agents, so curl sends a browser UA (docs/data/mcheyne-sourcing.md).
+      #
+      # MOVING-REF AUDIT (2026-07-25): unlike the KJV sources, neither of these lives in a VCS, so
+      # there is no immutable ref to address — a publisher can replace the bytes at the same URL at
+      # any time. The SHA-256 verification below IS the pin and is checked BEFORE the PDFs are
+      # parsed, so a substituted file fails loudly and never reaches the asset. Both were
+      # re-fetched and still match their pinned digests. Residual risk is availability, not
+      # integrity: if a publisher removes or replaces a PDF this job goes red permanently, and the
+      # fix is to mirror the pinned bytes rather than to re-pin to whatever is served that day.
+      # edginet.org additionally has no working HTTPS (its TLS handshake fails), which is why this
+      # fetch is plain http — acceptable only because the digest check is the real gate.
       - name: Fetch pinned M'Cheyne sources
         run: |
           mkdir -p /tmp/mcsrc
@@ -204,6 +274,11 @@ jobs:
       # (mirrors the bible.db / M'Cheyne data-rebuild discipline). The single source's SHA-256 is
       # verified (the owner-signed single-source structural gate, D-ALT-24). There is NO second-source
       # fixture for this plan — that is the recorded FR-ALT-3 relaxation (docs/data/README.md).
+      #
+      # MOVING-REF AUDIT (2026-07-25): a vendor URL with no immutable ref available, same as the
+      # M'Cheyne sources. The SHA-256 below is the pin and is verified before parsing (the builder
+      # re-checks it internally too); re-fetched and still matching. This plan carries MORE weight
+      # on its pin than the others because it has no second witness by design.
       - name: Fetch the pinned Chronological source
         run: |
           mkdir -p /tmp/chrsrc

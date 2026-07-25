@@ -57,13 +57,21 @@ jobs:
           DRP_UPLOAD_KEY_PASSWORD: ${{ secrets.DRP_UPLOAD_KEY_PASSWORD }}
         run: ./gradlew bundleRelease
 
+      # `tracks` (plural, comma-separated) replaces the deprecated singular `track`, which the
+      # action has warned about since v1.1.4 and will remove. The two are mutually exclusive --
+      # setting both is a hard error -- so this is a rename, not an addition. Behaviour is
+      # identical: the action logs "Validating tracks: 'alpha'" either way.
+      #
+      # The action is pinned to a COMMIT SHA, not the moving `@v1` tag. This is the one step that
+      # sees PLAY_SERVICE_ACCOUNT_JSON and can publish to the store, so it should not silently
+      # change under us. Upgrade deliberately: read the diff, then bump the SHA and the comment.
       - name: Upload to Play (closed testing - Alpha)
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.jpillion.dailyreadingplanner
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          track: alpha
+          tracks: alpha
           status: completed
           whatsNewDirectory: distribution/whatsnew
 
