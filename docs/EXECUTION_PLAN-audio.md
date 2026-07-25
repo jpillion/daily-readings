@@ -1,7 +1,26 @@
 # Daily Reading Planner — Execution Plan: Read aloud (audio)
 
 > **Owner:** Morgan (Engineering Manager) · **Status:** Ready to execute (Sprint AUD-A first) · **Last updated:** 2026-07-25
-> **Branch:** `claude/audio-read-aloud-options-vgb793`
+> **Planning branch:** `claude/audio-read-aloud-options-vgb793` · **Epic integration branch (proposed):** `feature/read-aloud` — see **§9**
+>
+> ### Amendment 1 — 2026-07-25 (three owner decisions)
+>
+> 1. **`OQ-AUD-1` is RESOLVED: ElevenLabs.** The owner auditioned the field and chose on voice realism.
+>    Sprint E collapses from a bake-off to a pilot; **the critical path re-computes** (§1.1) and the
+>    dominant scheduling constraint is now **Sprint A's two Play review cycles**, not the render.
+> 2. **NEW REQUIREMENT — audio packs must be plug-and-play**, like translations: *"If they download
+>    different packs, the audio assets just get plugged in. There shouldn't need to be logic that is
+>    dependent on which asset is used."* Diego is speccing a self-describing pack manifest + registry
+>    concurrently. The **sequencing** answer is **`D-M-AUD-7`** (§1.5): generality lands **inside** the
+>    Phase-2 sprints from their first line, its shape is validated on placeholder bytes in **Sprint A**,
+>    and it is *proven* in Sprint F the way Alt Sprint C proved N-streams — with a synthetic second
+>    artifact and zero production code change.
+> 3. **NEW — the whole epic ships on a separate long-lived branch** (*"depending on how long it takes, I
+>    may not want to roll this out immediately"*). Strategy, merge cadence, CI and release mechanics are
+>    **§9**, recorded as **`D-M-AUD-8`**. A complementary feature flag is **recommended, not assumed**
+>    (`D-M-AUD-9`).
+>
+> Amended text below is marked **[A1]** where it replaces something a reader may remember differently.
 >
 > **Inputs (decided upstream, not re-decided here):**
 > [PRD-audio.md](PRD-audio.md) (Maya — what/why; `FR-AUD-*`, `NFR-AUD-*`, `D-AUD-1…16`, `M-AUD-1…11`, `R-AUD-1…10`, `OQ-AUD-1…9`) ·
@@ -24,35 +43,48 @@
 
 ## 1. Up-front decisions & sequencing principles
 
-### 1.1 This feature has TWO critical paths, and they are different
+### 1.1 This feature has TWO critical paths, and they are different  **[A1 — recomputed]**
 
 Every previous epic here had one ordered chain (V3: sources → import → gate → reader; Alt: plan model
 → migration → N-stream UI → selector). Audio has two, and confusing them is the single easiest way to
 plan this badly:
 
 ```
-PHASE 1 (the product path — $0, 0 bytes, no artifact dependency at all)
-   SA-T0 manifest go/no-go ──▶ B: player spine + M-AUD-1 queue gate ──▶ C: Phase 1 complete ──▶ D: SHIP
-                                                                                                   │
-PHASE 2 (the spend path — calendar-bound and irreversible)                                          │
-   A: 66 placeholder packs on the internal track ──┐                                                │
-      (2 Play review cycles — wall-clock we don't own)                                              │
-                                                   ├──▶ E: voice decision + pilot + owner ear ──────┼──▶ F: THE RENDER ──▶ G: Phase 2 playback + downloads ──▶ H: ship
-   OQ-AUD-1 (owner: which voice source) ───────────┘         (the LAST reversible point)            │
-                                                                                          C green = the
-                                                                                          executable spec
-                                                                                          for F's timing index
+PRODUCT TRACK (Phase 1 — $0, 0 bytes, no artifact dependency at all)
+   SA-T0 manifest go/no-go ──▶ B: player spine + M-AUD-1 gate ──▶ C: Phase 1 complete ──▶ D: SHIP 1.6.0
+                                     │
+                                     │ B green = the executable spec for F's timing index
+                                     ▼
+DATA TRACK (Phase 2 — the spend path)
+   A: 66 placeholder packs + the pack manifest, on the internal track ──▶ E: pilot + lexicon + ──▶ F: THE RENDER ──▶ G ──▶ H: SHIP 1.7.0
+      ⟵⟵ TWO SERIAL PLAY REVIEW CYCLES — THE DOMINANT POLE ⟶⟶            spend gate (the LAST
+                                                                          reversible point)
 ```
 
-**The consequence that shapes the whole plan:** the Phase-2 critical path does **not** run through the
-player. B/C/D are not prerequisites of F in a dependency sense — but they are *evidence* for it, because
-Phase 1's per-verse TTS boundaries are the executable specification of what `FR-AUD-10`'s timing index
-must deliver (PRD §9, Diego §16.8). So Phase 1 goes first for product reasons *and* de-risking reasons,
-while the Play-review clock — the one thing on this project nobody controls — runs underneath it.
+**[A1] What the ElevenLabs resolution changed.** `OQ-AUD-1` was the epic's longest pole: an unbounded
+owner question that, if it had gone the LibriVox way, would have added a forced-alignment data project
+of roughly Sprint-A-of-V3 size (PRD §11). It is answered, so:
 
-**Therefore I move Diego's `AUD-C-1` from his Sprint C to my Sprint A** (his `OQ-AUD-E-4`, answered:
-yes, it is budgeted, and it is first). It needs two Play review cycles, it needs a device in hand, and
-it is a hard input to the spend decision. Starting it two sprints late costs calendar for nothing.
+- **Sprint E collapses** from "bake-off + pilot" to "pilot, lexicon, calibration, spend gate" — from M
+  to **S–M**, and its only remaining calendar cost is the owner's listening turnaround.
+- **The timing index gets cheap.** ElevenLabs supplies character/word timestamps from the API, so
+  `FR-AUD-10` is derivation, not alignment. That in turn means **E no longer needs Phase 1 *shipped* as
+  its executable specification — it needs Sprint B's queue gate green.** Checklist row 11 (§4) is
+  re-scoped accordingly.
+- **Therefore the two tracks now run genuinely in parallel from the end of B**, converging at G. E and
+  F can overlap C and D. F is a data project on a render machine; it barely touches app code.
+- **The dominant scheduling constraint is now Sprint A's two Play review cycles**, which are *serial*
+  (cycle 2 needs a device that already holds packs from cycle 1) and are wall-clock nobody here owns.
+  Everything else in the epic is effort, which is compressible; review turnaround is not.
+
+**This promotes `D-M-AUD-1` from prudent to load-bearing.** Diego's `AUD-C-1` moves from his Sprint C
+to my Sprint A (his `OQ-AUD-E-4`, answered: yes, budgeted, and first), and **`SA-T5`/`SA-T6` are now
+the first things dispatched in the epic** — before, or at worst alongside, `SB-T1`. A day lost getting
+the spike bundle into Play's queue is a day added to the whole Phase-2 path; a day lost on `SB-T5` is
+absorbed by the parallel track.
+
+**The consequence that has not changed:** the Phase-2 path does not run *through* the player. B/C/D are
+evidence for F, not prerequisites of it — which is why Phase 1 can ship on its own schedule.
 
 ### 1.2 The hard gate is not one thing — it is three "prove it before you spend" gates
 
@@ -65,7 +97,8 @@ asset comes fifth.
 |---|---|---|---|
 | **G-POSTURE** — the merged-manifest delta matches ESpec §12 exactly | **A** (`SA-T0` = Diego's `AUD-A-0`) | No `INTERNET`; exactly two new foreground-service permissions; three exported components accounted for. Diego **could not build this** (`platforms;android-37` unpublished) — it is an unverified claim until a build machine runs it. | Re-plan the delivery mechanism. Cheap now, catastrophic after F. |
 | **G-DELIVERY** — Play accepts 66 asset packs and an audio correction's real byte cost is measured | **A** (`SA-T6`/`SA-T7`, two internal-track cycles) | `requestFetch`/`assetsPath()` work; eviction and sideload behave; and **what a re-render actually pushes to existing users on an app update** (V12/§7.5 — the real price of D-AUD-3). | Re-group to 8 section packs (a one-function edit, D-AUD-E-5) — free *before* F, a re-render *after* it. |
-| **G-VOICE** — the pronunciation pilot is in the owner's ears and signed off | **E** (`SE-T3`, M-AUD-6) | The voice is fit for scripture; the proper-noun lexicon is built from what the pilot exposed; the ASR thresholds are calibrated on real output. | R-AUD-3 realised: the whole corpus re-rendered. **This is the gate the money is on.** |
+| **G-VOICE** — the pronunciation pilot is in the owner's ears and signed off | **E** (`SE-T3`, M-AUD-6) | The **ElevenLabs** voice is fit for scripture; the proper-noun lexicon is built from what the pilot exposed; the ASR thresholds are calibrated on real output. | R-AUD-3 realised: the whole corpus re-rendered. **This is the gate the money is on.** |
+| **[A1] G-PACKSHAPE** — a pack describes itself, and the app plugs it in without knowing which pack it is | **A** (`SA-T9`, on placeholder bytes) → *proven* **F** (`SF-T5`, synthetic second voice) | The pack manifest's shape survives a real Play cycle and a real `assetsPath()` resolve **before** a byte of audio is rendered against it. | Getting the manifest shape wrong after F means **re-packaging, possibly re-rendering, the corpus** — the shape is baked into ~850 MB of artifact. Free to validate now. |
 
 `AudioTimingVerificationTest` (M-AUD-2, Sprint F) is the *release* gate in the lineage of the plan, text
 and M'Cheyne gates — it becomes the project's **sixth** standing data gate. But it cannot exist before
@@ -152,6 +185,35 @@ These are **sequencing** calls, not product or architecture calls. Each is mine 
   designed UI, and a sprint that cannot be demonstrated cannot be judged. B ships a
   `SPRINT-B TEMPORARY` action (tag `listen-dev`) exactly as V3 Sprint C shipped `open-reader-dev`.
   Its deletion is an acceptance criterion of C.
+- **[A1] D-M-AUD-7 — pack plug-and-play generality lands INSIDE the Phase-2 sprints from their first
+  line; it does NOT get its own sprint; and its *shape* is validated in Sprint A on placeholder bytes.**
+  This repo has learned the lesson twice and both times the same way round: V3's `BibleTextSource` seam
+  (D-V3-3) made the text source the swap unit before a second source existed, and **Alt Sprint C
+  generalized every surface to N streams before a fourth-stream plan shipped — after which the
+  Chronological plan (N=1) shipped with *zero production code change*.** The generalization here is
+  **shape, not volume**: a self-describing pack manifest, a registry that mirrors
+  `PlanRegistry`/`PlanDescriptor`, and every consumer routed through one resolver. Written that way from
+  the start it is nearly free; retrofitted after Sprint G it is a rewrite of `AudioPackPlan`,
+  `PackFileLocator`, `PackVerseTimingSource`, `ResolveAudioAvailabilityUseCase`, the Settings voice row
+  and the Downloads screen. And the part that is genuinely expensive to change late is the **on-disk /
+  pack layout**, because it is baked into ~850 MB of rendered artifact — which is exactly why the shape
+  goes into the Sprint-A placeholder payload and through a real Play review cycle *before* the render.
+  **Acceptance, in the Alt-Sprint-F idiom: adding a second voice must be data + an asset pack and
+  nothing else.** Proven in `SF-T5` by a synthetic second-voice fixture, mutation-pinned. Tickets
+  touched: `SA-T2`, `SA-T4`, `SA-T5`, `SA-T6`, **`SA-T9` (new)**, `SB-T7`, `SF-T1`, `SF-T4`, `SF-T5`,
+  `SG-T2`, `SG-T3`, `SG-T5`, `SG-T6`, `SG-T7`. *(Diego owns the manifest/registry design; this decision
+  owns only where it lands.)*
+- **[A1] D-M-AUD-8 — the epic lives on a long-lived integration branch, `feature/read-aloud`; sprint
+  branches merge into it; nothing merges to `main` until a phase ships.** Full mechanics — merge
+  cadence, the conflict-prone file list, CI, and what "ship Phase 1" actually consists of — are **§9**.
+  The one-line consequence for sequencing: **the merge to `main` at Sprint D *is* the Phase-1 go/no-go
+  moment** (`SD-T3`), because `release.yml` is tag-triggered from `main`.
+- **[A1] D-M-AUD-9 — RECOMMENDED, not decided: a minimal entry-point feature flag, added in Sprint C.**
+  The owner asked for a branch and the branch is the decision; this is not a counter-proposal. But the
+  two are not exclusive, and a flag becomes *actively wanted* the moment Phase 1 ships at 1.6.0 while
+  Phase 2 is still in flight — because from that point `main` carries half-built Phase-2 code in
+  **released** builds. See §9.5 for the recommendation, its scope (one boolean at the composition root,
+  gating entry points only — not the service, not the domain) and its honest cost.
 
 ### 1.6 Where ESpec §16 supersedes the PRD (sequencing-relevant only)
 
@@ -188,22 +250,30 @@ independently-green increment. Sizes are **relative engineering effort** (S/M/L/
 cost is **calendar we do not control** are flagged separately, because no amount of effort shortens a
 Play review.
 
+> **[A1] Every sprint below is executed on a branch off `feature/read-aloud` and merges back into it,
+> never into `main`, until a phase ships (§9).** The sprint sequence itself is unchanged by that; only
+> where the commits land is.
+
 | # | Sprint | Owner-visible outcome (one line) | New capability unlocked | Size | Calendar | Owners | Depends on | Gate to exit |
 |---|---|---|---|---|---|---|---|---|
-| **A** | **Posture proof + delivery plumbing on placeholders** *(cheap, reversible, starts the clock)* | "We now know, with evidence, that audio delivery costs us no `INTERNET`, that Play accepts 66 packs, and what an audio correction actually pushes to a user's phone." | The two facts the whole Phase-2 architecture rests on are **measured, not assumed**; the 12 MB gate is re-pointed without losing its meaning; the pack-name mapper exists. | **S** | **L — two Play review cycles** | Jordan (lead), Avery, Owner (Console) | — | **G-POSTURE** + **G-DELIVERY** (findings `SA-F1`/`SA-F2` recorded) |
+| **A** | **Posture proof + delivery plumbing on self-describing placeholder packs** *(cheap, reversible, **starts the epic's longest clock**)* | "We now know, with evidence, that audio delivery costs us no `INTERNET`, that Play accepts our pack layout, that a pack tells the app what it is without any per-pack code, and what an audio correction actually pushes to a user's phone." | The three facts the whole Phase-2 architecture rests on are **measured, not assumed**; the 12 MB gate is re-pointed without losing its meaning; the voice-scoped pack mapper and the **pack manifest shape** exist and have survived a real Play cycle. | **S–M** | **L — two serial Play review cycles; [A1] now the epic's dominant constraint** | Jordan (lead), Avery, Owner (Console) | — | **G-POSTURE** + **G-DELIVERY** + **G-PACKSHAPE** (findings `SA-F1`/`SA-F2`/`SA-F3` recorded) |
 | **B** | **The player spine on the device voice** *(cheap, reversible)* | "Press the dev button and the phone reads Genesis 1–2 aloud — screen off, lock-screen controls, and Psalm 119 days play exactly their verses." | A real media3 player exists behind one app-facing seam; the queue is built once from `PortionVerseBridge`; the FR-AUD-4 stop rules are one `when`. **~80 % of the feature's engineering, at $0.** | **L** | — | Diego (lead), Avery, Riley | A's `SA-T0` only | **M-AUD-1 queue gate green with zero audio bytes in the repo** |
 | **C** | **Phase 1 complete: Listen bar, follow-along, entry points, marking** | "Read aloud is a finished feature: play from a reading, the day, or the reader; the verse being spoken is highlighted and the page follows; the reading is marked read." | The whole designed UX (D-AUD-UI-1…13) on the device voice. **This is the Phase-1 release candidate.** | **XL** | — | Priya (lead), Sam, Diego, Riley | B; **OQ-AUD-4/5/7/8 + D-AUD-UI-2/3 answered** | A11y gate + ban-scan extended and green; parity suite UNCHANGED; `listen-dev` deleted |
 | **D** | **Phase 1 device pass + release → 1.6.0** *(the owner's ship/hold decision)* | **"Read aloud is live for users, at $0 spend."** | The feature is in the world; the M-AUD-11 adoption signal starts accruing **before** any money is committed. | **S** | **M — owner listening + staged rollout** | Riley (pass), Owner, Jordan (release) | C; **OQ-AUD-3** | M-AUD-9 hands-free pass + the two-voice TalkBack test (Priya's #12) + one-screen fit at N=4 |
-| **E** | **Voice source, pronunciation pilot, and the spend decision** *(**the last reversible point**)* | "The owner has heard the actual voice reading Mahershalalhashbaz and has said go or no-go, with a number attached." | `OQ-AUD-1` closed on evidence; the pronunciation lexicon exists; the ASR thresholds are calibrated on real output; AR-AUD-1 is recorded. **The render is authorised or it is not.** | **M** (+ a small, reversible pilot spend) | **M — owner judgement** | Owner (decides), Riley, Diego | A's findings; C green (the executable spec); **OQ-AUD-1** | **G-VOICE**: M-AUD-6 sign-off + the §4 checklist all ✅ |
-| **F** | **The corpus render + the offline audio gate** *(**the one-way door — ~$250–800**)* | "Every one of the 1,189 chapters has audio and a per-verse timing index, and a test proves it without downloading a byte." | The project's **third core content asset** exists and is provably correct; `AudioTimingVerificationTest` becomes the **sixth** standing data gate. | **XL** | **M — render + triage wall time** | Riley (gate), the render-machine owner (§8), Jordan (CI/assets) | **E signed off — no exceptions** | `AudioTimingVerificationTest` (10 assertions) green + every over-threshold chapter triaged and logged |
+| **E** | **[A1] Pronunciation pilot + the spend decision** *(**the last reversible point**; no longer a bake-off — `OQ-AUD-1` is answered)* | "The owner has heard the ElevenLabs voice reading Mahershalalhashbaz and has said go or no-go, with a number attached." | The pronunciation lexicon exists; the ASR thresholds are calibrated on real output; the timestamp contract is confirmed; AR-AUD-1 is recorded. **The render is authorised or it is not.** | **S–M** (+ a small, reversible pilot spend) | **S–M — owner listening turnaround** | Owner (decides), Riley, Diego | A's findings; **B green** (no longer C/D — see §1.1) | **G-VOICE**: M-AUD-6 sign-off + the §4 checklist all ✅ |
+| **F** | **The corpus render + the offline audio gate** *(**the one-way door — ~$250–800**)* | "Every one of the 1,189 chapters has audio and a per-verse timing index, a test proves it without downloading a byte, **and a synthetic second voice proves a new one is data, not code.**" | The project's **third core content asset** exists and is provably correct; `AudioTimingVerificationTest` becomes the **sixth** standing data gate; **[A1] the plug-and-play claim is proven, not asserted.** | **XL** | **M — render + triage wall time** | Riley (gate), the render-machine owner (§8), Jordan (CI/assets) | **E signed off — no exceptions** | `AudioTimingVerificationTest` green + every over-threshold chapter triaged + **the synthetic second voice resolves end-to-end with zero production code change** |
 | **G** | **Phase 2 playback + the download surface** | "Choose the high-quality voice, download by book or in bulk, see exactly what it costs, delete it in two taps — and Psalm 119:1–40 plays exactly its verses out of a whole-chapter file." | `FileVersePlayer` + clipping; the full download product surface; the degradation ladder resolving to `HighQuality`. | **L** | — | Avery (player/packs), Priya (downloads UI), Sam, Riley | F; **OQ-AUD-E-1** | M-AUD-5 (zero unconsented bytes) JVM-pinned; the degradation ladder green at every rung |
 | **H** | **Phase 2 hardening + release → 1.7.0** | "The good voice is live, the install is still 8 MB, and the manifest still has no `INTERNET`." | Phase 2 in the world; the release pipeline carries ~850 MB without carrying it on every PR. | **M** | **M — device pass + rollout** | Riley (pass), Jordan (release), Owner | G | Base-module ≤ 12 MB + **zero audio bytes under `base/`** + no `INTERNET`; consolidated device pass |
 
 **Dependency notes**
 
 - **A is first but is not a blocker for B beyond `SA-T0`.** B needs the manifest go/no-go and nothing
-  else; A's two Play cycles run *underneath* B and C.
+  else; A's two Play cycles run *underneath* B and C. **[A1] Dispatch `SA-T5`/`SA-T6` before `SB-T1`** —
+  they start the epic's longest clock (§1.1).
 - **B → C → D is strictly serial.** C is the whole design; D is its verification and release.
+- **[A1] E and F now overlap C and D.** With `OQ-AUD-1` answered and the timings coming from the API,
+  E's entry condition is **B green**, not D shipped. The data track (A→E→F) and the product track
+  (B→C→D) converge at **G**, which needs both.
 - **E is the wall between reversible and irreversible.** Nothing in F may start before E exits.
   A sprint that "just gets a head start on the render" defeats the entire point of the sequence.
 - **G is peer-free** — it depends on F absolutely (there is nothing to download or clip without the
@@ -228,10 +298,15 @@ the Play review clock starts. Small code, large calendar. Nothing user-visible s
 - The PR/push `release-bundle` job is unchanged in command and **unchanged at `CEILING=12000000`**, and
   is now provably audio-less.
 - `AudioPackPlan.packsFor` exists as a pure, JVM-tested function generated from `BookCatalog` — **no
-  second book table** (D-S9-1 / D-S13-1 / Sprint G discipline).
-- Internal-track upload #1 submitted; findings `SA-F1` (packs work) and `SA-F2` (the real update-patch
-  size of a changed pack) recorded in the handoff **before Sprint E exits**.
-- The full parity suite (735 tests, five data gates) green UNCHANGED.
+  second book table** (D-S9-1 / D-S13-1 / Sprint G discipline) — and is **[A1] voice-scoped** from its
+  first line (D-M-AUD-7).
+- **[A1]** Every placeholder pack carries a **self-describing manifest**, and the on-device probe
+  resolves what a pack is **by reading it**, never by knowing its name (`SA-T9`, finding `SA-F3`).
+- Internal-track upload #1 submitted; findings `SA-F1` (packs work), `SA-F2` (the real update-patch
+  size of a changed pack) and `SA-F3` (manifest discovery works on a real device) recorded in the
+  handoff **before Sprint E exits**.
+- The full parity suite (735 tests, five data gates) green UNCHANGED — **[A1] on the integration
+  branch, after a fresh `main` merge** (§9.2).
 
 #### Tickets
 
@@ -260,20 +335,27 @@ the Play review clock starts. Small code, large calendar. Nothing user-visible s
   action. Land it now, while the release job is still 5 minutes.
 - **Acceptance:** PR reviewed and merged; a tagless CI run green on the bumped actions. **CI-provable.**
 
-**SA-T2 — `AudioPackPlan` + the generated pack modules (D-AUD-E-5, D-AUD-E-1)**
+**SA-T2 — `AudioPackPlan` + the generated pack modules (D-AUD-E-5, D-AUD-E-1) — [A1] now voice-scoped**
 - **Owner:** Avery (with Jordan on Gradle). **Size:** M. **Deps:** SA-T0.
-- **Scope:** `audio/domain/AudioPackPlan.kt` — a **pure** mapper: verse range / book / chapter → pack
-  name(s), where the name is `audio_<usfmCode lowercased>` derived from `BookCatalog`. Plus
-  `audio-packs/gen/build-packs.gradle.kts` generating the 66 code-free module dirs from
-  `book_catalog_export.json` (the V3 export, already committed). `audio-packs/.gitignore` excludes
-  `src/main/assets/**` **permanently** (D-AUD-E-6 — blobs never enter git). `settings.gradle.kts`
-  includes `audio-packs/*` **only when `-PwithAudio=true`**.
-- **Acceptance:** `packsFor` resolves all 1,189 chapters to exactly one existing pack name, and every
-  name is derivable from a `usfmCode`; a default `./gradlew assembleDebug`/`bundleRelease` sees no
-  audio-pack module at all. **JVM-provable.**
-- **Tests/mutation:** pack-mapping totality (the Sprint-F gate's assertion 10, landed early); a mutation
-  renaming one pack or dropping a book must red it. *This function is the reason re-grouping to 8
-  section packs later is a config edit — do not let any caller compute a pack name itself.*
+- **Scope:** `audio/domain/AudioPackPlan.kt` — a **pure** mapper: **(voiceId, verse range / book /
+  chapter) → pack name(s)**, where the name is `audio_<voiceId>_<usfmCode lowercased>` derived from
+  `BookCatalog` **and the voice registry**. Plus `audio-packs/gen/build-packs.gradle.kts` generating the
+  code-free module dirs from `book_catalog_export.json` (the V3 export, already committed) **× the
+  registered voices**. `audio-packs/.gitignore` excludes `src/main/assets/**` **permanently**
+  (D-AUD-E-6 — blobs never enter git). `settings.gradle.kts` includes `audio-packs/*` **only when
+  `-PwithAudio=true`**.
+- **[A1] Why the voice dimension is here and not in G (D-M-AUD-7):** this function is the *single* home
+  of pack naming. If it is written with a voice parameter now, a second voice is a registry row; if it
+  is written without one, adding it later changes every caller *and* the generated module set *and*
+  potentially the shipped pack names — i.e. it re-packages the corpus. It costs one parameter today.
+- **Acceptance:** `packsFor(voiceId, …)` resolves all 1,189 chapters to exactly one existing pack name
+  per registered voice, and every name is derivable from a `usfmCode` + a registry voice id; a default
+  `./gradlew assembleDebug`/`bundleRelease` sees no audio-pack module at all. **JVM-provable.**
+- **Tests/mutation:** pack-mapping totality (the Sprint-F gate's assertion 10, landed early), asserted
+  over **two** registered voices (one real, one synthetic) so the dimension is exercised from day one; a
+  mutation renaming a pack, dropping a book, or **collapsing the voice dimension** must red it. *This
+  function is the reason re-grouping to 8 section packs later is a config edit — do not let any caller
+  compute a pack name itself.*
 
 **SA-T3 — The CI gate split (D-AUD-E-7)**
 - **Owner:** Jordan. **Size:** M. **Deps:** SA-T2.
@@ -287,6 +369,10 @@ the Play review clock starts. Small code, large calendar. Nothing user-visible s
 
 **SA-T4 — Four `SettingsRepository` keys + the fakes (D-AUD-E-15)**
 - **Owner:** Avery. **Size:** S. **Deps:** none.
+- **[A1] Note (D-M-AUD-7):** `audio_voice_source` stores a **voice id**, not a two-value
+  device/high-quality enum, and an **unknown stored id degrades to `DEVICE`** — the exact
+  `bible_provider` / `selected_plan` idiom (degrade, never crash). This is the difference between
+  "a second voice is a registry row" and "a second voice is an enum change plus a migration."
 - **Scope:** `audio_voice_source` (string, default `DEVICE`), `audio_wifi_only` (bool, default **true**),
   `audio_speed` (float, default 1.0, clamped 0.75–2.0), `audio_sleep_timer_minutes` (int, 0 = off). Same
   absent-key idiom as `show_streaks`/`persistent_notification_enabled`: an explicitly stored value always
@@ -296,26 +382,56 @@ the Play review clock starts. Small code, large calendar. Nothing user-visible s
   **JVM-provable.**
 - **Tests/mutation:** each `?:` default and the clamp bounds mutated and killed.
 
+**[A1] SA-T9 — The self-describing pack manifest, validated on placeholder bytes (NEW; D-M-AUD-7, G-PACKSHAPE)**
+- **Owner:** Avery (implementing **Diego's** manifest/registry design — this ticket owns the *validation*,
+  not the schema). **Size:** S. **Deps:** SA-T2. *(Sequenced **before** SA-T5 — the spike payload must
+  contain it.)*
+- **Scope:** Every generated pack's placeholder payload carries a small manifest — the pack's own
+  statement of *what it is*: voice id, book, chapter range, codec/sample rate, artifact version, and the
+  location of its timing sidecar. The shape mirrors the two idioms this codebase already trusts:
+  `registry.json` + `PlanDescriptor` (a plan declares its own shape, D-ALT-2/3) and the `bible.db`
+  `translation` table read raw behind `ReaderVersionSelector` (D-N-3 — one artifact renders a static
+  label, more than one renders a switcher, with **no per-artifact code**). App-side, a **voice registry**
+  enumerates installed voices from the manifests of whatever packs are present; nothing in the app
+  branches on a pack's identity.
+- **Why in Sprint A and not G:** the manifest is a JSON file next to bytes that are already being
+  uploaded. Putting it in costs almost nothing here, and it buys the one thing that cannot be bought
+  later — **the shape gets exercised through a real Play review cycle and a real `assetsPath()` resolve
+  on a real device, before ~850 MB is rendered against it** (G-PACKSHAPE, §1.2).
+- **Acceptance:** the probe (`SA-T6`) identifies a downloaded pack **solely from its manifest**; renaming
+  a pack's payload directory without changing its manifest does not change what the app believes it is;
+  two synthetic "voices" of placeholder packs coexist and are enumerated. Finding **`SA-F3`** recorded.
+  **JVM-provable** (the registry + manifest parsing) **+ device-pass** (discovery after a real fetch).
+- **Tests/mutation:** absent manifest ⇒ the pack is reported unusable, never guessed at; unknown
+  manifest fields ⇒ clean-fail, not crash; a mutation that derives the voice from the **pack name**
+  instead of the manifest must be killed — that mutation is precisely the "logic dependent on which
+  asset is used" the owner ruled out.
+
 **SA-T5 — The throwaway pack probe (spike branch only, D-M-AUD-2)**
-- **Owner:** Avery. **Size:** M. **Deps:** SA-T2. **Branch:** `spike/aud-pack-probe` — **never merged.**
-- **Scope:** On the spike branch only: add `asset-delivery` + `asset-delivery-ktx` 2.3.0, fill each of
-  the 66 pack modules with a small deterministic placeholder payload, and add a crude debug surface that
-  calls `requestFetch`, reports `AssetPackStates`, resolves `getPackLocation()!!.assetsPath()`, and
+- **Owner:** Avery. **Size:** M. **Deps:** SA-T2, **SA-T9**. **Branch:** `spike/aud-pack-probe` — **never merged.**
+- **Scope:** On the spike branch only: add `asset-delivery` + `asset-delivery-ktx` 2.3.0, fill each pack
+  module with a small deterministic placeholder payload **plus its `SA-T9` manifest**, and add a crude
+  debug surface that calls `requestFetch`, reports `AssetPackStates`, resolves
+  `getPackLocation()!!.assetsPath()`, **reads the manifest off disk and reports what it says**, and
   exercises `removePack`. Comment-marked `SPIKE — DO NOT MERGE` at the top of every file.
-- **Acceptance:** a release-signed `.aab` builds with 66 packs at `-PwithAudio=true`. **Build-provable.**
+- **Acceptance:** a release-signed `.aab` builds with the packs at `-PwithAudio=true`. **Build-provable.**
+- **[A1] Note:** carry **two synthetic voices' worth** of packs in the spike if the pack count permits —
+  it turns `SA-F1`'s pack-count answer into an answer about the multi-voice case (RM-14), which is the
+  case we will actually be in.
 
 **SA-T6 — Internal-track upload #1 + on-device findings (`SA-F1`) — Diego's `AUD-C-1`, part 1**
 - **Owner:** Owner (Play Console) + Avery (device). **Size:** S effort / **L calendar**. **Deps:** SA-T5.
 - **Scope:** Upload the spike bundle (throwaway versionCode 10502) to the **`internal`** track — never
   alpha, never production, never promoted. When it clears review, install on a real device and record:
-  does Play accept 66 packs at all; does `requestFetch` succeed; does `assetsPath()` resolve; what does
-  a **sideloaded** copy of the same bundle report (`REQUIRES_USER_CONFIRMATION`? failure?); can a pack be
-  removed and re-fetched; and — since our largest pack is ~47 MB, well under Play's 200 MB threshold
-  (V11) — confirm Play's own `WAITING_FOR_WIFI` gate **never fires**, i.e. **Wi-Fi-only is ours to
-  enforce** (§7.4 edge 2).
-- **Acceptance:** finding **`SA-F1`** written into the handoff with each answer. If Play rejects the pack
-  count, `AudioPackPlan` re-groups to 8 section packs — **and that change costs nothing today and a
-  re-render after Sprint F.** **Device-pass; not JVM-provable.**
+  does Play accept the pack count at all (**[A1] at the multi-voice count if the spike carries two
+  synthetic voices**); does `requestFetch` succeed; does `assetsPath()` resolve; **[A1] does the app
+  identify a fetched pack purely from its manifest (`SA-F3`)**; what does a **sideloaded** copy of the
+  same bundle report (`REQUIRES_USER_CONFIRMATION`? failure?); can a pack be removed and re-fetched;
+  and — since our largest pack is ~47 MB, well under Play's 200 MB threshold (V11) — confirm Play's own
+  `WAITING_FOR_WIFI` gate **never fires**, i.e. **Wi-Fi-only is ours to enforce** (§7.4 edge 2).
+- **Acceptance:** findings **`SA-F1`** and **`SA-F3`** written into the handoff with each answer. If Play
+  rejects the pack count, `AudioPackPlan` re-groups to 8 section packs (16 for two voices) — **and that
+  change costs nothing today and a re-render after Sprint F.** **Device-pass; not JVM-provable.**
 
 **SA-T7 — Internal-track upload #2: measure the real update-patch cost (`SA-F2`) — `AUD-C-1`, part 2**
 - **Owner:** Owner (Console) + Avery (device). **Size:** S effort / **L calendar**. **Deps:** SA-T6.
@@ -330,20 +446,23 @@ the Play review clock starts. Small code, large calendar. Nothing user-visible s
   made. **Device-pass; not JVM-provable.**
 
 **SA-T8 — Handoff: `docs/sprints/sprint-aud-A-posture-delivery.md`**
-- **Owner:** Jordan + Morgan. **Size:** S. **Deps:** SA-T0, SA-T6, SA-T7.
-- **Scope:** Both verbatim manifest diffs; `SA-F1`/`SA-F2` with numbers; the pack-count verdict (66 or
-  re-group to 8); the confirmation that the 12 MB gate kept its number; and the **G-DELIVERY row of the
-  §4 spend checklist ticked or not ticked**. This document is an input to Sprint E, not a formality.
+- **Owner:** Jordan + Morgan. **Size:** S. **Deps:** SA-T0, SA-T6, SA-T7, **SA-T9**.
+- **Scope:** Both verbatim manifest diffs; `SA-F1`/`SA-F2`/**`SA-F3`** with numbers; the pack-count
+  verdict (per-book or re-group to sections, **at the multi-voice count**); the confirmation that the
+  12 MB gate kept its number; **[A1] the frozen pack-manifest shape**, as validated; and the
+  **G-POSTURE / G-DELIVERY / G-PACKSHAPE rows of the §4 spend checklist ticked or not ticked**. This
+  document is an input to Sprint E, not a formality.
 
 #### Sprint A subtask decomposition (~2–5 min each)
 
 - **SA-T0:** 0a resolve `platforms;android-37` (or escalate the `compileSdk` pin). 0b baseline manifest capture. 0c media3-only diff. 0d media3+asset-delivery diff. 0e paste both into the handoff + verdict.
 - **SA-T1:** 1a review + merge `ci/actions-node24-bump`. 1b confirm a green run.
-- **SA-T2:** 2a `AudioPackPlan.packsFor` (pure). 2b totality test over 1,189 chapters + pack-rename mutation. 2c `build-packs.gradle.kts` generator from `book_catalog_export.json`. 2d `.gitignore` for pack assets. 2e `-PwithAudio` conditional include.
-- **SA-T3:** 3a confirm PR gate unchanged + audio-less. 3b `audio-bundle` job skeleton. 3c the three assertions. 3d plant a fake `.opus` under `base/` and prove the job fails. 3e timeout 45 + drop the artifact upload.
-- **SA-T4:** 4a four keys + defaults. 4b clamp. 4c fakes. 4d default/clamp/stored-survives tests + mutations.
-- **SA-T5:** 5a spike branch + asset-delivery deps. 5b placeholder payloads ×66. 5c probe surface. 5d release-signed bundle builds.
-- **SA-T6:** 6a upload 10502 → internal. 6b install; requestFetch/assetsPath/remove. 6c sideload check. 6d Wi-Fi-gate-never-fires check. 6e write `SA-F1`.
+- **SA-T2:** 2a `AudioPackPlan.packsFor(voiceId, …)` (pure). 2b totality test over 1,189 chapters **× two registered voices** + pack-rename and collapse-the-voice-dimension mutations. 2c `build-packs.gradle.kts` generator from `book_catalog_export.json` × voices. 2d `.gitignore` for pack assets. 2e `-PwithAudio` conditional include.
+- **SA-T3:** 3a confirm PR gate unchanged + audio-less. 3b `audio-bundle` job skeleton. 3c the three assertions. 3d plant a fake `.opus` under `base/` and prove the job fails. 3e timeout 45 + drop the artifact upload. 3f **[A1]** `workflow_dispatch` trigger so the job is runnable on the integration branch (§9.3).
+- **SA-T4:** 4a four keys + defaults (**voice id, not enum; unknown ⇒ `DEVICE`**). 4b clamp. 4c fakes. 4d default/clamp/stored-survives/unknown-id tests + mutations.
+- **[A1] SA-T9:** 9a manifest emitted into every generated pack payload. 9b app-side voice registry enumerating installed voices from manifests. 9c absent/unknown-field clean-fail tests. 9d the derive-voice-from-pack-name mutation, killed. 9e two synthetic voices coexist.
+- **SA-T5:** 5a spike branch + asset-delivery deps. 5b placeholder payloads + manifests (two synthetic voices if the count permits). 5c probe surface incl. manifest read-back. 5d release-signed bundle builds.
+- **SA-T6:** 6a upload 10502 → internal. 6b install; requestFetch/assetsPath/remove. 6c **manifest discovery on device** (`SA-F3`). 6d sideload check. 6e Wi-Fi-gate-never-fires check. 6f write `SA-F1`.
 - **SA-T7:** 7a change one pack. 7b upload 10503 → internal. 7c measure the update transfer. 7d write `SA-F2` + the D-AUD-3 verdict.
 
 ---
@@ -439,11 +558,17 @@ the plan assigns**. No designed UI; one temporary dev button (D-M-AUD-6).
 
 **SB-T7 — `ResolveAudioAvailabilityUseCase` — the degradation ladder, one home (D-AUD-E-16)**
 - **Owner:** Diego. **Size:** M. **Deps:** SB-T5.
-- **Scope:** The single home of FR-AUD-22's order: downloaded high-quality → device voice → honest
-  message. In Phase 1 the first rung is structurally absent, so the use case resolves `DeviceVoice` or
-  `Unavailable(reason)`. Every entry point consumes it; nobody branches on availability themselves.
-- **Acceptance:** every rung reachable and pinned; adding the `HighQuality` rung in G is a one-arm change.
-  **JVM-provable.**
+- **Scope:** The single home of FR-AUD-22's order. **[A1] Stated voice-generically from day one
+  (D-M-AUD-7):** *the selected voice, if its packs are present* → *any other installed voice* → *the
+  device voice* → *an honest message*. In Phase 1 the first two rungs are structurally absent (no
+  registry entries), so the use case resolves `DeviceVoice` or `Unavailable(reason)` — but the ladder's
+  **shape** is already right, so Sprint G adds registry data, not a new branch. Every entry point
+  consumes it; nobody branches on availability themselves.
+- **Acceptance:** every rung reachable and pinned, including the "selected voice absent, a different one
+  installed" rung exercised against a **synthetic** registry in Phase 1. Adding a real voice in G must
+  require no new `when` arm. **JVM-provable.**
+- **Tests/mutation:** a mutation that hard-codes the ladder to two rungs (high-quality/device) must be
+  killed by the synthetic-second-voice test.
 
 **SB-T8 — `SleepTimer` + persisted speed**
 - **Owner:** Sam. **Size:** S. **Deps:** SB-T4, SA-T4.
@@ -570,19 +695,32 @@ and Priya's `D-AUD-UI-2` (retire `ReaderAudioSlot`) + `D-AUD-UI-3` (the stats-ca
 
 ---
 
-### Sprint AUD-E — Voice source, pronunciation pilot, and the spend decision  *(the last reversible point)*
+### Sprint AUD-E — [A1] Pronunciation pilot + the spend decision  *(the last reversible point)*
 
-**Outcome goal:** the owner has heard the actual voice and has authorised — or refused — the corpus render.
+**Outcome goal:** the owner has heard the ElevenLabs voice on the hardest passages in the KJV and has
+authorised — or refused — the corpus render.
+
+**[A1] What `OQ-AUD-1`'s resolution removed from this sprint.** The owner auditioned the field himself
+and chose **ElevenLabs** on voice realism, so the bake-off is gone: no LibriVox completeness survey, no
+forced-alignment spike, no blind listening test. `SE-T1` is **closed on arrival**. Three knock-on
+simplifications, recorded so nobody re-adds them:
+- **Timings are derivation, not alignment** — the API supplies character/word timestamps, so `FR-AUD-10`
+  stops being the requirement that prices the feature and becomes a parsing step. *(The ASR round-trip
+  in `SE-T5`/`SF-T2` stays — vendor timestamps still cannot check themselves, §16.4.)*
+- **E's entry condition drops from "C green" to "B green"** (§1.1), so E and F overlap C and D.
+- **The rights layer is settled by the plan**: ElevenLabs grants commercial rights on paid plans, so
+  `SE-T7`'s AR-AUD-1 entry records *one* second layer, not a menu.
+- **Corrections are per-chapter re-renders** — cheap in dollars, slow in calendar (R-AUD-1). That is the
+  posture `SF-T1` must preserve by keeping the renderer per-chapter and reproducible.
 
 **Candidate tickets (titles):**
-- **SE-T1 — Close `OQ-AUD-1` on evidence** (Owner + Riley) — Maya's three-part experiment, run in order
-  and cheaply: (1) does a **complete, single-reader** LibriVox KJV exist at all? (2) a forced-alignment
-  spike on **one hour** of it — measured boundary accuracy. **If alignment is not reliably verse-accurate,
-  LibriVox is disqualified by FR-AUD-10 regardless of preference** — no listening test needed. (3) only
-  if (1) and (2) survive, the blind listening test on the fixed sample set.
-- **SE-T2 — Confirm the vendor's timestamp contract** (Diego) — character- or word-level? Do they survive
-  the encode step, or are they against pre-encode PCM? One API call settles it and it decides how
-  `render_audio.py` derives verse boundaries. **Do not commission a render without this answer.**
+- **SE-T1 — ~~Close `OQ-AUD-1` on evidence~~ — [A1] CLOSED. Owner chose ElevenLabs.** No work. Retained
+  as a numbered stub so `SE-T2…T9` are not renumbered and so the resolution is visible where the
+  question used to be.
+- **SE-T2 — Confirm ElevenLabs' timestamp contract** (Diego) — character- or word-level? Do they survive
+  the Opus encode step, or are they reported against pre-encode PCM? One API call settles it and it
+  decides how `render_audio.py` derives verse boundaries. **Do not commission a render without this
+  answer** — it is now the only remaining unknown in the render pipeline's design.
 - **SE-T3 — The pronunciation pilot + M-AUD-6 sign-off (G-VOICE)** (Owner + Riley) — render the
   proper-noun-heavy set (1 Chr 1, Num 26, Ezra 2) plus the tone set (Ps 23, Isa 53, John 11, Gen 1,
   Matt 5, Ps 119:1–40). A small, reversible spend. Owner listens on a phone speaker and on earbuds and
@@ -597,7 +735,9 @@ and Priya's `D-AUD-UI-2` (retire `ReaderAudioSlot`) + `D-AUD-UI-3` (the stats-ca
   prices the corpus (~853 MB vs ~1.14 GB) and both remain legal under every Play limit.
 - **SE-T7 — Record AR-AUD-1 in `docs/data/README.md` alongside AR-1** (Owner/Maya) — **before the spend,
   not before ship.** The recording is a derivative work carrying the same UK Crown-copyright position as
-  the text plus a second rights layer in the recording itself. `OQ-AUD-9`.
+  the text, **[A1] plus exactly one second layer: the ElevenLabs paid-plan commercial grant.** Record the
+  plan tier and the grant's terms, because the corpus's redistributability depends on them.
+  `OQ-AUD-9`.
 - **SE-T8 — Confirm `OQ-AUD-E-2` (D-AUD-E-19)** (Owner) — given `SA-F2`'s measured number, commit to
   "audio content never changes in a PATCH release" as a **product** commitment, and confirm D-AUD-3 still
   stands at the price we actually measured.

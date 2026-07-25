@@ -1,6 +1,27 @@
 # Daily Reading Planner — Engineering Spec: Read aloud (audio)
 
-> **Owner:** Diego (Tech Lead / Android Architect) · **Status:** Draft for build · **Last updated:** 2026-07-25
+> **Owner:** Diego (Tech Lead / Android Architect) · **Status:** Draft for build ·
+> **Last updated:** 2026-07-25 (**amendment pass A1**)
+>
+> ### Amendment A1 — 2026-07-25 — two owner decisions
+>
+> **(1) OQ-AUD-1 is RESOLVED: ElevenLabs.** The owner auditioned the field himself and chose on
+> voice realism. Not re-litigated. Specced in **§10.0**; alternatives demoted to a
+> recorded-considered footnote (§10.0.4). New decisions **D-AUD-E-20 … D-AUD-E-23** (model pin,
+> lexicon-before-render, timing-source chain).
+>
+> **(2) NEW OWNER REQUIREMENT — audio packs must be plug-and-play, like translations.** Owner's
+> words: *"the audio should be plug and play, similar to the translations. If they download
+> different packs, the audio assets just get plugged in. There shouldn't need to be logic that is
+> dependent on which asset is used."* This is an architectural requirement and it is specced as the
+> **third instance of a pattern this repo already runs twice** (`PlanRegistry`+`PlanDescriptor`
+> D-ALT-1/2/3; `translation`+`ReaderVersionSelector` D-N-1/2/3) rather than as a third shape. New
+> **§7A**; new decisions **D-AUD-E-24 … D-AUD-E-28**.
+>
+> **What A1 supersedes** (marked in place, never silently rewritten): the *pack-count half* of
+> **D-AUD-E-5** (§7.3), the timing-path scoping in **D-AUD-E-3** (§6.2), the `audio_voice_source`
+> key in **§13.3**, and the single-voice reading of the §9.2 total ceiling. **Nothing in §4 (the
+> player) or §5 (the queue) is invalidated** — see §7A.8, which is the interesting part.
 > **Companion docs:** [PRD-audio.md](PRD-audio.md) (Maya — owns *what/why*; every `FR-AUD-*` /
 > `NFR-AUD-*` / `D-AUD-n` / `M-AUD-n` / `R-AUD-n` / `OQ-AUD-n` id below is hers and is referenced,
 > not restated), [ENGINEERING_SPEC-v3.md](ENGINEERING_SPEC-v3.md) (the text spine this sits on —
@@ -44,6 +65,12 @@ executed in this session; the reproduction command is given so Morgan or Jordan 
 | V13 | Play size limits | Play Console help + App Bundle FAQ | base module ≤ **200 MB** compressed download; cumulative per-device ≤ **4 GB**; **≤ 1.5 GB per asset pack** |
 | V14 | Per-book corpus sizes (for pack sizing) | Ran `MarkupStripper`'s rules over the shipped `app/src/main/assets/bible/bible.db` | 4,112,530 stripped chars over **31,219** verse rows / 1,189 chapters / 66 books — table in §7.2 |
 | V15 | Adding a **free-form** (non-`@Entity`) table to `bible.db` does **not** disturb `ROOM_IDENTITY_HASH` | `tools/build_bible_db.py:288-333` — `translation` and `book` are already free-form tables Room never maps; only the `verse` DDL is hash-relevant | **Confirmed** — this *corrects* the brief's framing of problem 1 (§6.1) |
+| **A1 additions — 2026-07-25** | | | |
+| V16 | ElevenLabs phoneme tags (IPA/CMU pronunciation-dictionary rules) work on **only** `eleven_v3` and `eleven_flash_v2`; every other model falls back to **alias substitution only** | ElevenLabs docs (pronunciation dictionaries) | **Confirmed** — this is the constraint that pins the model (§10.0.2) |
+| V17 | Model character limits per request: `eleven_v3` **5,000** (~5 min) · `eleven_flash_v2` **30,000** (~30 min, English-only) · `eleven_flash_v2_5` 40,000 · `eleven_multilingual_v2` 10,000 · `eleven_turbo_v2_5` **deprecated** | ElevenLabs models page | **Confirmed** |
+| V18 | Chapter length distribution of our own corpus, against those caps | Ran `MarkupStripper`'s rules per chapter over the shipped `bible.db` | **0 of 1,189 chapters exceed 30,000 chars**; **208 (17.5%) exceed 5,000**; 4 exceed 10,000; longest = **Psalm 119 at 12,999 chars**; median 3,282. *This is the decisive number in §10.0.2* |
+| V19 | ElevenLabs `with-timestamps` returns **character-level** `alignment` + `normalized_alignment`; per-model support is **not documented** | ElevenLabs API reference | Confirmed for the endpoint; the model-support gap is why §10.0.3 specifies a fallback |
+| V20 | ElevenLabs **Forced Alignment API** exists: audio + text → time-aligned transcript, **max 10 h audio**, priced at the Speech-to-Text rate | ElevenLabs capabilities page | **Confirmed** — the fallback timing source (D-AUD-E-23) |
 
 **Not verified here, and honestly labelled:** the *merged* release manifest could **not** be built in
 this session — `platforms;android-37` is not published to the SDK repository yet (`sdkmanager`
@@ -460,10 +487,17 @@ asset pack as that book's audio*, and its source of truth is a set of 66 files *
 at `audio/timings/<usfm>.json` — outside `app/src/main/assets/`, so it is reviewable and gate-able
 but contributes **zero bytes to the base module**.**
 
+> **A1 amendment (D-AUD-E-24 ff.):** the *paths* below are now **voice-scoped** —
+> `audio/timings/<voiceId>/<USFM>.json` in git, and inside the pack the location is declared by the
+> pack's own manifest (`timing.path`) rather than hard-coded (§7A.3). **The reasoning below is
+> unchanged and in fact strengthened**: timing is a property of *a recording*, so once a second
+> recording is reachable, per-voice scoping is the only correct shape — the plug-and-play
+> requirement proves the decision rather than disturbing it.
+
 ```
-audio_gen/src/main/assets/audio/GEN/            # pack "audio_gen"
+audio_gen/src/main/assets/audio/GEN/            # pack "audio_gen"   [A1: "audio_<voiceId>_gen"]
 ├── 001.opus … 050.opus                          # 50 chapter files  (not in git)
-└── timings.json                                 # copied from audio/timings/GEN.json (in git)
+└── timings.json                                 # copied from audio/timings/<voiceId>/GEN.json (in git)
 ```
 
 ```json
@@ -537,6 +571,13 @@ FR-AUD-20's implementation from "rely on Play" to "gate the `requestFetch` ourse
 **Decision D-AUD-E-5 — 66 on-demand asset packs, one per book, named `audio_<usfm lowercased>`,
 **generated** from `BookCatalog` (never hand-authored); every mapping from a verse range to a pack
 goes through the single pure function `AudioPackPlan.packsFor(...)`.**
+
+> **A1 — PARTLY SUPERSEDED by D-AUD-E-27.** The *pack-count and naming* half of this decision is
+> demoted from an app-level decision to **a property the KJV/ElevenLabs voice's manifest declares**:
+> pack names gain a voice axis (`audio_<voiceId>_<usfm>`), and **the app no longer knows the number
+> 66** — it asks the manifest which pack holds a chapter (§7A.5). The *reasoning* below (why the
+> book is the right default unit, and why being wrong must be cheap) is unchanged and is now the
+> justification for the **default** `packing` a voice declares. See §7A.5 for what this costs.
 
 Rationale:
 
@@ -623,6 +664,273 @@ So the honest reading is **better than "re-download 850 MB every release," and w
    observe the actual update download size on a device that has packs installed. If the observed
    behaviour is a full re-download rather than a patch, D-AUD-3 needs re-discussion with the owner
    *before* the render is commissioned, not after.
+
+---
+
+## 7A. Plug-and-play packs — manifest, registry, resolution (NEW OWNER REQUIREMENT, A1)
+
+> *"The audio should be plug and play, similar to the translations. If they download different
+> packs, the audio assets just get plugged in. There shouldn't need to be logic that is dependent on
+> which asset is used."* — the owner, 2026-07-25.
+
+### 7A.1 Reading the requirement precisely
+
+The owner is asking for the property this codebase has already demonstrated twice, and the bar is
+set by what those two precedents actually achieved:
+
+- **Plans (D-ALT-1/2/3, Alt Sprints A–F).** A plan **declares its own shape** in its head block
+  (`planId`/`name`/`anchoring`/`dayCount`/`streams[]`); `ReadingPlanAssetLoader` validates *against
+  the declared descriptor* rather than against `365`/`listOf(1,2,3)`; Sprint C generalized every
+  surface to N streams. Consequence, and the bar: **the Chronological plan (N=1) shipped with zero
+  production code change.**
+- **Translations (D-N-1/2/3).** The reader's version label is read from the artifact's own
+  `translation` table, never a literal; `ReaderVersionSelector` renders a **static title for one
+  version and a dropdown for more than one** — the multi-artifact branch is *built and tested but
+  unexercised* while only KJV exists.
+
+So "plug and play" decomposes into four testable properties, and I am adopting them as the
+acceptance bar for this section:
+
+| P | Property | Precedent |
+|---|---|---|
+| **P1** | An artifact **declares its own shape**; the app validates against the declaration, never against a constant | D-ALT-2 |
+| **P2** | Adding an artifact is **data + an asset pack**, never a code change | Chronological, zero code |
+| **P3** | The **multi-artifact branch exists and is tested from day one**, and stays invisible while there is one | D-N-3 |
+| **P4** | An artifact that does not fit the declared contract **fails loudly and cleanly**, never silently degrades or is half-played | `anchoring != "DATE"` clean-fail; `BibleProvider.fromStored` degrade-to-default |
+
+### 7A.2 The one place a code branch may legitimately remain — stated honestly
+
+"No logic dependent on which asset is used" is achievable for **everything the player consumes as
+data**: file paths, codec, bitrate, sample rate, coverage, pack layout, display name, language,
+priority. It is **not** achievable for a genuinely *new encoding of the timing index*, because a new
+encoding needs a parser and a parser is code.
+
+The honest boundary, and it is exactly the plan loader's:
+
+> **Data may vary freely within a declared contract. A *new contract* requires code — and the pack
+> must say which contract it speaks, so the app can refuse cleanly instead of guessing.**
+
+Hence `timing.format` and `manifestVersion` are **closed sets** the app publishes
+(`SUPPORTED_TIMING_FORMATS = setOf("verse-ms-v1")`, `SUPPORTED_MANIFEST_VERSIONS = 1..1`), and a
+pack declaring anything outside them is *unusable and says so* — never parsed on a hopeful guess.
+This is the same clean-fail the resolver, the plan loader and `BibleProvider.fromStored` all use,
+and it is what makes P4 true.
+
+### 7A.3 The manifest — `voice.json`, inside every pack
+
+```json
+{
+  "manifestVersion": 1,
+  "voiceId": "kjv_en_standard",
+  "displayName": "Standard voice",
+  "shortCode": "STD",
+  "language": "en",
+  "textVersion": "KJV",
+  "corpusVersion": 1,
+  "packing": "per-book",
+  "packNamePattern": "audio_{voiceId}_{usfm_lower}",
+  "coverage": { "GEN": [1, 50], "EXO": [1, 40], "…": [] },
+  "audio": {
+    "format": "opus-ogg-v1",
+    "codec": "opus", "container": "ogg",
+    "bitrateKbps": 24, "sampleRate": 24000, "channels": 1,
+    "pathTemplate": "audio/{USFM}/{CHAPTER:03}.opus"
+  },
+  "timing": { "format": "verse-ms-v1", "pathTemplate": "audio/{USFM}/timings.json" }
+}
+```
+
+Field-by-field, this is `PlanDescriptor` for audio:
+
+| Field | Plays the role of | Validated how |
+|---|---|---|
+| `manifestVersion` | `schemaVersion` | ∈ `SUPPORTED_MANIFEST_VERSIONS`, else the pack is unusable (§7A.6) |
+| `voiceId` | `planId` | **triple anti-drift**: `voiceId` == catalog entry id == pack-name segment (the D-ALT-2 `planId`==registry-id==directory check) |
+| `displayName` / `shortCode` | `name` / the `translation` row's `name`/`code` | non-blank; `shortCode` ≤ 6 chars. `shortCode` is the compact label, `displayName` the spoken one (D-N-2's exact split) |
+| `textVersion` | — (new) | must match a `code` in `bible.db`'s `translation` table, so a narration can never be silently paired with the wrong text |
+| `coverage` | `streams[]`/`dayCount` — *the declared shape* | every key ∈ `BookCatalog.usfmCode`; every range within that book's `chapterCount`; **both directions** against the timing index (§7A.7) |
+| `packing` + `packNamePattern` | — (new) | the pack layout, **declared not assumed** — this is what retires the hardcoded "66" |
+| `audio.*` | — | `format` ∈ the supported set; the rest is handed to ExoPlayer as data |
+| `timing.format` | `anchoring` | ∈ `SUPPORTED_TIMING_FORMATS`, else clean-fail |
+
+`coverage` is deliberately **book → chapter range**, not a chapter list: it is compact, it is
+diffable, and partial coverage ("NT only") is expressible without inventing a second notion.
+
+### 7A.4 Where the manifest lives — the answer is *both*, with divided authority
+
+**Decision D-AUD-E-25 — two artifacts, one authority each:**
+
+| | `assets/audio/catalog.json` (**base module**, ~2 KB) | `voice.json` (**inside each pack**) |
+|---|---|---|
+| Answers | "what *could* I download?" | "what *is* installed, and how do I play it?" |
+| Contains | per voice: `voiceId`, `displayName`, `shortCode`, `order` (priority), `packing`, `packNamePattern`, the pack-name list, approximate coverage | the full manifest of §7A.3 |
+| Used by | the **download menu only** | **all playback decisions** |
+| Never used for | playback, resolution, path building | enumerating what is downloadable |
+| Cost when the pack is **missing** | still works — the menu is complete | absent, and that *is* the "not installed" signal |
+| Cost when the pack is **installed** | ignored for playback | the single source of truth |
+| Cost when the pack is **stale/newer** | may not list the voice at all (a later app's pack) | `manifestVersion` guard decides (§7A.6) |
+
+**Why not one or the other.** A committed index *alone* cannot describe a pack shipped by a *later*
+app version, and it would drift the moment a pack is patched — precisely the "registry typo
+contradicts the asset" failure D-ALT-1 designed against, which is why the plans' heavy descriptor
+lives in the plan's own head. A pack-only manifest *alone* cannot power a download menu for
+something not yet installed — you cannot read a manifest out of bytes the user does not have. So:
+the thin enumerator is committed (exactly as `plans/registry.json` is thin), the heavy
+self-describing descriptor travels with the bytes, and the **anti-drift id check** is what keeps
+them honest. That check is not decorative: on mismatch the pack is treated as **not installed**,
+logged, and surfaced in Settings → Audio with an honest line.
+
+Discovery is therefore **runtime**, unlike plans — and that is the one genuine structural difference
+from the precedent, forced by the fact that packs arrive after the install:
+
+```kotlin
+@Singleton
+class AudioPackRegistry @Inject constructor(
+    private val packs: AudioDownloadRepository,      // AssetPackManager behind the seam
+    private val catalog: AudioCatalogSource,         // assets/audio/catalog.json, memoized
+    @IoDispatcher private val io: CoroutineDispatcher,
+) {
+    /** Voices offerable for download (menu only). */
+    suspend fun offerable(): List<CatalogVoice>
+    /** Voices actually installed AND usable — manifest parsed, version+format supported, ids agree. */
+    suspend fun installed(): List<InstalledVoice>   // (manifest, packName -> File)
+    /** Packs present but rejected, with the reason — surfaced honestly, never swallowed. */
+    suspend fun rejected(): List<RejectedPack>
+}
+```
+
+Re-resolved every launch, never cached durably — Play's explicit instruction, already §7.4 edge 3.
+
+### 7A.5 Interaction with pack granularity and `AudioPackPlan`
+
+**Decision D-AUD-E-27 — `AudioPackPlan` reads the pack layout from the manifest (installed) or the
+catalog entry (not yet installed); the app contains no `66`, no per-book assumption, and no book
+list of its own.**
+
+```kotlin
+// was: fun packsFor(range: VerseRange): Set<String>            // implied per-book
+fun packsFor(voice: VoiceLayout, range: VerseRange): Set<String>  // VoiceLayout = packing + pattern + coverage
+```
+
+`VoiceLayout` comes from data on both paths, so a voice shipped as **one 850 MB pack**, as **8
+section packs**, or as **66 per-book packs** is a manifest difference and nothing else. This is the
+single change that most directly delivers P2, and it costs one parameter.
+
+**What it costs, stated plainly:**
+
+- **Pack count is now per voice.** 66 packs × 2 voices = 132. I could not find a first-party
+  statement of a maximum asset-pack count (§7.1), so **a second voice doubles an already-unverified
+  budget**. This materially raises **RE-AUD-2** and it changes what `AUD-C-1` must measure: the
+  placeholder internal-track upload now has to establish the *ceiling*, not just that 66 works.
+  It also strengthens the case for the 8-section fallback (8 × voices = 16 for two voices), which is
+  now expressible **as data** — a second voice may declare `"packing": "sections"` while the first
+  keeps `"per-book"`, with no code change. That is a genuinely nice property that only exists
+  because of this requirement.
+- **Timing sidecars are voice-scoped** (`audio/timings/<voiceId>/…`), so the committed index grows
+  ~0.9 MB per voice. Fine.
+- **The corpus artifact tag is voice-scoped**: `audio-corpus-<voiceId>-v<N>` (§8.2 otherwise
+  unchanged).
+
+### 7A.6 Schema versioning and forward compatibility
+
+**Decision D-AUD-E-26 — `manifestVersion` and `timing.format`/`audio.format` are closed sets;
+within a `manifestVersion`, changes are additive only.** The two directions, both required:
+
+- **A pack built by a LATER app arriving on an OLDER app** (`manifestVersion` above the supported
+  range): the pack is **rejected cleanly** — "this voice needs a newer version of the app" — and
+  resolution falls through to the next installed voice, then to device TTS (§7A.7). It is **never**
+  parsed optimistically. Note that Play's update mechanics make this unlikely-but-reachable: packs
+  are invalidated and patched *during* the app update (§7.5), so there is a window, and mid-update
+  is exactly when a half-applied newer pack could be observed. "Unlikely" is not a guard.
+- **A pack built by an EARLIER app arriving on a NEWER app**: supported for the life of that
+  `manifestVersion`. New fields are additive and optional; the app supports a *set* of versions, not
+  a single value. This is D-ALT-3's "the v2 body is a strict subset of v3" rule, restated for audio.
+- A breaking change bumps `manifestVersion` and both versions are supported for at least one release
+  — which, given D-AUD-E-19 (audio never changes in a PATCH), is a comfortable window.
+
+### 7A.7 Partial coverage and mixed packs — the resolution rule
+
+The requirement makes a new state reachable: **voice A has Genesis, voice B has Psalms.** This must
+be decided, not discovered.
+
+**Decision D-AUD-E-24 — resolution is per *play unit*, deterministic, and data-driven:**
+
+1. the user's **preferred voice** (`audio_preferred_voice_id`), **if it covers the whole play unit**;
+2. else the highest-priority **installed, usable** voice that covers the **whole** play unit —
+   ordered by the catalog's `order` field, then `voiceId` lexically for voices the catalog does not
+   list (a later app's pack), so the order is total and reproducible;
+3. else **device TTS** for the whole unit.
+
+**Never mix voices inside a play unit.** A portion is one continuous listening experience; changing
+narrator between Genesis 1 and Genesis 2 — let alone mid-chapter — would read as a defect, not a
+feature. The unit of resolution is the `PlayUnit`, not the chapter. `BrowseChapterUnit` resolves
+per chapter *as it advances*, which is correct: continuous browsing genuinely is a sequence of
+units, and a voice change at a book boundary the user chose to cross is legible.
+
+Consequences worth naming:
+
+- **Partial coverage is first-class, not an error.** An NT-only voice is a legal, shippable pack
+  set; it simply never wins for an OT unit. `coverage` is what makes this expressible, which is why
+  it is declared rather than inferred from which files happen to be present.
+- **Falling back to device TTS for a portion the preferred voice half-covers is the *correct*
+  outcome**, and the UI must say why in one honest line rather than silently sounding different.
+- The rule is a **pure function** (`ResolveVoiceForUnitUseCase(units, installedVoices, preferred)`),
+  so every branch — mixed, partial, none, rejected-pack, preferred-not-installed — is JVM-testable
+  with **synthetic manifests and zero audio bytes**. That is how P3 is satisfied before a second
+  voice exists.
+
+### 7A.8 What this invalidates in the rest of this spec — and what it validates
+
+**Changed** (all marked in place): D-AUD-E-5's pack-count half (§7.3 → D-AUD-E-27); D-AUD-E-3's
+timing paths (§6.2, voice-scoped); §13.3's `audio_voice_source` key → `audio_preferred_voice_id`;
+§9's total-bundle ceiling is now per-voice-aware (§9.2 note); the corpus tag is voice-scoped (§8.2).
+
+**Not changed, and this is the interesting part:** **§4 (the player) and §5 (the queue) are
+untouched.** Voice resolution happens *above* seam 2 and produces a `VoiceBinding` (resolved file
+paths + a `VerseTimingSource`) that seam 2 consumes. `FileVersePlayer` never learns which voice it
+is playing; `AudioQueue` never learns that voices exist; `AudioReadingController` takes a
+`VoiceBinding` the way it already takes a queue. The owner's requirement therefore **validated the
+two-seam design instead of breaking it** — which is the outcome you want when a new requirement
+lands on an architecture, and it is worth recording as evidence that seam 2 was drawn in the right
+place.
+
+One thing the requirement genuinely *adds* rather than changes: `ResolveAudioAvailabilityUseCase`
+(D-AUD-E-16) grows from a 3-rung ladder to a 3-rung ladder **whose top rung is itself resolved by
+D-AUD-E-24**. Same single home, one more pure input.
+
+### 7A.9 What the offline gate must assert about a manifest
+
+Added to `AudioTimingVerificationTest` (§10.3), all offline, all with zero audio bytes:
+
+| # | Assertion | Catches |
+|---|---|---|
+| 11 | Every catalog voice has a committed manifest fixture; **`voiceId` == catalog id == pack-name segment == timings directory** (all four) | the anti-drift failure D-ALT-2's `planId` check exists for |
+| 12 | `manifestVersion` ∈ supported; `timing.format` and `audio.format` ∈ supported | a pack the app cannot honestly play being shipped anyway |
+| 13 | `textVersion` matches a `code` in `bible.db`'s `translation` table | a narration paired with the wrong text |
+| 14 | **Coverage ↔ timing index, both directions**: every declared-covered `(book, chapter)` has a timing entry, and every timing entry is declared covered | the "declared 66 books, rendered 65" silent hole — the superscription-CSV both-directions idiom |
+| 15 | `audio.pathTemplate` renders to a **unique** path per covered chapter, and every rendered path appears in `audio_manifest.json` | a template typo, a collision, a missing file |
+| 16 | Every covered chapter resolves through `AudioPackPlan.packsFor` to **exactly one** pack, and every declared pack name is non-empty and unique | a pack with no chapters, a chapter in two packs |
+| 17 | **Synthetic-second-voice fixture** (test-only, no bytes): the resolution rule (D-AUD-E-24) returns the documented answer for preferred-covers / preferred-partial / mixed / none; the chooser branch renders; an unknown `manifestVersion` is rejected and does **not** enter `installed()` | P3 — the multi-voice machinery is proven while invisible |
+
+Mutation targets: flip one coverage range by one chapter (→ 14); point `pathTemplate` at a
+non-existent file (→ 15); set the fixture voice's `manifestVersion` to 99 and assert it is rejected
+rather than used (→ 17); make `packsFor` return two packs for one chapter (→ 16); change the
+synthetic voice's coverage so it half-covers a portion and assert the resolver falls to device TTS
+rather than mixing (→ 17).
+
+### 7A.10 The voice selector UI — the D-N-3 idiom, literally
+
+**Decision D-AUD-E-28 — `AudioVoiceSelector` follows `ReaderVersionSelector`'s shape exactly: 0 or 1
+usable installed voice ⇒ **no chooser** (Settings → Audio shows the voice as static text: "Voice:
+Standard voice" or "Voice: Device voice"); more than one ⇒ a `SettingsDropdownRow` chooser (the S14
+idiom) writing `audio_preferred_voice_id`. The multi-voice branch is built and tested from day one
+and is unexercised in production while there is one voice.**
+
+Tags: `audio-voice-row`, `audio-voice-dropdown`, `audio-voice-option-<voiceId>` — mirroring
+`theme-dropdown`/`provider-dropdown`/`reader-version-dropdown`. The static branch is **not** a
+disabled control (the S14 teaser idiom is for something deliberately unavailable; one voice is not
+unavailable, it is simply the only one), and TalkBack hears `displayName`, never `shortCode` — D-N-2
+verbatim.
 
 ---
 

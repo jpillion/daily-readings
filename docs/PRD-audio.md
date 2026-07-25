@@ -1,7 +1,9 @@
 # Daily Reading Planner — PRD: Read aloud (audio)
 
 > **Owner:** Maya (Product) · **Status:** Scope defined; **amendment pass A1 applied after Diego's
-> engineering spec §16 and Priya's design** — **awaiting owner sign-off on the consolidated
+> engineering spec §16 and Priya's design; **amendment A2** closes the voice-source question
+> (ElevenLabs) and adds the owner's plug-and-play requirement** — **awaiting owner sign-off on the
+> consolidated
 > questions in §11** · **Last updated:** 2026-07-25 (amendment A1)
 > **Companion docs:** [docs/PRD.md](PRD.md) (V1/V2), [docs/PRD-v3.md](PRD-v3.md) (the in-app
 > reader this feature sits inside), **[docs/ENGINEERING_SPEC-audio.md](ENGINEERING_SPEC-audio.md)
@@ -41,6 +43,14 @@ questions raised for the owner:
 | A1.13 | **Adjudicated a direct spec conflict:** Diego's `D-AUD-E-12` ("no global mini-player") vs Priya's `D-AUD-UI-1` (docked Listen bar at the root). Product sides with Priya; `D-AUD-E-12` is superseded on that point. | §11 |
 
 **Narrowed or rejected, with reasons, in §11 ("Pushback I did not accept").**
+
+**A2 — 2026-07-25, after the owner's voice audition and a new owner requirement.** Targeted:
+
+| # | What changed | Where |
+|---|---|---|
+| A2.1 | **OQ-AUD-1 is CLOSED — the voice source is ElevenLabs** (new **D-AUD-22**), decided by the owner on voice realism after auditioning the field. **The rationale is corrected, not just the status:** my recommendation rested on the timing-index cost, and that argument no longer holds *between TTS vendors* — rendering verse-by-verse and concatenating makes the timing index a **byproduct of our own render**, not something a vendor must supply. It remains fully intact *against LibriVox*. Conclusion unchanged, reasoning replaced. | §11 OQ-AUD-1, §7 |
+| A2.2 | **New owner requirement — audio packs are plug-and-play**, like translations: downloading a different pack "just plugs in," with no app logic depending on which asset is in use. New **FR-AUD-28/29/30** and **D-AUD-23/24/25**: packs are self-describing content; **"voice" is not a user-visible concept in release one** (D-N-3 idiom); and a product position on **mixed/partial coverage**. | §6, §7, §8 |
+| A2.3 | **Release-mechanics check** — the epic ships on a long-lived branch. Two things in §9 assumed delivery from `main`; both are now stated as conditions, with **OQ-AUD-14** for Morgan. | §9, §11 |
 
 ---
 
@@ -215,8 +225,10 @@ two facets that have always been present in the audience become servable for the
 - **No self-hosted CDN, no our-server anything.** Google Play hosts the audio (D-AUD-1). We do not
   operate infrastructure, ever.
 - **No voice picker / multi-voice / narrator marketplace.** Phase 2 ships **one** voice
-  (D-AUD-13). Device-voice selection belongs to the OS; we may deep-link to system TTS settings,
-  we do not build a chooser.
+  (D-AUD-13) and no chooser is surfaced (D-AUD-24). Device-voice selection belongs to the OS; we
+  may deep-link to system TTS settings, we do not build a chooser for it. *(A2.2: the pack
+  format must nonetheless **permit** a second narration as a download — D-AUD-23. Permitting is
+  not shipping.)*
 - **No dramatized, multi-speaker, or music-bedded audio.** Plain reading. This is scripture, not
   a production.
 - **No audio for a second translation.** KJV-anchored, per PRD-v3 §3.
@@ -396,7 +408,8 @@ to priority; priority is the P0/P1 grouping below, as in the other PRDs.
   the offset at which that row begins in its chapter's audio. This is what makes FR-AUD-6 (verse
   windows), FR-AUD-11 (highlight) and FR-AUD-12 (tap-to-seek) possible at all. **An artifact
   without verse timings is not shippable** (D-AUD-10). *This is the single requirement that most
-  shapes engineering and most shapes the voice-source decision (§11, OQ-AUD-1).*
+  shapes engineering.* *(A2.1: it no longer "shapes the voice-source decision" — that closed as
+  D-AUD-22, and the index is now produced by our own verse-by-verse render, not by a vendor.)*
   > **Amended A1.5 (adopts ESpec §16.5).** The original text said "31,102 verses (+117
   > superscriptions)" — arithmetically correct but operationally sloppy: the *index* has 31,219
   > rows, and stating the smaller number is exactly how the superscriptions get forgotten by
@@ -472,10 +485,20 @@ to priority; priority is the P0/P1 grouping below, as in the other PRDs.
   handling of Play-evicted packs (re-download offered, never a silent failure). *(Priya's design
   places it as a route pushed one tap from Settings, which keeps "delete all" the second tap and
   satisfies NFR-AUD-E literally.)*
-- **FR-AUD-22 (U-AUD-7, G17)** **Graceful degradation, in this order:** downloaded high-quality
-  audio → on-device TTS → an honest explanatory message. The reader itself is **never** blocked,
-  degraded, or error-stated by audio being missing or failing. A sideloaded install gets the
-  device voice and one clear statement of why the download option is unavailable. `[P1+P2]`
+- **FR-AUD-22 (U-AUD-7, G17)** **Play never dead-ends — and the way out is a *choice*, not a
+  substitution.** *(Restated in A3.)* When the active voice (D-AUD-26) has no audio for the
+  passage, the app offers, in one place, **(i)** download this voice's pack, or **(ii)** listen now
+  in the **device voice** — a named, first-class alternative (D-AUD-27), not a silent downgrade.
+  **Nothing plays until the user picks.** If no usable TTS engine exists and nothing is
+  downloaded, say so plainly. The reader itself is **never** blocked, degraded, or error-stated by
+  audio being missing or failing. A sideloaded install gets the device voice and one clear
+  statement of why downloads are unavailable. `[P1+P2]`
+  > **Superseded framing (A1/A2):** *"Graceful degradation, in this order: downloaded high-quality
+  > audio → on-device TTS → an honest explanatory message."* The **ladder metaphor was wrong** —
+  > it describes the app quietly stepping down a hierarchy on the user's behalf, which is exactly
+  > what D-AUD-26 forbids. The *behaviours* are unchanged and Priya's `D-AUD-UI-12` sheet already
+  > implemented it correctly as a two-choice block; only the framing is corrected, so nobody later
+  > implements the ladder the words described.
 
 ### P1 — strongly desired; first follow-up if cut
 
@@ -503,6 +526,65 @@ to priority; priority is the P0/P1 grouping below, as in the other PRDs.
   > and its label and size must say so.
 - **FR-AUD-27** Read-aloud honours the app's existing **theme** and **text-size** settings; the
   follow-along highlight is theme-aware and meets contrast requirements in light and dark.
+
+### P0 (added in A2) — plug-and-play audio packs
+
+> **Numbering note:** appended rather than inserted, so nothing above is renumbered. FR-AUD-28…30
+> are **P0 for Phase 2** despite sitting after the P1 block — they constrain the artifact, and
+> retrofitting them after a corpus exists means a re-render.
+
+- **FR-AUD-28 `[P2]` (owner requirement, G17)** **An audio pack is self-describing content, and
+  the app has no per-asset logic.** A pack declares what it contains — which books, which voice,
+  which encoding, which text edition it was rendered from — and the app plays whatever is
+  installed by reading that declaration. **No app code, and no app release, may be required to
+  make a newly published pack work.** Adding a second voice, re-encoding a pack, or (someday)
+  narrating a different text must be a *download*, not a release. *(Owner's words: "the audio
+  should be plug and play, similar to the translations. If they download different packs, the
+  audio assets just get plugged in. There shouldn't need to be logic that is dependent on which
+  asset is used.")* This is the same discipline as `PlanRegistry`/`PlanDescriptor` — a plan
+  declares its own shape and the app renders N streams without knowing which plan it is — and as
+  the `translation` table behind `ReaderVersionSelector` (D-N-3).
+- **FR-AUD-29 `[P2]` (D-N-3 idiom)** **The voice-selection surface appears only when there is
+  something to select — but the *selection* always exists.** *(Amended A3.)* The app always has
+  exactly one **active voice** (FR-AUD-30); what varies is whether the user is shown a chooser:
+  - **One voice available** → no chooser, no pack name, no version chrome. The active voice is
+    implicit. *(D-N-3 exactly: "KJV" is a static title until a second version exists.)*
+  - **More than one** → a **Settings dropdown** in the house `SettingsDropdownRow` idiom, listing
+    every installed voice **plus the device voice** (FR-AUD-22), showing the active one. Selecting
+    a different voice changes what the whole app reads in, immediately and everywhere.
+
+  **What release one actually shows:** Phase 1 ships the device voice alone and the row is
+  **absent** (nothing to choose). Phase 2's first release ships **two registry entries — "Device
+  voice" and the one downloadable narration — so the dropdown is present and real from day one**,
+  with two entries rather than a hidden branch. *(This is a deliberate departure from D-N-3's
+  "build it, don't surface it" for this control, and the reason is A3's device-voice-as-a-voice
+  decision, D-AUD-27: with the device voice a first-class entry there are always two, so a chooser
+  is honest rather than premature.)*
+- **FR-AUD-30 `[P2]`** **One active voice, app-wide and exclusive** *(rewritten in A3 — owner
+  ruling; supersedes the "completeness over preference" rule below)*. The user selects **one**
+  voice and the whole app reads in it: schedule readings, browsed chapters, every entry point.
+  Product rules:
+  **(a)** the active voice is a single app-wide setting, not a per-passage or per-book resolution;
+  **(b)** **coverage is evaluated only against the active voice** — if a chapter is missing from
+  it, the user is prompted to download **that voice's** pack, **even when the same chapter is
+  already downloaded in a different voice**;
+  **(c)** **the app never substitutes another voice.** Holding voice B for Psalms while voice A is
+  active does not make Psalms play in B — it makes Psalms an undownloaded chapter;
+  **(d)** the user may always choose to listen in the device voice instead (FR-AUD-22), but that
+  is **their selection**, never the app's silent decision;
+  **(e)** the downloads surface shows coverage **for the active voice**, and deleting a whole
+  voice is a supported action (§8).
+  > **Superseded (A2.2 text, retained for the trail):** *"where the user's preferred voice does
+  > not cover the whole unit, the app prefers **completeness over preference** and says which
+  > voice it is using before playing."* **The owner ruled the other way, and he is right.** I
+  > optimised for never interrupting a listen; he optimised for never being handed a voice you
+  > did not choose. His rule is also far simpler to reason about — "the app reads in the voice I
+  > picked" is a sentence a user can hold in their head, whereas mine required understanding a
+  > fallback hierarchy to predict what would come out of the speaker. **The user-facing
+  > consequence, stated plainly: you chose a voice; you will never be given a different one
+  > without asking for it.** My rule (a) — one continuous listen is one voice, never switching
+  > mid-passage — survives, subsumed: with an app-wide exclusive voice, mid-passage switching is
+  > unreachable by construction rather than by rule.
 
 ### P2 — explicitly out (tracked, not committed)
 
@@ -592,8 +674,9 @@ podcast feed · background pre-fetch of upcoming readings.
   listing. *Product consequence, and the honest way to honour it:* copy names the voice by
   **origin and quality, claiming nothing in either direction** — "High-quality voice (download)"
   vs "Device voice". We do not call it AI, and equally we do not claim a human narrator or
-  "professionally narrated." (If OQ-AUD-1 resolves to LibriVox, human narration is a fact we may
-  state, and attribution may be *required* — see AR-AUD-1.)
+  "professionally narrated." (A2.1: with D-AUD-22 settling on a synthetic voice, the LibriVox
+  branch of this — human narration as a statable fact, with attribution possibly required — is
+  moot. D-AUD-5 now applies unqualified: claim nothing in either direction.)
 - **D-AUD-6 — Audio is never bundled in the AAB.** Non-negotiable: the CI gate fails above 12 MB
   (currently 8.12 MB) and D-V3-20 set a +6 MB asset budget. Whole-Bible audio is **~853 MB** at Opus
   24 kbps mono (~1.14 GB at 32 kbps); ~8 MB median per book, ~47 MB largest (Psalms). Bundling is
@@ -620,9 +703,16 @@ podcast feed · background pre-fetch of upcoming readings.
   highlight, and cannot seek — it is not shippable. *This is the requirement that prices the
   voice-source decision.*
 - **D-AUD-11 — Nothing downloads without explicit consent; Wi-Fi by default** (FR-AUD-20).
-- **D-AUD-12 — Missing audio degrades to the device voice, never to a dead button** (FR-AUD-22).
-  This is also *why* Phase 1 is worth shipping standalone: it is Phase 2's permanent fallback.
+- **D-AUD-12 — Missing audio never dead-ends; the device voice is always available** (FR-AUD-22).
+  This is also *why* Phase 1 is worth shipping standalone: the device voice is permanent.
+  > **Reframed A3 (D-AUD-27):** originally "degrades to the device voice… Phase 2's permanent
+  > **fallback**." The device voice is a **first-class选 choice**, not a rung below the good one —
+  > and under D-AUD-26 the app never steps to it on its own. It is offered; it is not applied.
 - **D-AUD-13 — One voice.** No voice picker, no multi-voice.
+  > **Clarified A2.2 — not in tension with D-AUD-23/24.** D-AUD-13 governs what *ships*: release
+  > one has one narration and no chooser. D-AUD-23 governs what the *artifact permits*: a second
+  > narration must be addable as a download, not a release. Build for many, ship one, surface the
+  > chooser only when a second exists (D-AUD-24). Same shape as D-N-3's version selector.
 - **D-AUD-14 — Playback speed and a sleep timer are in scope (P1);** equalizer, background music,
   and any scheduled/auto-play behaviour are not.
 - **D-AUD-15 — Reading is never blocked by audio.** Audio absent, undownloaded, evicted, or
@@ -684,6 +774,96 @@ podcast feed · background pre-fetch of upcoming readings.
 
 ---
 
+**Added in amendment A2.**
+
+- **D-AUD-22 — The voice source is ElevenLabs** *(A2.1; closes OQ-AUD-1)*. **Owner-decided, after
+  auditioning the field himself, on voice realism.** LibriVox is not pursued. Two things recorded
+  honestly because the decision trail matters more than being right:
+  1. **My stated reason was not the deciding one.** I recommended ElevenLabs "primarily on
+     FR-AUD-10" — the cost of getting verse timings. The owner decided on **quality**, which was
+     always the more legitimate axis for a scripture app.
+  2. **That argument has since weakened, and the doc should not carry a rationale we no longer
+     believe.** Rendering **verse-by-verse and concatenating** makes the per-verse timing index a
+     **byproduct of our own render** — we know each verse's duration because we rendered it — so
+     vendor-supplied timestamps are no longer load-bearing *between TTS vendors*. **Against
+     LibriVox the argument stands entirely intact**, because pre-recorded human audio cannot be
+     rendered verse-by-verse: it is one continuous take, and extracting 31,219 boundaries from it
+     genuinely requires forced alignment. So: same conclusion, different and narrower reason.
+     *(FR-AUD-10 itself is unaffected — the index is still required; only the question of who
+     produces it has changed, and the answer is now "our own pipeline.")*
+- **D-AUD-23 — Audio packs are self-describing content, not code** *(A2.2; owner requirement,
+  FR-AUD-28)*. The app reads what a pack declares and plays it; it never branches on *which* pack
+  it is. **What this buys the owner, concretely:** a second voice, a re-encoded pack, a corrected
+  narration, or a future non-KJV reading all become **downloads instead of releases** — which also
+  materially softens D-AUD-3/D-AUD-18 (the release-coupling that A1.2 priced as this feature's
+  most awkward cost) for *additions*, though not for *corrections to an installed pack*, which
+  still ride an update. Cost: the artifact must be designed this way **before** the corpus is
+  rendered; retrofitting a manifest onto ~853 MB means a re-render. That makes it P0 for Phase 2
+  despite being invisible in release one.
+- **D-AUD-24 — "Voice" is not a user-visible concept in release one** *(A2.2; FR-AUD-29)*. One
+  narration ships, so the user chooses only between *Device voice* and *High-quality voice*. Pack
+  names, narration identity and any chooser stay invisible until a second narration exists —
+  precisely the D-N-3 pattern (build the branch, test it, don't surface it). **Rationale:** the
+  capability is for the owner's future flexibility, not for the user's decision-making, and
+  exposing a "voice pack" concept to someone with exactly one of them is chrome that teaches
+  nothing. It also keeps the zero-setup promise intact.
+- ~~**D-AUD-25 — One listen, one voice**~~ **— SUPERSEDED by D-AUD-26 (A3, owner ruling).**
+  > **Superseded text, retained for the trail:** *"Mixed holdings are normal and supported; mixed
+  > within a single continuous passage is not. Resolution happens once, at press, for the whole
+  > play unit, and any departure from the user's **preferred** voice is stated before playback
+  > rather than discovered during it."*
+  >
+  > **This was a preferred-voice-with-fallback model, and the owner ruled it out.** I was asked to
+  > take a product position and I took the wrong one: I optimised for *never interrupting a
+  > listen*, which led me to accept substitution as long as it was disclosed. The owner optimised
+  > for *never being handed a voice you did not choose*, which is the better instinct — disclosure
+  > does not make a substitution welcome, it just makes it explained. **Recorded as a reversal, not
+  > a refinement.**
+
+**Added in amendment A3 (owner ruling on voice selection).**
+
+- **D-AUD-26 — One active voice, app-wide and exclusive** *(A3; owner, verbatim: "a single pack
+  should be selected for the whole app context… the whole app points to that asset pack. And if a
+  chapter asset is missing for that pack, they're prompted to download it, regardless of whether
+  there is an asset/pack for that chapter from a different voice pack."; FR-AUD-30)*. Supersedes
+  D-AUD-25. **The user-facing promise, in one sentence: you chose a voice, and you will never be
+  given a different one without asking for it.** Consequences:
+  - **Coverage is a property of the active voice only.** A book downloaded in voice B is, while
+    voice A is active, simply *not downloaded* — the app prompts for voice A's pack. This is
+    intentional and must be *explained* in the downloads surface (§8) rather than argued with.
+  - **No substitution, disclosed or otherwise.** There is nothing to announce, because nothing is
+    swapped. My A2 rule (a) — one continuous listen never switches voice mid-passage — survives
+    **by construction**: only one voice is ever active, so the failure it guarded against is
+    unreachable.
+  - **Simpler to hold in the head**, which is the deeper argument: "the app reads in the voice I
+    picked" needs no model of a fallback hierarchy to predict what comes out of the speaker.
+- **D-AUD-27 — The device voice is a first-class voice, not a fallback** *(A3)*. It is an entry in
+  the same voice registry as any downloadable narration, named and selectable alongside them.
+  **Product position: adopt, and frame it as a choice.** A user may legitimately *prefer* it — it
+  costs zero storage, works the instant the app is installed, needs no Play, and follows whatever
+  voice and speed they have already tuned system-wide. Treating that as a consolation prize
+  misdescribes it. Secondary benefits: the plug-and-play machinery (D-AUD-23) is exercised from
+  Phase 1 rather than first proven in Phase 2, and "nothing is downloaded" becomes a **selection
+  state** rather than a silent substitution — which is exactly the posture D-AUD-26 demands
+  everywhere else.
+- **D-AUD-28 — Active-voice selection rules** *(A3; mirrors `selected_plan` / `ActivePlanRepository`)*.
+  Product intent, for Diego's degradation rule to satisfy:
+  - **Default (absent selection):** the **device voice**. It is the only entry guaranteed to exist,
+    it needs no download, and it preserves zero-setup — the app must never start life pointing at
+    a voice the user does not have.
+  - **Unknown/corrupt stored id:** fall back to the default, never crash — the established
+    `fromStored` idiom.
+  - **The active voice's packs are deleted:** the *selection survives* (it is a stated preference,
+    not a cache) and every passage becomes "not downloaded for this voice," with the download
+    prompt and the always-available device-voice choice. **Deleting audio must never silently
+    rewrite the user's choice** — the same discipline as the S15 MySword rule, where uninstalling
+    the app leaves the persisted provider untouched.
+  - **Reinstall / new device:** the selection is a local preference and does not survive (there is
+    no account or cloud backup — unchanged from V1). A reinstalled app starts on the device voice,
+    which is correct, because the downloads are gone too.
+  - **Deleting the *active* voice entirely** is allowed, not blocked — with the consequence stated
+    in the confirm dialog. We do not protect users from a reversible choice.
+
 ## 8. Download management as a product surface
 
 > **Rewritten in amendment A1.1.** The original §8 offered a unit table headed by "Today's
@@ -737,6 +917,27 @@ regressions:
 > and **`AUD-C-1` (D-AUD-21) proves or disproves it before any money is spent.** The product
 > constraint stands either way; if 66 packs are rejected by Play, the fallback grouping must still
 > satisfy "never forced to take everything," and section packs (~40–200 MB) do.
+
+> **Does plug-and-play change any of this? No — D-AUD-17 stands.** A voice adds a *dimension*
+> (book × voice), not a finer unit: the book is still the smallest thing Play can deliver, and the
+> "never forced to take everything" rule is unaffected. **Amended A3** — three consequences, no
+> longer all deferrable:
+>
+> 1. **The surface shows coverage for the *active* voice** (D-AUD-26). This is the screen that has
+>    to answer "I downloaded Psalms, why is it asking me to download Psalms?" — because Psalms is
+>    held in a voice that is not the active one. A book held in a non-active voice must therefore
+>    be *visible and labelled*, not hidden: the honest presentation is per-book rows that name
+>    which voices that book is held in, with the active voice's state driving the action button.
+> 2. **"Space used" aggregates across voices.** Two voices covering Psalms cost ~94 MB, and the
+>    screen must say so rather than showing one number twice.
+> 3. **Deleting a whole voice is a supported, first-class action** — not 66 individual deletions.
+>    Duplicate coverage is the main way this feature wastes a user's storage, so the remedy has to
+>    be one tap plus a confirm that names the amount. Deleting the *active* voice is allowed
+>    (D-AUD-28): the selection survives, the audio does not, and the user keeps the device voice.
+>
+> In release one there is one downloadable voice, so (1) and (3) are trivially satisfied and only
+> (2) is exercised — but the surface must be *shaped* for the dimension now, because a second voice
+> is a download away by design (D-AUD-23) and cannot wait for a redesign.
 
 **A helpful arithmetic fact, unchanged:** audio is stored per chapter inside per-book packs, and
 the plan re-reads the NT twice a year from the same chapters. A full plan-year of listening
@@ -802,11 +1003,37 @@ promise can be made from it. Phase 1 is a *usable* feature, not the *good* one.
 (§8), voice selection between device and downloaded (D-AUD-5 wording), and the plan-window
 download (FR-AUD-26).
 
-**Gated on**, in order: the voice-source decision (OQ-AUD-1) → **`AUD-C-1`, the placeholder
-internal-track upload that proves the delivery plumbing and measures the D-AUD-18 patch size
-(D-AUD-21)** → a pronunciation pilot with owner sign-off (R-AUD-3, M-AUD-6) → the render budget and
-its named owner (OQ-AUD-13). *Two of these four gates exist specifically so that the four-figure
-spend happens last, after both the mechanism and the voice have been proven.*
+**Gated on**, in order: ~~the voice-source decision (OQ-AUD-1)~~ **✅ closed A2.1 — ElevenLabs,
+D-AUD-22** → **`AUD-C-1`, the placeholder internal-track upload that proves the delivery plumbing
+and measures the D-AUD-18 patch size (D-AUD-21)** → a pronunciation pilot with owner sign-off
+(R-AUD-3, M-AUD-6) → the render budget and its named owner (OQ-AUD-13). *The remaining gates exist
+specifically so that the four-figure spend happens last, after both the mechanism and the
+pronunciation have been proven.* **Phase 2's artifact must also be plug-and-play from the first
+render (D-AUD-23)** — that is a property of the corpus, not of the app, so it cannot be added
+later without re-rendering.
+
+### Delivery mechanics — the long-lived-branch check *(added A2.3)*
+
+The epic ships on a separate long-lived branch and may not roll out immediately (Morgan owns the
+mechanics). Two things in this section quietly assumed continuous delivery from `main`; neither is
+fatal, both become **conditions**:
+
+1. **The two-phase argument is only worth what it's worth if Phase 1 actually reaches people
+   before the render is commissioned.** The whole case for D-AUD-7 is "buy the owner's judgement of
+   the UX before spending four figures." If Phase 1 sits unmerged on a branch until Phase 2 is
+   finished, that sequencing benefit evaporates and we have simply built everything before learning
+   anything. **Product condition:** Phase 1 must reach *at least the owner and his testers* — a
+   closed-track build is sufficient, a production release is not required — **before** Sprint AUD-D
+   is commissioned. The branch is fine; the delay-until-everything-is-done is not.
+2. **`AUD-C-1` (D-AUD-21) requires publishing a real bundle**, which from a long-lived branch means
+   a build carrying whatever else is on that branch, consuming a `versionCode` from the same
+   monotonic sequence `main`'s releases use. That is a genuine collision surface: a placeholder
+   upload must not strand `main`'s next release behind a version code, and it must not be
+   promotable to users by accident. **Product constraint:** the placeholder build is internal-track
+   only and never promoted; the rest is Morgan's to sequence (OQ-AUD-14).
+
+Nothing else in §9 depends on where the code lives. D-AUD-18 (no audio in a PATCH) is a rule about
+*release contents*, not about branching, and holds unchanged.
 
 ### Not committed
 
@@ -855,7 +1082,8 @@ M-V3-*, metrics are **release gates plus owner-observable signals** — not dash
 - **M-AUD-5 — Zero unconsented bytes (gate + device pass).** No audio download is initiated by any
   path other than an explicit user action. Pinned by test where provable, confirmed on device.
 - **M-AUD-6 — Voice sign-off (qualitative gate, owner).** The owner listens to a fixed sample set
-  (§11, OQ-AUD-1) and signs off that the voice is fit for scripture — mirroring M8 and M-V3-2,
+  (R-AUD-3's pronunciation pilot) and signs off that the voice is fit for scripture — mirroring M8
+  and M-V3-2,
   because "reverent enough" is the owner's bar to judge, not ours.
 - **M-AUD-7 — Tone & no-second-axis (gate).** The existing guilt-copy ban-scan extends over all
   audio strings, and a test pins that no surface distinguishes a heard reading from a read one.
@@ -875,10 +1103,26 @@ M-V3-*, metrics are **release gates plus owner-observable signals** — not dash
 
 ## 11. Open questions, risks & accepted risks
 
-### The open question that must be answered before Phase 2
+### ✅ OQ-AUD-1 — RESOLVED (A2.1): the voice source is ElevenLabs
 
-**OQ-AUD-1 — Owner: which voice source?** *(Recommendation given; explicitly not silently
-decided.)*
+**The owner auditioned the field himself and chose ElevenLabs on voice realism.** Recorded as
+**D-AUD-22** (§7). LibriVox is not pursued; forced alignment, the LibriVox completeness question,
+and the alignment spike proposed below are all **moot** and no longer block anything.
+
+> **Correcting the reasoning, not just the status.** The recommendation below argued for
+> ElevenLabs *"primarily on FR-AUD-10"* — the cost of obtaining verse timings. **That was not the
+> deciding factor, and the argument has since weakened on its own terms.** Rendering
+> **verse-by-verse and concatenating** makes the timing index a byproduct of our own render, so
+> vendor-supplied timestamps stopped being load-bearing **as a discriminator between TTS
+> vendors** — had the choice come down to two synthetic voices, timings would not have separated
+> them. **Against LibriVox the argument remains fully intact:** a continuous human recording
+> cannot be rendered verse-by-verse, so extracting 31,219 boundaries genuinely requires forced
+> alignment over ~79 hours of volunteer-variable audio. So the conclusion stands, on a narrower
+> and more honest basis — and the owner's actual reason (quality) was always the better one for a
+> scripture app. The comparison table and recommendation are retained below **as a record of how
+> the decision was reached**, not as live guidance.
+
+**Superseded (retained for the record) — OQ-AUD-1 as originally posed:** *which voice source?*
 
 | | **ElevenLabs pre-render** | **LibriVox PD human KJV** |
 |---|---|---|
@@ -912,6 +1156,11 @@ re-recruiting a narrator are secondary but real.
 If (1) favours LibriVox **and** (2) and (3) both come back clean, the recommendation flips —
 it saves the render bill and the re-render risk entirely. Otherwise: ElevenLabs.
 
+> **End of superseded block.** Experiments (1)–(3) were never run: the owner auditioned the
+> candidates directly and decided. **The pronunciation pilot (R-AUD-3) is a separate exercise and
+> is still required** — auditioning a voice is not the same as proving it says *Mahershalalhashbaz*
+> correctly across 66 books.
+
 ### Other open questions
 
 | # | Question | Owner | Product position |
@@ -927,6 +1176,7 @@ it saves the render bill and the re-render risk entirely. Otherwise: ElevenLabs.
 | **OQ-AUD-10** *(new, A1.8)* | **Retire `ReaderAudioSlot` and put the transport at the app root** (D-AUD-19) — superseding the *placement* half of V3's D-V3-14, which reserved the slot inside the reader. | Owner | **Recommend adopting.** Playback is an app-level session: a listener who taps Schedule must not lose the pause button. D-V3-14's *intent* (an additive drop-in) is honoured exactly; only its location moves. Idle costs 0 dp, so no resting layout changes. |
 | **OQ-AUD-11** *(new, A1.8)* | **While a session is live, the Schedule's stats panel cap drops 45 % → 30 %** (D-AUD-20) — the Listen bar is paid for by "Year at a glance", not by the readings. | Owner | **Recommend adopting.** Nothing is removed (the panel already scrolls); the readings column ends up with *more* slack while playing than while idle, so the N=4 M'Cheyne case improves. Flagged because it makes a shipped layout conditional on playback. |
 | **OQ-AUD-12** *(new, A1.9)* | **Is `AUD-C-1` budgeted as a real ticket with a real Play review cycle?** A placeholder 66-pack internal-track upload *before* the render is commissioned (D-AUD-21). | Morgan (+ owner for the calendar) | **Product confirms it is wanted.** It is the cheapest de-risking in the plan and it is the only way to measure the D-AUD-18 patch size before we are committed. It costs calendar time we do not control, so it must be **sequenced, not assumed**. |
+| **OQ-AUD-14** *(new, A2.3)* | **Long-lived-branch mechanics.** Two conditions from §9: (a) Phase 1 must reach the owner and his testers (a closed-track build suffices) **before** the render is commissioned, or the two-phase cut loses its entire point; (b) `AUD-C-1`'s placeholder bundle needs a `versionCode` from the same sequence `main` uses and must never be promotable to users. | Morgan | Both are sequencing calls, not product ones — but (a) is a product *condition* on D-AUD-7, so if the branch cannot deliver a testable Phase 1 early, the two-phase rationale should be re-examined rather than quietly kept. |
 | **OQ-AUD-13** *(new, A1.10)* | **Who owns the render machine and the ~$250–800 spend?** Diego's pipeline assumes a named human runs the render and uploads corpus assets once per render; nobody is named. | Owner | Product position: **the owner owns the spend** (it is a business decision, not an engineering one), and a **single named human owns the render run** — including the pronunciation lexicon and the pilot sign-off. An unowned four-figure step with a vendor account attached is how this stalls between Sprints C and D. Needs naming **before** Sprint AUD-D is scheduled. |
 
 ### Pushback I did not accept, and one conflict I had to adjudicate *(added A1)*
@@ -970,7 +1220,8 @@ recorded here.
   recording itself: ElevenLabs output is licensed to us by the paid plan; LibriVox recordings are
   public-domain dedicated but may carry attribution conventions. Product position: **the same
   accepted-risk posture applies** — do not geo-restrict, do not alter the text — and the recording
-  layer is settled by the voice-source decision (OQ-AUD-1/OQ-AUD-9). **This must be recorded in
+  layer is settled by D-AUD-22 — **ElevenLabs, whose paid plans grant commercial rights** (OQ-AUD-9
+  confirms the posture). **This must be recorded in
   docs/data/README.md alongside AR-1 before any render is commissioned**, not before ship — the
   spend is the commitment point.
 
@@ -1039,7 +1290,7 @@ recorded here.
 ## 12. Dependencies
 
 > **The critical path (must be sequenced, not parallelised).** For Phase 2 there is one ordered
-> chain everything hangs off: **voice-source decision (OQ-AUD-1) → pronunciation pilot + owner
+> chain everything hangs off: **~~voice-source decision~~ (✅ D-AUD-22) → pronunciation pilot + owner
 > sign-off (R-AUD-3, M-AUD-6) → reproducible full render + per-verse timing index (FR-AUD-10) →
 > committed artifact manifest → the coverage gate (M-AUD-2) → PAD pack layout (OQ-AUD-2)**. No
 > Phase-2 download UI can be *verified* until the artifact and its index exist. **Phase 1 has none
@@ -1085,7 +1336,8 @@ recorded here.
 > (ESpec §16.8). FR-AUD-14 (the verse-tap change) was challenged and **hardened**: it now ships only
 > with named custom accessibility actions. The requirement I most want engineering to price early is
 > still **FR-AUD-10** (the per-verse timing index, now correctly stated at 31,219 rows), because it,
-> not the audio, is what decides OQ-AUD-1.
+> not the audio, is the expensive half of the render pipeline. *(A2.1: FR-AUD-10 no longer decides
+> the voice source — that is closed — but it still decides how the render is built.)*
 >
 > **What changed most in A1 is the honesty of three numbers** — the download unit (a book, not a
 > day), the permission delta (6→8, not 0), and the cost of a release that moves audio (bytes, not
