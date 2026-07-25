@@ -1338,6 +1338,26 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   ships with the next release. **Package id `com.jpillion.dailyreadingplanner` unchanged** (never
   changes). Known follow-up flagged to owner: `request_app_subject` (the "Request another app"
   mailto subject) still reads "Daily Reading Planner" — owner to decide the wording at next batch.
+- 📋 **Read-aloud audio — PLANNED, NOT STARTED (`2026-07-25`, branch
+  `claude/audio-read-aloud-options-vgb793`).** Four planning docs, no code, no version bump:
+  [docs/PRD-audio.md](docs/PRD-audio.md) (Maya, + amendment pass A1),
+  [docs/ENGINEERING_SPEC-audio.md](docs/ENGINEERING_SPEC-audio.md) (Diego),
+  [docs/features/audio-read-aloud-design.md](docs/features/audio-read-aloud-design.md) (Priya),
+  [docs/EXECUTION_PLAN-audio.md](docs/EXECUTION_PLAN-audio.md) (Morgan, sprints A–H).
+  **Owner decisions locked:** audio is **pre-rendered once** from the bundled KJV text and
+  delivered as **Google Play Asset Delivery on-demand packs** (Google hosts; audio updates ride
+  an app release); **no synthetic-voice disclosure**. Realtime TTS rejected on cost — one
+  user-year of the plan (5,054,048 chars) exceeds rendering the whole corpus once (4,112,530);
+  bundling is impossible against the 12 MB gate (~853 MB of audio). **Supersedes PRD-v3 §3's
+  premise** that audio requires becoming a networked app: `asset-delivery` declares no
+  `INTERNET` (verified from the AAR; delta is 6→8 permissions —
+  `FOREGROUND_SERVICE_DATA_SYNC` + our `FOREGROUND_SERVICE_MEDIA_PLAYBACK` — exported
+  components 1→4, pending the `AUD-A-0` merged-manifest confirmation). Phase 1 (device TTS,
+  $0, zero bytes) ships standalone and is Phase 2's permanent fallback; Sprint F (the ~$250–800
+  corpus render) is the one-way door, gated by a 12-row checklist. **Blocked on the owner:**
+  OQ-AUD-1 voice source (recommend ElevenLabs, on the 31,219-row timing-index argument, not
+  quality), OQ-AUD-13 who owns the render machine + spend, OQ-AUD-3 the two-phase cut,
+  OQ-AUD-9 AR-AUD-1, plus OQ-AUD-4/5/6/7/8/10/11/12. **Not approved — do not start.**
 - Next up: 1.5.1 is public — monitor early production **crash/ANR vitals + reviews** over the
   next days (Play Console → Monitor and improve; two minor edge-to-edge "recommended actions" are
   noted on the release dashboard, non-blocking). Store-title rename in review. Still pending
