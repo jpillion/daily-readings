@@ -58,8 +58,14 @@ jobs:
         with:
           ruby-version: "3.3"
 
+      # Pinned, not floating. `gem install fastlane` resolves to whatever is newest at run time,
+      # which is an unpinned dependency in the one workflow that publishes to PRODUCTION.
+      # 2.237.0 is the version that performed the 1.6.0 promote (run 30170236003). Bump
+      # deliberately. `supply`'s --track / --track_promote_to flags are current -- checked the
+      # promote logs for deprecation notices and found none (the only notice is rubyzip's
+      # informational RUBYZIP_V3_API_WARN line, emitted by the gem install, not by supply).
       - name: Install Fastlane
-        run: gem install fastlane --no-document
+        run: gem install fastlane --no-document --version 2.237.0
 
       - name: Promote to production
         run: |

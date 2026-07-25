@@ -165,10 +165,10 @@ test.
 
 ## Sources
 
-| Role | Source | URL | SHA-256 |
+| Role | Source | URL (immutable commit ref) | SHA-256 |
 |---|---|---|---|
-| **Primary** (markup-bearing: transChange added-words + separate Psalm superscriptions) | open-bibles `eng-kjv.osis.xml` (OSIS) | https://raw.githubusercontent.com/seven1m/open-bibles/master/eng-kjv.osis.xml | `eeeae647fc28360ce47f9c0d5cc3b397b7fdd9913fe53dc9f44eb6deee50e253` |
-| **Second source** (independent count/text witness) | scrollmapper `bible_databases` `formats/csv/KJV.csv` | https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/csv/KJV.csv | `9ba72c78bdac0e60bd37ee453e1ae787ea778297fb2b78b73edc0921a136ab09` |
+| **Primary** (markup-bearing: transChange added-words + separate Psalm superscriptions) | open-bibles `eng-kjv.osis.xml` (OSIS) | https://raw.githubusercontent.com/seven1m/open-bibles/7768dacf2653164dd036d14a2d3f877d925015d3/eng-kjv.osis.xml | `eeeae647fc28360ce47f9c0d5cc3b397b7fdd9913fe53dc9f44eb6deee50e253` |
+| **Second source** (independent count/text witness) | scrollmapper `bible_databases` `formats/csv/KJV.csv` | https://raw.githubusercontent.com/scrollmapper/bible_databases/ba07bc991644d82b24426b920245eb4422daa769/formats/csv/KJV.csv | `9ba72c78bdac0e60bd37ee453e1ae787ea778297fb2b78b73edc0921a136ab09` |
 
 **Checksum-distinctness (R-V3-3): asserted and recorded.** The two SHA-256s differ, and — more
 importantly — the two corpora are of **different lineage**, not the same upstream re-mirrored:
@@ -194,6 +194,57 @@ the chosen pair is genuinely independent.
 - Editorial epistle subscriptions ("Written to the Romans from Corinthus…", 14 of them): the
   second source carries them; the primary correctly omits them as non-canonical. The shipped
   asset omits them (they are not scripture verses).
+
+## Source pinning (added 2026-07-25, after a 5-week CI false alarm)
+
+**Both KJV source URLs now address an IMMUTABLE COMMIT SHA. They used to say `/master/`, which is
+not a pin** — a branch ref re-resolves on every fetch, so the "drift guard" was guarding nothing
+and would misfire the moment upstream committed anything. It did:
+
+- **2026-07-10, scrollmapper commit `e1b254ce` ("General Updates")** rewrote `formats/csv/KJV.csv`.
+  The `data-rebuild` checksum step went red on every run afterwards.
+- **Classification: pure RE-SERIALIZATION. No verse wording changed.** Evidence, from a
+  key-by-key comparison of the old pinned revision (`ba07bc99`, sha `9ba72c78…`) against the new
+  master revision (`e1b254ce`, sha `a1051b43…`):
+  - identical row set — 31,102 verses, zero added, zero removed, every `(book, chapter, verse)`
+    key present on both sides;
+  - whole-file CRLF conversion (0 → 31,103 `\r`), which is most of the 35,377-byte size increase;
+  - 1,266 verses differ only by a trailing-space trim, 14 only by internal whitespace collapse;
+  - 138 verses differ by more than whitespace — **all 138 in Psalms**, and every one of them is a
+    strict PREPEND: the new file inlines the superscription into verse 1 ("A Psalm of David. " ×
+    117) or the Hebrew acrostic marker into the Psalm 119 stanza openings ("א ALEPH. " × 21).
+    `new == prefix + old` holds for all 138 — no existing word was altered, reordered, or removed.
+- **We did NOT adopt the new revision.** The pin points at `ba07bc99` — the exact bytes the
+  committed `bible.db` and the R-V3-3 gate were verified against, and the SHA-256 that
+  `BibleTextVerificationTest` asserts. Moving to the newer serialisation would change the
+  second-source witness (its inlined superscriptions overlap what the primary stores as verse-0
+  titles) and is therefore a **data decision**, not a checksum bump: it would need the
+  reconciliation above re-run and the gate's pinned SHA updated. Filed as optional future work,
+  not done here.
+
+### Toolchain pinning — why the byte-diff had ALSO been failing since 2026-06-15
+
+Separately from the moving ref, the `cmp` byte-diff had been failing for a month before the
+checksum step started masking it. `tools/build_bible_db.py` is deterministic, but the bytes it
+emits depend on the **SQLite library** doing the writing, which nothing pinned:
+
+- SQLite stamps `SQLITE_VERSION_NUMBER` into the database header at offsets 96..99. The committed
+  asset carries 3.43.2; GitHub's `ubuntu-latest` image moved to 3.45.1 on 2026-06-15, and every
+  run since differed — **by exactly those 2 bytes and nothing else**.
+- Pinning the *Python* version does not help: every `actions/setup-python` build on the runner
+  links the image's system `libsqlite3` (measured across 3.10–3.13 — all reported 3.45.1).
+- The build **flags** matter too: `SQLITE_SECURE_DELETE` (which Debian/Ubuntu enable and an
+  upstream default build does not) zeroes freed page slack. Without it the same 3.43.2 produced
+  6,025 further differing bytes of stale B-tree residue.
+
+So the `data-rebuild` job now **compiles SQLite 3.43.2 from the SHA-pinned upstream amalgamation
+with `-DSQLITE_SECURE_DELETE` and `LD_PRELOAD`s it into Python** before re-deriving. That restores
+a true strict byte-diff-of-zero against the unchanged committed asset, and pins the toolchain the
+same way the sources are pinned. The job asserts the preload actually took effect, so a silent
+fallback to the runner's SQLite fails loudly instead of producing a confusing diff. In every case
+the asset content was provably untouched — `tools/compare_bible_db.py` (run automatically when the
+byte-diff fails) compares the schema and all 31,219 rows to separate a real content change from an
+encoding-level one.
 
 ## OQ-4 finding (poetry / red-letter availability — gates P1 only)
 
