@@ -1328,12 +1328,23 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   Production" (or `gh workflow run "Promote to Production" -f version_code=<code>`). Both
   `promote-production.yml` prerequisites are documented as satisfied in
   [docs/RELEASING.md](docs/RELEASING.md).
+- ✏️ **App renamed (owner, `2026-07-25`) — the two names now diverge deliberately:**
+  (1) **Play Store listing title → "Daily Bible Reading Planner"** (27/30 chars) — changed in the
+  Play Console (Grow → Store presence → Main store listing → App name), **submitted for review**
+  (metadata-only; no release/AAB). Goes live on the store when review clears. (2) **On-device
+  launcher label → "Daily Readings"** — `app_name` in
+  [strings.xml](app/src/main/res/values/strings.xml) (android:label only; no Kotlin/test pins),
+  committed `e5fcb43` **NOT released** (no version bump/tag, per owner batching other changes) —
+  ships with the next release. **Package id `com.jpillion.dailyreadingplanner` unchanged** (never
+  changes). Known follow-up flagged to owner: `request_app_subject` (the "Request another app"
+  mailto subject) still reads "Daily Reading Planner" — owner to decide the wording at next batch.
 - Next up: 1.5.1 is public — monitor early production **crash/ANR vitals + reviews** over the
   next days (Play Console → Monitor and improve; two minor edge-to-edge "recommended actions" are
-  noted on the release dashboard, non-blocking). Still pending (non-blocking): device pass +
-  string/tone sign-offs on 1.5.1; the Node24 CI bump (`ci/actions-node24-bump`) PR. Future
-  production releases: one-click via Actions → "Promote to Production" (CI promote is armed).
-  (V2.x release prep remains queued, owner-scheduled independently.)
+  noted on the release dashboard, non-blocking). Store-title rename in review. Still pending
+  (non-blocking): device pass + string/tone sign-offs on 1.5.1; the Node24 CI bump
+  (`ci/actions-node24-bump`) PR; owner's batch of other changes + the launcher rename ride the
+  next release. Future production releases: one-click via Actions → "Promote to Production" (CI
+  promote is armed). (V2.x release prep remains queued, owner-scheduled independently.)
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
@@ -1401,7 +1412,9 @@ None. All product/owner decisions are resolved — see below and `docs/EXECUTION
 - Schedule keyed by (month, day); **progress keyed by full date** so marks don't repeat
   across years. ✅
 - KJV is the default/v1 translation; multi-translation schema is moot for V1 (no text stored). ✅
-- **App name = "Daily Reading Planner"**; package id = **`com.jpillion.dailyreadingplanner`**. ✅
+- **App names (renamed 2026-07-25):** Play Store listing title = **"Daily Bible Reading Planner"**
+  (in review); on-device launcher label = **"Daily Readings"** (committed, ships next release).
+  Package id = **`com.jpillion.dailyreadingplanner`** (unchanged, permanent). ✅
 - **Feb 29 = no scheduled readings.** Plan covers 365 days (Feb = 28 entries, no Feb 29 entry);
   in leap years the date shows **"No scheduled readings for Feb 29th"** (no readings/marks/
   tracking); non-leap years skip it. No fold/double-day logic. ✅
