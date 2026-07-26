@@ -1355,10 +1355,17 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   components 1→4, pending the `AUD-A-0` merged-manifest confirmation). Phase 1 (device TTS,
   $0, zero bytes) ships standalone as 1.6.0; Sprint F (the ~$250–800 corpus render) is the
   one-way door, gated by a 15-row checklist. **Owner decisions since (`2026-07-26`):**
-  **ElevenLabs** chosen on voice realism after the owner auditioned the field (OQ-AUD-1 closed;
-  model pinned `eleven_flash_v2` per D-AUD-E-21 — the only phoneme-capable model that renders
-  every chapter in one request, 0 of 1,189 over its 30k cap vs 208 over v3's 5k — with v3 vs
-  flash_v2 re-openable at the pilot, OQ-AUD-E-6). **Audio packs are plug-and-play like
+  **ElevenLabs** chosen on voice realism after the owner auditioned the field (OQ-AUD-1 closed),
+  and **`eleven_v3` is pinned and MANDATORY with no fallback** (D-AUD-E-34; the earlier
+  `eleven_flash_v2` pin D-AUD-E-21 is superseded and its fallback clause revoked) — the owner
+  tested multilingual_v2 and flash_v2 and rejected both on output quality. Consequence: v3 caps
+  per-request size, so the renderer **segments** (5,000 cap ⇒ 208 chapters split / ~213 seams;
+  2,000 ⇒ 944 / ~1,509), splitting only on verse boundaries (longest KJV verse = 528 chars, so
+  never intra-verse). **Request Stitching — the vendor's continuity feature — is documented as
+  unavailable on v3**, so seam continuity is worked through the D-AUD-E-40 remedy ladder
+  (strongest-break splitting, balanced segmentation, corrective gain + one chapter-level loudness
+  pass, silence-trim with post-trim offsets, bounded outlier re-render, seed, stability last as
+  the owner's call). A **Studio/Projects spike gates scheduling the render sprint**. **Audio packs are plug-and-play like
   translations** (owner): a thin committed catalog + a self-describing `voice.json` *inside*
   each pack, mirroring `PlanRegistry` + `PlanDescriptor`; the app never branches on which pack
   is installed, and pack count is data (D-AUD-E-25/26/27). **Voice selection is app-wide and

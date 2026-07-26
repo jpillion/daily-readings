@@ -35,8 +35,8 @@
 > already stale against its own ticket list (`SA-T2/T4/T5/T6/T9`, `SB-T7` are all Phase 1).
 >
 > Also folded in: **`D-AUD-E-33`** supersedes A1's `audio_voice_source` key with **`active_voice_id`**
-> (degrade **on read, not on write**) — `SA-T4` corrected; and **`D-AUD-E-21`**'s **`eleven_flash_v2`**
-> model pin, which has ticket consequences in D/E/F and was missing from A1 entirely.
+> (degrade **on read, not on write**) — `SA-T4` corrected; and `D-AUD-E-21`'s ~~`eleven_flash_v2`~~
+> model pin **[⛔ SUPERSEDED by `D-AUD-E-34` in A3 — see Amendment 3; the pin is `eleven_v3`]**.
 >
 > **`OQ-AUD-E-5` is RESOLVED — the owner owns the render.** Verbatim: *"I will own the rendering and
 > generation of the assets. I might do it in a separate session, but I'll drive that for now."* §8's
@@ -50,6 +50,120 @@
 >   it must clear **before a single pack is built from it**, is now specified.
 >
 > Amendment-2 text is marked **[A2]**.
+>
+> ### Amendment 3 — 2026-07-26 (the model is settled; the seams are not)
+>
+> 1. **`eleven_v3` is PINNED and MANDATORY, with NO fallback.** The owner tested
+>    `eleven_multilingual_v2` and `eleven_flash_v2` and rejected both on output quality: *"I do NOT
+>    like the output. So, I'll need to find a way to use V3 regardless."* Diego's `D-AUD-E-21`
+>    (flash_v2) is superseded by **`D-AUD-E-34`**, whose own fallback clause was then **revoked** in
+>    his A4. `OQ-AUD-E-6` is **closed**. **A2's tickets instructed the opposite in eight places and
+>    would have rendered the pilot on a rejected model — swept and corrected** (`SE-T3`, `SE-T10`,
+>    `SF-T0`, `SF-T1`, `SF-T5`, `SB-T11`, checklist row 15, `RM-15`, the `OQ-AUD-E-6` row). `flash_v2`
+>    now survives only as **honest history**: superseded markers and the cost/seam comparison.
+> 2. **A2's "one request per chapter, no splicing" is FALSE under v3 and is retracted.** v3's cap is
+>    far smaller, **Request Stitching is unavailable for v3** (`D-AUD-E-41`), and both escape routes
+>    are therefore gone — so seams must be **solved**, not avoided. `SF-T1` is rewritten and the
+>    `D-AUD-E-40` remedy ladder gets real tickets (**`SE-T12`**, new).
+> 3. **The pilot changed shape** — it no longer elects a model. New scope in `SE-T3`, per Diego's
+>    amended runbook §5: **Q1** the real per-request cap (a **7× seam swing** — 213 seams at a 5,000
+>    cap vs 1,509 at 2,000) · **Q2** whether Request Stitching genuinely fails on v3 · **Q3** voice
+>    (a different *v3* voice is still selectable; the model is not) · **Q4** seam audibility ·
+>    **Q5** timestamps present.
+> 4. **The Studio/Projects spike is ticketed (`SE-T11`) and it gates scheduling Sprint F**, per
+>    Diego's verdict. It needs a **paid Studio project**, not only API credits — a long-lead item.
+> 5. **New §0 — the readiness audit**, answering the owner's *"are we ready to start building?"*
+>
+> Amendment-3 text is marked **[A3]**.
+
+---
+
+## 0. [A3] Readiness audit — "are we ready to start building?"
+
+**Verdict: YES for Phase 1 — start Sprint A this week. NOT YET for Phase 2, and that is correct
+rather than a problem.**
+
+The two-phase cut is doing exactly the job it was designed for. **Sprints A→B→C→D have no dependency
+on the render, the model, the seams, the pilot or the spend** — they ship read-aloud on the device
+voice at $0 and 0 bytes. Everything that is genuinely unsettled (the v3 seam problem, the cap, the
+Studio question) sits entirely on the far side of Sprint E's wall. Nothing a user can see is waiting
+on any of it.
+
+### 0.1 Startable today
+
+| Sprint | Status | What it is waiting on |
+|---|---|---|
+| **A** — posture + delivery plumbing | 🟢 **Startable now** | **One owner sentence: `OQ-AUD-E-3`** (accept the restated M-AUD-3 posture gate). `SA-T0` is a go/no-go and cannot run without a definition of "go". Everything else in A is team work. |
+| **B** — player spine + the voice seam | 🟢 **Startable now** *(after `SA-T0`)* | **Nothing.** ✅ Confirmed: **`OQ-AUD-5` closed** (Diego's A3 §5A — spoken headings; verse numbers never spoken), which was B's only blocker. `D-AUD-E-30` gives B the whole plug-and-play proof at zero bytes. |
+| **C** — Phase 1 complete | 🟡 **Startable once 3 owner calls land** | `OQ-AUD-4` (the verse-tap gesture — it changes shipped behaviour), `D-AUD-UI-2` (retire `ReaderAudioSlot`), `D-AUD-UI-3` (the stats-cap swap). `OQ-AUD-7` (naming) can arrive as late as D. |
+| **D** — ship Phase 1 (1.6.0) | 🟡 **One call** | `OQ-AUD-3` — ship Phase 1 standalone. My recommendation is yes (§1.4); a "hold" delays users and changes nothing structural. |
+| **E** — pilot, lexicon, spend gate | 🟡 **Startable after B is green** | Owner time for the pilot listening, and a funded ElevenLabs account (**incl. a paid Studio project** for `SE-T11`). Not blocked by C or D. |
+| **F** — the corpus render | 🔴 **Blocked, correctly** | **The `SE-T11` Studio spike must report first** (Diego's scheduling verdict), plus all 15 rows of §4, plus the `SE-T12` ladder tooling existing and tested. This is the ~$500–688 one-way door with both safety nets gone. |
+| **G** — Phase 2 playback + downloads | 🔴 Blocked on F | `OQ-AUD-E-1` (the download-unit table) and `OQ-AUD-E-7` (the missing-chapter prompt's third option) before its tickets are written. |
+| **H** — ship Phase 2 (1.7.0) | 🔴 Blocked on G | — |
+
+### 0.2 The owner's decision shortlist, in priority order
+
+**He is one person.** These are the only ones that genuinely need *him* — judgement, taste, or risk
+acceptance that nobody else can supply. Four cheap ones unlock all of Phase 1:
+
+| # | Decision | Unblocks | Cost to him |
+|---|---|---|---|
+| **1** | **`OQ-AUD-E-3`** — accept "no `INTERNET`; exactly two new foreground-service permissions; no data-safety change" as the posture gate | **Sprint A, the first ticket of the epic** | One sentence, yes/no |
+| **2** | **`OQ-AUD-4`** — verse tap seeks during a session; the shipped Sprint-H tap-out moves to long-press | **Sprint C** | One judgement; it changes a taught gesture, which is why it is his |
+| **3** | **`D-AUD-UI-2` + `D-AUD-UI-3`** — retire `ReaderAudioSlot`; the stats cap drops 45 %→30 % while listening | **Sprint C** | Two confirmations; both are reversible UI calls |
+| **4** | **`OQ-AUD-3`** — ship Phase 1 standalone at 1.6.0 | **Sprint D** | One call, and it can wait until C is green |
+
+*Later, and not blocking anything he can start today:* `OQ-AUD-6` (24 vs 32 kbps — a listening check),
+`OQ-AUD-9`/`AR-AUD-1` (recorded before the spend), `OQ-AUD-E-2` (audio never changes in a PATCH),
+`OQ-AUD-E-7` (the prompt's third option), `D-M-AUD-9` (the feature flag — recommended for C), and —
+**at the pilot, not before** — the `D-AUD-E-40` remedy 7 A/B, where dialling `stability` toward
+consistency trades away the exact expressiveness he chose v3 for.
+
+### 0.3 What the team resolves without him
+
+`OQ-AUD-E-8` (manifest/registry contract — **Diego has specced it**: `D-AUD-E-30/31/32/33`) ·
+`OQ-AUD-E-1` (Maya + Diego draft, he confirms) · `OQ-AUD-7` (Maya recommends "Read aloud"; string ids
+are stable either way) · `OQ-AUD-8` (**resolved by me** — whole-day ships, `D-M-AUD-5`) · runbook
+**Q1/Q2** (empirical at the pilot, not opinions) · the `SC-T10` voice-row reconciliation (Priya +
+Diego).
+
+### 0.4 Day one, in order — the setup nobody has ticketed
+
+**None of this is sprint work, and all of it has to happen before Sprint A's first commit.** The
+whole planning set — PRD, engineering spec, design spec, this plan — currently exists **only** on
+`claude/audio-read-aloud-options-vgb793` and **has never been merged to `main`.** And
+`feature/read-aloud` **does not exist yet.**
+
+1. **Merge the planning docs to `main`** (docs-only PR from `claude/audio-read-aloud-options-vgb793`:
+   `PRD-audio.md`, `ENGINEERING_SPEC-audio.md`, `features/audio-read-aloud-design.md`,
+   `EXECUTION_PLAN-audio.md`, + `AUDIO_RENDER_RUNBOOK.md` when `SE-T10` lands). **No code, no version
+   bump, zero release risk** — and it means the plan is on the trunk where the next session finds it,
+   rather than on an agent branch that could be pruned.
+2. **Create `feature/read-aloud` off `main`** *after* step 1, so the epic's branch carries the plan.
+3. **Jordan: land `ci/actions-node24-bump`** (`SA-T1`) and **add `ci.yml` branch filters** for
+   `feature/read-aloud` + `aud/**`. A long-lived branch without CI is a long-lived branch that is
+   quietly red.
+4. **Owner: answer `OQ-AUD-E-3`** — this defines "go" for `SA-T0`.
+5. **Jordan: find a build machine where `platforms;android-37` resolves**, then run `SA-T0`. If none
+   exists, that is itself a finding and the `compileSdk` pin goes back to Diego before anything else.
+6. **Branch `aud/sprint-A-posture-delivery`; dispatch `SA-T5`/`SA-T6` FIRST** — the Play review queue
+   is the epic's longest pole (§1.1, RM-2).
+7. **In parallel, long-lead: owner provisions the ElevenLabs account with a paid Studio project**, not
+   just API credits — `SE-T11` cannot run without it and it gates scheduling F.
+
+### 0.5 The honest verdict
+
+**Yes, for Phase 1 — and Phase 1 is a real, shippable feature, not a scaffold.** Four cheap owner
+decisions and one docs merge stand between today and Sprint A's first commit. Phase 2 is *not* ready,
+and forcing it would mean walking through a ~$500–688 one-way door with the fallback model removed by
+the owner's own quality judgement and Request Stitching removed by the vendor. The plan's answer to
+that is to spend a day and a few dollars on the `SE-T11` spike first. **Start Phase 1 now; let the
+spike and the pilot decide when Phase 2 is schedulable.**
+
+> **[A3] Sprint-letter mapping.** Diego's spec numbers its sprints A/B/C/**D**(render)/**E**(Phase 2)
+> ; this plan runs A–H, where **his AUD-D = my F** and **his AUD-E = my G+H**. His "9-step Sprint
+> AUD-D order" is my `SF-T0…SF-T7`.
 >
 > **Inputs (decided upstream, not re-decided here):**
 > [PRD-audio.md](PRD-audio.md) (Maya — what/why; `FR-AUD-*`, `NFR-AUD-*`, `D-AUD-1…16`, `M-AUD-1…11`, `R-AUD-1…10`, `OQ-AUD-1…9`) ·
@@ -303,7 +417,7 @@ Play review.
 | **B** | **The player spine on the device voice — [A2] and the voice seam, proven** *(cheap, reversible)* | "Press the dev button and the phone reads Genesis 1–2 aloud — screen off, lock-screen controls, Psalm 119 days play exactly their verses — **[A2] and a fake second voice already plugs in with no code change.**" | A real media3 player behind one app-facing seam; the queue built once from `PortionVerseBridge`; the FR-AUD-4 stop rules one `when`. **[A2] Plus the whole plug-and-play seam, proven at $0** — `device_tts` is a registry entry (D-AUD-E-30), so Phase 2 is genuinely "a second entry appears". **~80 % of the feature's engineering, at $0.** | **L** | — | Diego (lead), Avery, Riley | A's `SA-T0` only | **M-AUD-1 queue gate green with zero audio bytes** + **[A2] `SB-T11`: a synthetic second voice resolves end-to-end, zero production code change** |
 | **C** | **Phase 1 complete: Listen bar, follow-along, entry points, marking** | "Read aloud is a finished feature: play from a reading, the day, or the reader; the verse being spoken is highlighted and the page follows; the reading is marked read." | The whole designed UX (D-AUD-UI-1…13) on the device voice. **This is the Phase-1 release candidate.** | **XL** | — | Priya (lead), Sam, Diego, Riley | B; **OQ-AUD-4/5/7/8 + D-AUD-UI-2/3 answered** | A11y gate + ban-scan extended and green; parity suite UNCHANGED; `listen-dev` deleted |
 | **D** | **Phase 1 device pass + release → 1.6.0** *(the owner's ship/hold decision)* | **"Read aloud is live for users, at $0 spend."** | The feature is in the world; the M-AUD-11 adoption signal starts accruing **before** any money is committed. | **S** | **M — owner listening + staged rollout** | Riley (pass), Owner, Jordan (release) | C; **OQ-AUD-3** | M-AUD-9 hands-free pass + the two-voice TalkBack test (Priya's #12) + one-screen fit at N=4 |
-| **E** | **[A1] Pronunciation pilot + the spend decision** *(**the last reversible point**; no longer a bake-off — `OQ-AUD-1` is answered)* | "The owner has heard the `eleven_flash_v2` voice reading Mahershalalhashbaz, **[A2] has a runbook he can execute without this session loaded**, and has said go or no-go with a number attached." | The lexicon exists and is signed off; the ASR thresholds are calibrated on real output; the timestamp contract is confirmed; AR-AUD-1 is recorded; **[A2] the render runbook is written and reviewed — on the reversible side of the door.** | **S–M** (+ a small, reversible pilot spend) | **S–M — owner listening turnaround** | Owner (decides + will run the render), Riley, Diego | A's findings; **B green** (no longer C/D — see §1.1) | **G-VOICE**: M-AUD-6 sign-off + **[A2] the runbook reviewed** + the §4 checklist all ✅ |
+| **E** | **[A1·A3] Pilot, seam ladder, Studio spike + the spend decision** *(**the last reversible point**; the model is settled — the pilot no longer elects one)* | "The owner has heard **`eleven_v3`** reading Mahershalalhashbaz **[A3] and has listened at a seam**, has a runbook he can execute without this session loaded, and has said go or no-go with a number attached." | The lexicon is signed off; the ASR thresholds are calibrated on real output; **[A3] the real per-request cap and the stitching fact are established empirically (Q1/Q2), the `D-AUD-E-40` ladder tooling exists and is unit-tested, and the Studio spike has reported**; AR-AUD-1 is recorded; the runbook is written and reviewed — all on the reversible side of the door. | **M** (was S–M; **[A3]** +ladder +spike) | **M — owner listening + the spike** | Owner (decides + will run the render), Riley, Diego | A's findings; **B green** (no longer C/D — see §1.1) | **G-VOICE**: M-AUD-6 sign-off + **[A3] the Q4 seam verdict** + the runbook reviewed + the §4 checklist all ✅ |
 | **F** | **The corpus render + the offline audio gate** *(**the one-way door — ~$250–800**)* | "Every one of the 1,189 chapters has audio and a per-verse timing index, and a test proves it without downloading a byte." | The project's **third core content asset** exists and is provably correct; `AudioTimingVerificationTest` becomes the **sixth** standing data gate. **[A2] The plug-and-play *claim* was already proven in B; F proves the real artifact honours the contract the fixture defined.** | **XL** | **M — render + triage wall time; [A2] possibly executed out-of-session by the owner** | **[A2] Owner (runs the render)**, Riley (gate + intake), Jordan (CI/assets) | **E signed off — no exceptions** | **[A2] `SF-T0` intake gate passed**, then `AudioTimingVerificationTest` green + every over-threshold chapter triaged |
 | **G** | **Phase 2 playback + the download surface** | "Choose the high-quality voice, download by book or in bulk, see exactly what it costs, delete it in two taps — and Psalm 119:1–40 plays exactly its verses out of a whole-chapter file." | `FileVersePlayer` + clipping; the full download product surface; the degradation ladder resolving to `HighQuality`. | **L** | — | Avery (player/packs), Priya (downloads UI), Sam, Riley | F; **OQ-AUD-E-1** | M-AUD-5 (zero unconsented bytes) JVM-pinned; the degradation ladder green at every rung |
 | **H** | **Phase 2 hardening + release → 1.7.0** | "The good voice is live, the install is still 8 MB, and the manifest still has no `INTERNET`." | Phase 2 in the world; the release pipeline carries ~850 MB without carrying it on every PR. | **M** | **M — device pass + rollout** | Riley (pass), Jordan (release), Owner | G | Base-module ≤ 12 MB + **zero audio bytes under `base/`** + no `INTERNET`; consolidated device pass |
@@ -639,6 +753,10 @@ the plan assigns**. No designed UI; one temporary dev button (D-M-AUD-6).
   the stored id; and the selector renders **static text at one usable voice and a chooser at two** —
   a branch on *count*, never on *identity* (D-N-3). Diego's gate assertions **18/19/20** are the same
   three facts and should be written once, here, not twice.
+- **[A3] The fixture manifest must be MODEL-AGNOSTIC.** `SB-T11` proves the *resolution mechanism*, so
+  its synthetic voice must not encode `eleven_v3` (or any model) as a required value — a fixture that
+  hard-codes the real model would pass for the wrong reason and would go red the day a second voice is
+  rendered differently. The model belongs in the **real** manifest and is asserted in `SF-T5`.
 - **Acceptance:** every assertion green in `testDebugUnitTest`, offline, zero bytes. **JVM-provable.**
 - **Tests/mutation:** the mutation that matters most, and it is the exact bug the owner ruled out —
   **derive a voice's identity or its file locations from the pack *name* rather than its manifest** ⇒
@@ -813,14 +931,24 @@ simplifications, recorded so nobody re-adds them:
   the Opus encode step, or are they reported against pre-encode PCM? One API call settles it and it
   decides how `render_audio.py` derives verse boundaries. **Do not commission a render without this
   answer** — it is now the only remaining unknown in the render pipeline's design.
-- **SE-T3 — The pronunciation pilot + M-AUD-6 sign-off (G-VOICE)** (Owner + Riley) — render the
+- **SE-T3 — [A3] The pilot, re-scoped: it no longer elects a model** (Owner + Riley) — render the
   proper-noun-heavy set (1 Chr 1, Num 26, Ezra 2) plus the tone set (Ps 23, Isa 53, John 11, Gen 1,
-  Matt 5, Ps 119:1–40). **[A2] On `eleven_flash_v2` — the pinned model (D-AUD-E-21) — not a
-  convenience model.** A pilot rendered on anything else proves nothing about the corpus, because the
-  pin is not a quality preference: **phoneme tags (IPA/CMU pronunciation-dictionary rules) exist only
-  on `eleven_v3` and `eleven_flash_v2`**, and every other model silently degrades to alias substitution.
-  A small, reversible spend. Owner listens on a phone speaker and on earbuds and signs off, or does not.
-  *(Diego's `OQ-AUD-E-6` — flash_v2 vs v3, with the price — is decided here, at the pilot.)*
+  Matt 5, Ps 119:1–40), **on `eleven_v3` (`D-AUD-E-34`)** — **[A3] which is now MANDATORY and has NO
+  fallback.** *(A2 said `eleven_flash_v2` here. That is retracted: the owner tested
+  `eleven_multilingual_v2` and `eleven_flash_v2` and rejected both on output quality, and
+  `D-AUD-E-34`'s own fallback clause was revoked in Diego's A4. As A2 was written, this ticket would
+  have rendered the pilot on a model the owner has already rejected.)*
+  **[A3] Add at least one long chapter that must be segmented** — the tone set is all short, and the
+  entire new risk lives at segment joins. Per the amended runbook §5 the pilot answers five questions,
+  in this order:
+  | Q | Question | Why it is first/at all |
+  |---|---|---|
+  | **Q1** | The **real per-request cap** | Not a cost question — a **seam-count** question with a **7× swing**: 213 seams at a 5,000 cap vs **1,509** at 2,000. It sizes the whole seam problem. |
+  | **Q2** | Does **Request Stitching** genuinely not work on v3? | Documented unavailable (`D-AUD-E-41`), verified independently, **re-verified empirically here** — because a positive result would collapse the entire `D-AUD-E-40` ladder to one line, and docs change. |
+  | **Q3** | **Voice** (M-AUD-6) | A different *v3* voice is still selectable; the **model** is not. This is the sign-off the money rides on. |
+  | **Q4** | **Seam audibility** on the segmented long chapter, judged against the `D-AUD-E-40` ladder | **The new hard gate.** If the ladder is exhausted and seams are still audible ⇒ **stop and escalate; do not spend.** |
+  | **Q5** | **Timestamps present** on v3 output | Undocumented per model; Forced Alignment (`D-AUD-E-23`) is the fallback, estimation never. |
+  A small, reversible spend. Owner listens on a phone speaker and on earbuds.
 - **SE-T4 — Build the pronunciation lexicon from what the pilot exposed** (Riley + Owner) — pinned,
   versioned, an input to `render_audio.py`. **[A2] Per `D-AUD-E-22` it is committed and signed off
   BEFORE the render, not during it** — it is on the reversible side of the door, and it is the artifact
@@ -848,13 +976,70 @@ simplifications, recorded so nobody re-adds them:
   reversible side of the one-way door**, alongside the pilot and the lexicon — not drafted alongside the
   render it is supposed to govern. It is self-contained: it assumes the plan docs are *not* open.
   Contents, gathering ingredients that are already decided but scattered across three documents:
-  Diego's **9-step Sprint AUD-D order**; the **`eleven_flash_v2` pin** and the corpus measurement behind
-  it (D-AUD-E-21 — 0 of 1,189 chapters exceed its 30,000-char cap); the **committed, signed-off
-  lexicon** (D-AUD-E-22); **`with-timestamps`, with Forced Alignment as the fallback and estimated
-  timings NEVER accepted** (D-AUD-E-23); the exact voice id / model / params to record; the per-chapter
-  loop and its resume-after-interruption behaviour; what to do when a chapter fails or reads wrong;
-  and the **hand-back package** `SF-T0` expects. Plus the standing dollar/credit ceiling, so an
-  out-of-session run cannot quietly overspend.
+  Diego's **9-step order** (his "Sprint AUD-D" = my `SF-T0…SF-T7`); **[A3] the `eleven_v3` pin
+  (`D-AUD-E-34`) and the fact that it has NO fallback** — with the seam measurement behind it
+  (213 seams at a 5,000 cap vs 1,509 at 2,000, and **20.6 %–82.5 % of the Bible seam-free** depending
+  on the cap Q1 establishes); **[A3] the `SE-T12` segmentation + remedy chain, worked in order with no
+  early exit** — there is no fallback model to stop *into*; the **committed, signed-off lexicon**
+  (D-AUD-E-22); **`with-timestamps`, with Forced Alignment as the fallback and estimated timings NEVER
+  accepted** (D-AUD-E-23); **[A3] R7 — concatenate as PCM and encode once, never concatenate `.opus`**;
+  the exact voice id / model / params to record; the per-chapter loop and its resume-after-interruption
+  behaviour; what to do when a chapter fails or reads wrong; **[A3] and the hard stop: "ladder
+  exhausted, seams still audible" ⇒ escalate, do not spend**; and the **hand-back package** `SF-T0`
+  expects. Plus the standing dollar/credit ceiling, so an out-of-session run cannot quietly overspend.
+- **[A3] SE-T11 — The ElevenLabs Studio / Projects spike (NEW; `D-AUD-E-40` remedy 8) — GATES
+  SCHEDULING SPRINT F** (Diego, with Owner for the account). **Size:** S (about a day). Diego's
+  scheduling verdict, adopted verbatim: **do not schedule Sprint F until this reports.** The reasoning
+  is asymmetry, not pessimism — the corpus render is a **one-way ~$500–688 door**, and the two escape
+  routes that normally make "try it and see" safe are **both gone**: the fallback model was removed by
+  the owner's quality judgement, and Request Stitching was removed by the vendor. Against that, the
+  spike is a few dollars and a day, and **it blocks nothing a user can see** (A–D have no render
+  dependency at all).
+  Three questions, of which the third is decisive and **unanswerable from documentation**: (1) can
+  Studio be driven headlessly from the API at 1,189-chapter scale? (2) does it return per-character or
+  per-word timestamps — probably surmountable, since Forced Alignment is already our specified fallback
+  and its 10 h cap is irrelevant per chapter; (3) **how does Studio achieve continuity for v3 given
+  stitching is unavailable for v3?** Either it has an internal mechanism the TTS API cannot reach — in
+  which case it removes the seam problem at the root rather than patching it — or it segments
+  internally and has *the same problem*, in which case it buys nothing. Also capture: whether
+  pronunciation dictionaries (`D-AUD-E-22`) apply in Studio, and how it bills.
+  **⚠ Long-lead, and the reason it is listed in §0.4 step 7: this needs a PAID STUDIO PROJECT, not
+  only API credits.** Provision the account on day one or the spike stalls on procurement.
+  **Acceptance:** a written verdict — Studio replaces segmentation, supplements it, or is discarded —
+  recorded before F is scheduled.
+- **[A3] SE-T12 — The segmentation + seam-remedy pipeline (NEW; `D-AUD-E-40` remedies 1–5)**
+  (Diego + Riley). **Size:** M. **Why it is in E and not F:** remedies 1–5 are **pure, deterministic,
+  unit-testable code with no spend attached**, and the runbook depends on them existing. Building them
+  on the reversible side of the door is the same discipline as `SA-T9`, `SB-T11` and the lexicon — and
+  it means the pilot's Q4 seam verdict is judged against the *actual* remedy chain rather than against
+  a hypothetical one.
+  Scope, in the ladder's order: **(1)** strongest-break splitting — prefer verse boundaries whose
+  preceding verse ends `.`/`?`/`!`, then `:`/`;`, then any verse boundary (**82.9 %** of KJV verses end
+  sentence-terminally, so a preferring splitter is almost never forced onto a weak break); **(2)**
+  **balanced** segmentation, not greedy fill — same request count, far fewer pathological short tails,
+  and stated honestly as reducing the *badness* of the worst segment, not the seam *count*; **(3)**
+  per-segment capped corrective gain (±2 dB toward the chapter mean) then **one** chapter-level EBU
+  R128 pass — **not** per-segment normalisation, which would flatten intra-chapter dynamics; gain does
+  not move time, so the index is untouched; **(4)** silence-trim + a controlled ~250–350 ms gap —
+  **⚠ the single easiest way to silently corrupt the index**: cumulative offsets must come from the
+  **final post-trim PCM lengths**, never from API-reported durations; verse times shift by `−leadTrim`
+  within their segment; the last verse's end clamps to the trimmed duration; `D-AUD-E-35`'s guard is
+  evaluated **after** trimming; **(5)** outlier detection (loudness + chars/sec vs the chapter's own
+  MAD) with **bounded** targeted re-render — **at most 2 passes, best-of-N, never "re-render until
+  good"**, because v3 variance may never converge and would spend real money failing to.
+  Remedies **(6) seed** and **(7) `stability`** are configuration, not code — and **(7) is explicitly
+  the owner's call**, A/B'd on pilot audio with the expressiveness cost stated, because it trades away
+  the exact thing he chose v3 for. It must never be quietly dialled in by a render session.
+  **Also encode R7:** decode and concatenate as **PCM**, then encode **once** — never concatenate
+  encoded `.opus`, which produces boundary artefacts *and* a container duration that no longer matches
+  the index.
+  **Rejected and must stay rejected** (pinned in review, not just prose): cross-fades (they make two
+  verses claim the same milliseconds — trading an audible artefact for an **index-correctness** one),
+  unbounded whole-chapter re-renders, hand-editing 1,509 seams, and "document the seams" (surrender,
+  available only as §13's escalation outcome and only as an owner decision).
+  **Acceptance:** every remedy is pure/JVM-testable where it is code; the trim-offset arithmetic is
+  **mutation-pinned** (compute offsets from API durations instead of post-trim lengths ⇒ red);
+  exercised on real pilot audio at Q4. **JVM-provable**, except the listening judgement.
 - **SE-T9 — The go/no-go, against the §4 checklist** (Morgan + Owner) — every row ticked, or the render
   does not start.
 
@@ -873,7 +1058,8 @@ in the same place**. F therefore opens with an intake gate and treats the corpus
 - **[A2] SF-T0 — Artifact intake: what comes back, and what it clears before anything is built from it
   (NEW)** (Riley). The hand-back contract, specified before the render leaves: **(a) the package** —
   1,189 `.opus` chapter files in the `SF-T4` voice-scoped layout, the per-verse timing index, and a
-  manifest recording **voice id + `eleven_flash_v2` + params + lexicon version** (D-AUD-E-21); **(b)
+  manifest recording **voice id + `eleven_v3` + params + lexicon version [A3]** (D-AUD-E-34), **[A3]
+  plus the established cap, the segmentation decisions and the per-chapter seam count**; **(b)
   integrity** — a checksum file produced *on the render machine*, and every blob re-hashed on arrival
   and matched against it, so a truncated transfer is caught before it is mistaken for a truncated
   render; **(c) provenance** — the ASR/WER and boundary-agreement report from `SF-T2` for every chapter,
@@ -882,20 +1068,28 @@ in the same place**. F therefore opens with an intake gate and treats the corpus
   (`SF-T5`) must be **green on the arrived artifact before a single pack module is populated or a single
   byte is uploaded to a corpus release**. Intake is a checkpoint, not a formality: an artifact that
   fails it goes back for a per-chapter re-render, which the model pin makes cheap (below).
-- **SF-T1 — `tools/render_audio.py`** (**[A2] Owner runs it**; Diego + Riley author it) — **[A2] pinned
-  to `eleven_flash_v2` (D-AUD-E-21)**, plus the pinned voice id, params and the `SE-T4` lexicon; per
-  chapter, `strip(text_markup)` joined; `with-timestamps`, Forced Alignment fallback, **never estimated**
-  (D-AUD-E-23); Opus 24 kbps mono; derive `[verseId, startMs, endMs]`.
-  **[A2] The pin's three ticket consequences, which is why it belongs in the plan and not only the
-  spec:** (1) **one request per chapter** — every one of the 1,189 chapters fits inside flash_v2's
-  30,000-char cap (against 208 that would blow `eleven_v3`'s 5,000), so the script is a flat loop with
-  **no splicing**; (2) **no splices ⇒ one unbroken alignment per chapter**, so timestamps never have to
-  be stitched across request boundaries — which is the single largest source of the drift `RM-8` exists
-  to catch; (3) **the unit of render == the unit of correction == the unit of the artifact**, so a
-  mispronunciation found in year two is one chapter re-rendered, which is what makes R-AUD-1 and
-  D-AUD-E-19 survivable. Do not let a "just use the newer model" convenience edit through review: the
-  pin is a **capability** constraint (phoneme tags), not a taste. `tools/requirements.txt` **stops
-  claiming stdlib-only** and says so explicitly (Whisper + ffmpeg, render-machine only, never shipped).
+- **SF-T1 — `tools/render_audio.py`** (**[A2] Owner runs it**; Diego + Riley author it) — **[A3] pinned
+  to `eleven_v3` (`D-AUD-E-34`), which is mandatory and has no fallback**, plus the pinned voice id,
+  params and the `SE-T4` lexicon; per chapter, `strip(text_markup)` joined; `with-timestamps`, Forced
+  Alignment fallback, **never estimated** (D-AUD-E-23); Opus 24 kbps mono; derive
+  `[verseId, startMs, endMs]`.
+  > **[A3] RETRACTION — A2's headline claim here was wrong under v3 and is withdrawn.** A2 said "one
+  > request per chapter, no splicing", which was true of `flash_v2`'s 30,000-char cap and is **false**
+  > for `eleven_v3`, whose cap is far smaller (Q1 establishes it; the plausible range swings seams
+  > 213 → 1,509). So: **most chapters are one request, hundreds are not**, the script is a
+  > **segmenting** pipeline rather than a flat loop, and it consumes `SE-T12`'s splitter and remedy
+  > chain rather than avoiding the problem. **Request Stitching — the designed mitigation for exactly
+  > this — is unavailable for v3 (`D-AUD-E-41`)**, so continuity must be *manufactured*, which is what
+  > `SE-T12` is for. Two of A2's three consequences survive intact and are still load-bearing:
+  > **the unit of render == the unit of correction == the unit of the artifact** (a mispronunciation
+  > in year two is one chapter re-rendered — what makes R-AUD-1 and D-AUD-E-19 survivable), and
+  > **timestamps must never be stitched carelessly across request boundaries** (`RM-8`) — which under
+  > segmentation becomes `SE-T12` remedy 4's offset arithmetic and is now a *harder* problem, not an
+  > avoided one.
+  **Do not let a "just use a bigger-cap model" convenience edit through review:** the owner rejected
+  `eleven_multilingual_v2` and `eleven_flash_v2` on output quality, so the pin is a **product**
+  constraint on top of the phoneme-tag capability constraint. `tools/requirements.txt` **stops claiming
+  stdlib-only** and says so explicitly (Whisper + ffmpeg, render-machine only, never shipped).
 - **SF-T2 — `tools/verify_audio_asr.py` — the independent witness (D-AUD-E-8)** (Riley) — local Whisper,
   pinned model + revision, offline: WER vs the source text, and **ASR-derived verse boundaries compared
   against the vendor's** (≤ 300 ms). Per §16.4 this is the *only* check on the timing index, because the
@@ -920,7 +1114,7 @@ in the same place**. F therefore opens with an intake gate and treats the corpus
   registry, not against ElevenLabs** (it iterates registered voices and asserts the invariants for
   each), and it asserts that the **real, rendered manifest honours the same contract the `SB-T11`
   fixture defined** — same `manifestVersion`, same required fields, same coverage semantics, and the
-  recorded voice id / `eleven_flash_v2` / params / lexicon version actually present. `SB-T11`'s
+  recorded voice id / **`eleven_v3` [A3]** / params / lexicon version actually present. `SB-T11`'s
   synthetic fixture is **retained and re-run here** so the gate keeps exercising two entries. Mutation:
   hard-code the gate to the real voice id ⇒ the synthetic-voice assertions go red.
 - **SF-T6 — `AUD-VERIFY`: SHA-256 verification in the release job** (Jordan) — every blob checked against
@@ -1033,7 +1227,10 @@ way they are, and it is the artifact I most want the owner to hold.
 | 12 | ✅ **[A2] The render machine, the vendor account and the budget have a named owner — the OWNER**, who will drive the render himself, possibly out-of-session | `OQ-AUD-E-5` resolved 2026-07-26 | — | Owner |
 | **13** | **[A1 · A2] G-PACKSHAPE — the manifest shape is frozen and validated** on placeholder bytes through a real Play cycle, **and the resolution mechanism is proven with a synthetic second voice at zero bytes** | `SA-F3`; the frozen shape in A's handoff; **`SB-T11` green** | A (`SA-T9`, `SA-T6`) + **B (`SB-T11`)** | Avery / Diego / Riley |
 | **14** | **[A2] The render runbook is written, reviewed and accepted by the owner** — self-contained, assuming this session is not loaded | `SE-T10`; the `SF-T0` hand-back contract specified | E (`SE-T10`) | Owner (accepts) |
-| **15** | **[A2] The lexicon is committed and signed off, and the pilot was rendered on the pinned `eleven_flash_v2`** | D-AUD-E-21/22; `SE-T3`/`SE-T4` | E | Owner / Riley |
+| **15** | **[A3] The lexicon is committed and signed off, and the pilot was rendered on the pinned `eleven_v3`** *(supersedes A2's flash_v2 wording — the owner rejected that model)* | `D-AUD-E-34`/`D-AUD-E-22`; `SE-T3`/`SE-T4` | E | Owner / Riley |
+| **16** | **[A3] Q1 + Q2 answered empirically** — the real per-request cap, and whether Request Stitching truly fails on v3 | `SE-T3`; a positive Q2 collapses the whole `D-AUD-E-40` ladder to one line | E | Riley |
+| **17** | **[A3] The Q4 seam verdict: seams are inaudible with the `D-AUD-E-40` ladder worked in order** — or we **stop and escalate, and do not spend** | `SE-T3` Q4 against `SE-T12`'s built chain | E | **Owner** |
+| **18** | **[A3] The `SE-T11` Studio spike has REPORTED** — Sprint F is not scheduled before it does | Diego's scheduling verdict: a one-way ~$500–688 door with both escape routes gone | E (`SE-T11`) | Diego / Owner |
 
 **If row 9 fails**, re-group to section packs — one edit to `AudioPackPlan` and the generator, **no
 artifact change, no re-render**. That is free today and a re-render after F. **If row 10 fails**, D-AUD-3
@@ -1073,8 +1270,11 @@ Full local command: `./gradlew spotlessCheck lintDebug assembleDebug testDebugUn
   two-book portion, all 117 superscriptions spoken-not-numbered, stripped text only, the three stop rules.
   **[A2] Plus `SB-T11`: a synthetic second voice resolves end-to-end with zero production code change,
   and the derive-identity-from-pack-name mutation is killed** (G-PACKSHAPE's proof half).
-- **[A2] E:** the runbook (`SE-T10`) is reviewed and **accepted by the owner**; the lexicon is committed
-  and signed off; the pilot was rendered on the **pinned** model.
+- **[A2·A3] E:** the runbook (`SE-T10`) is reviewed and **accepted by the owner**; the lexicon is
+  committed and signed off; the pilot was rendered on the pinned **`eleven_v3`**; **[A3] Q1/Q2 answered
+  empirically, `SE-T12`'s remedy chain built and unit-tested (trim-offset arithmetic mutation-pinned),
+  the Q4 seam verdict given by the owner, and the `SE-T11` Studio spike reported.** "Ladder exhausted,
+  seams still audible" is a **hard stop** — escalate, do not spend.
 - **[A2] F, before anything else:** the `SF-T0` **intake gate** — checksums re-verified on arrival, the
   ASR/boundary report present, no estimated timings, and `AudioTimingVerificationTest` green **on the
   arrived artifact** — passes *before* a pack module is populated or a corpus release is uploaded.
@@ -1124,7 +1324,8 @@ Full local command: `./gradlew spotlessCheck lintDebug assembleDebug testDebugUn
 | **RM-9** | **Scope creep into a media app (R-AUD-6/RE-AUD-8).** Session lifecycle, focus, notifications, speed, timers, downloads, queues. | The largest feature since V3 eats sprints on "just one more control". | Phase 1's cut is the forcing function; the two-seam split means Phase 2 adds **one class**; **no global mini-player** (D-AUD-E-12); PRD §4's non-goals are long on purpose and are scope protection, not commentary. | Morgan / Diego |
 | **RM-10** | ~~**`OQ-AUD-1` unanswered stalls E and F indefinitely.**~~ **[A1] RETIRED — resolved 2026-07-25 (ElevenLabs).** | — | Retained as a record: the two-phase cut meant Phase 1 was never exposed to this risk, and would have shipped on schedule even if the answer had taken months. That property is worth keeping in mind for the *next* unbounded owner question. | — |
 | **[A1] RM-13** | **Long-lived-branch drift.** An 8-sprint epic against a `main` that ships owner-tweak sprints most weeks, touching six files the epic also rewrites. | A brutal merge at exactly the moment we least want risk — the Phase-1 ship. | §9.2: **merge `main` → branch at every sprint boundary and immediately after every `main` release tag**, never the reverse; the branch is never more than one release behind; the §1.3 parity suite is the merge's acceptance test; the conflict-prone file list is named in §9.2 so `main`-side work in those files is flagged for an immediate merge rather than waiting. **`D-M-AUD-9`'s flag is the structural alternative** and is recommended for the post-D window. | Jordan (cadence) / Morgan (tracking) |
-| **[A2] RM-15** | **The render executes out-of-session.** The owner owns it and may run it in a separate session, without this planning context, unable to ask a question mid-run. | A four-figure render executed against a stale assumption — the wrong model, an unsigned-off lexicon, estimated timings quietly accepted — discovered only at intake. | `SE-T10`'s runbook is **self-contained and written before the door**, not alongside the render; `SF-T0`'s intake gate assumes nothing about where the artifact came from and re-verifies integrity, provenance and correctness on arrival; the `eleven_flash_v2` pin makes a rejected chapter a **per-chapter** re-render rather than a re-run; and the runbook carries a standing spend ceiling so an out-of-session run cannot quietly overspend. | Owner / Riley |
+| **[A2] RM-15** | **The render executes out-of-session.** The owner owns it and may run it in a separate session, without this planning context, unable to ask a question mid-run. | A four-figure render executed against a stale assumption — the wrong model, an unsigned-off lexicon, estimated timings quietly accepted — discovered only at intake. | `SE-T10`'s runbook is **self-contained and written before the door**, not alongside the render; `SF-T0`'s intake gate assumes nothing about where the artifact came from and re-verifies integrity, provenance and correctness on arrival; **[A3]** the per-chapter render unit keeps a rejected chapter a **per-chapter** re-render rather than a re-run, and `SE-T12` remedy 5 bounds segment re-renders at 2 passes best-of-N so an out-of-session loop cannot spend unbounded money failing to converge; and the runbook carries a standing spend ceiling. | Owner / Riley |
+| **[A3] RM-16** | **The v3 seam problem has no escape route.** The owner's quality rejection removed the fallback model; the vendor removed Request Stitching (`D-AUD-E-41`). At the worst plausible cap this is **1,509 seams**. Diego re-rated `RE-AUD-18` to **HIGH**. | Audible splices through the corpus — and the remedies that *would* be easy (cross-fades) corrupt the timing index instead, which is worse. | The problem is **concentrated, not spread**: even at the worst cap **20.6 %** of the Bible is seam-free, and at the documented cap **82.5 %** is. Worked in order: `SE-T12` builds remedies 1–5 as tested code **before** the door; Q1 sizes the problem; Q2 re-verifies the one fact that would collapse the ladder; Q4 is the owner's listening gate with an explicit **stop-and-escalate**; `SE-T11` spikes Studio as a root fix. Remedy 7 (`stability`) is last and is the owner's call because it trades away what he chose v3 for. | Diego / Owner |
 | **[A1] RM-14** | **Plug-and-play multiplies the byte problem.** Two voices = ~1.7 GB of potential downloads, ~132 packs, and Play's **4 GB cumulative per-device** ceiling (V13) starts mattering at ~4 voices. | The storage-complaint failure mode (R-AUD-2) scales with voices, and `SA-F1`'s unverified pack-count answer now has to hold at the multi-voice count. | Carry two synthetic voices through the **Sprint A** spike so `SA-F1` answers the real question (`SA-T5`); per-voice usage reporting and per-voice deletion in `SG-T7`; the section-pack fallback halves to 16 packs for two voices. **Generality is a shape decision, not a licence to ship voices** — D-AUD-13 (one voice) still governs what we *ship*. | Avery / Priya |
 | **RM-11** | **One-screen-fit regression at N=4** (R-AUD-8). Four sprints were spent winning it. | The M'Cheyne case re-breaks a guarantee paid for four times. | Height-neutral card ▶ (structurally, not by luck); no new button row; Idle composes nothing; the cap swap **returns more than the bar takes** (Priya §9). Confirmed on glass in `SD-T1` (M-AUD-10). | Priya |
 | **RM-12** | **Opus decode gaps on real API 26/27 devices** (RE-AUD-7). | Phase 2 silently unusable on Android 8.x. | Device pass is a **release gate** (`SH-T1`); `media3-exoplayer-opus` is the known, priced fallback (~1 MB/ABI = a third of our headroom) — **not shipped pre-emptively**. | Avery |
@@ -1157,7 +1358,8 @@ means work genuinely cannot start, not that it would be nice to know.
 | **OQ-AUD-E-2** | D-AUD-E-19 — audio content never changes in a PATCH release — as a **product** commitment. | Owner | **E** (it is part of D-AUD-3's real price) / **H** (standing rule) | Confirm once `SA-F2` gives the measured number. An audio change rides the automatic app update **with no consent prompt**. |
 | **OQ-AUD-E-1** | The §8 download-unit table (§16.1): book / testament / everything / "the books your next 30 days need"? | Owner + Maya | **G** | Accept §16.1's rewrite and delete the "Today's readings ~2.4 MB" row — a pack is atomic, so that unit cannot exist. The **product rule** ("never forced to take ~850 MB") survives intact. |
 | **OQ-AUD-E-5** | ~~Who owns the render machine and the spend?~~ | Owner | ~~E/F~~ | ✅ **[A2] RESOLVED 2026-07-26 — the OWNER owns it and will drive the render himself**, *"possibly in a separate session"*. Nothing is gated on naming a render owner. The knock-on is not scheduling but **shape**: an out-of-session render needs `SE-T10` (a self-contained runbook, written before the door) and `SF-T0` (an intake gate). |
-| **[A2] OQ-AUD-E-6** *(Diego's)* | `eleven_flash_v2` (pinned) vs `eleven_v3`, with the price. | Owner | **E** — decided **at the pilot** (`SE-T3`) | The pin is a **capability** constraint, not a taste: phoneme tags exist only on those two models, and only flash_v2 renders every chapter in one request. Recommend confirming the pin unless the pilot says otherwise. |
+| **OQ-AUD-E-6** *(Diego's)* | ~~`eleven_flash_v2` vs `eleven_v3`~~ | Owner | ~~E~~ | ✅ **[A3] RESOLVED 2026-07-26 — `eleven_v3`, MANDATORY, NO fallback.** The owner tested `eleven_multilingual_v2` and `eleven_flash_v2` and rejected both on output quality: *"I do NOT like the output. So, I'll need to find a way to use V3 regardless."* `D-AUD-E-21`→`D-AUD-E-34`, whose fallback clause was then revoked (A4). The pilot no longer elects a model; it answers Q1–Q5 (`SE-T3`). |
+| **[A3] OQ-AUD-5** *(Maya's)* | ~~Announce the reference? Speak verse numbers?~~ | Owner | ~~B~~ | ✅ **RESOLVED — spoken headings** (Diego's A3 §5A). Verse numbers are **never** spoken; a reading announces its heading. **This was Sprint B's only blocker; B is now startable** (§0.1). |
 | **OQ-AUD-E-4** | Is `AUD-C-1` budgeted as a real ticket with a real Play cycle? | **Morgan** | — | **Resolved: yes — it is Sprint A, and it needs two cycles** (D-M-AUD-1). **[A1] Now the epic's dominant scheduling constraint (RM-2) — dispatch it first.** |
 | **[A2] OQ-AUD-E-8** *(new; renumbered from OQ-AUD-E-6 — that id was minted concurrently in `ENGINEERING_SPEC-audio.md` for the `eleven_flash_v2` vs `eleven_v3` pilot decision, and the `OQ-AUD-E-*` namespace is the engineering spec's)* | **The pack-manifest schema and the voice-registry contract.** Diego is speccing it concurrently; this plan only decides *where it lands* (D-M-AUD-7). | Diego | **A (`SA-T9`)** — the shape must be frozen before the placeholder packs are uploaded, because a Play cycle is how it gets validated | Mirror the two idioms already trusted here: `registry.json` + `PlanDescriptor` (an artifact declares its own shape) and the `translation` table behind `ReaderVersionSelector` (D-N-3: branch on *count*, never on *identity*). |
 | **[A2] OQ-AUD-E-9** *(new; renumbered from OQ-AUD-E-7 — that id was minted concurrently in `ENGINEERING_SPEC-audio.md` for the missing-chapter prompt's third option)* | **Does plug-and-play mean we intend to SHIP a second voice, or only that adding one must be data?** | Owner | Not blocking — but it changes G's download-unit table and RM-14's storage story | **Recommend: generality now, one shipped voice** (D-AUD-13 unchanged). The requirement as stated is about *architecture*, and the architecture is cheap; shipping a second voice is another render and another ~850 MB and is a separate decision. |
