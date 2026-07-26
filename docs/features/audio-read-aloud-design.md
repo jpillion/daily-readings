@@ -1,17 +1,31 @@
 # Design spec: Read aloud (audio) — UI/UX
 
-> **Owner:** Priya (design/UI eng) · **Status:** Design for review — needs owner sign-off on the
-> items in §12 · **Last updated:** 2026-07-25 · **Branch:** `claude/audio-read-aloud-options-vgb793`
+> **Owner:** Priya (design/UI eng) · **Status:** Design for review — **amendment pass P2 applied**
+> after Maya's PRD amendments A1–A3 and three owner decisions · needs owner sign-off on the items
+> in §12 · **Last updated:** 2026-07-25 (amendment P2) ·
+> **Branch:** `claude/audio-read-aloud-options-vgb793`
 >
 > **Input:** [docs/PRD-audio.md](../PRD-audio.md) (Maya). This doc owns **what it looks like and how
-> it behaves**; it does not re-litigate anything locked in PRD-audio §7 (`D-AUD-1…16`). It defers
-> mechanism (MediaSession/ExoPlayer/TTS wiring, PAD pack layout) to Diego and sequencing to Morgan.
-> Design decisions here are numbered **`D-AUD-UI-n`** so they never collide with Maya's `D-AUD-n`.
+> it behaves**; it does not re-litigate anything locked in PRD-audio §7 (`D-AUD-1…28`). It defers
+> mechanism (MediaSession/ExoPlayer/TTS wiring, PAD pack layout, the pack manifest + voice registry)
+> to Diego and sequencing to Morgan. Design decisions here are numbered **`D-AUD-UI-n`** so they
+> never collide with Maya's `D-AUD-n`.
 >
 > **Owner decisions already locked and honoured throughout:** delivery is Play Asset Delivery
-> (~870 MB whole Bible, ~13 MB per book, Google-hosted, on demand); **no "Narrated by AI" or
-> synthetic-voice disclosure anywhere** — no such string exists in this design, and the voice is
-> named by *origin and quality* only (D-AUD-5).
+> (~853 MB whole Bible, **the atomic unit is a book pack** — ~8 MB median, 0.3 MB for 2 John,
+> ~47 MB for Psalms — Google-hosted, on demand); the voice source is **ElevenLabs** (D-AUD-22);
+> **no "Narrated by AI" or synthetic-voice disclosure anywhere** — no such string exists in this
+> design, and the voice is named by *origin and quality* only (D-AUD-5).
+
+### Amendment P2 — 2026-07-25
+
+| # | What changed | Where |
+|---|---|---|
+| P2.1 | **Voice source settled: ElevenLabs (D-AUD-22).** No design consequence beyond wording — the voice is still named by origin/quality only, per D-AUD-5, which is unchanged and remains absolute. | §11 wording only |
+| P2.2 | **Packs are plug-and-play (D-AUD-23/24, FR-AUD-28/29).** The voice selector is designed, placed and specified — and **renders as a two-entry row in release one and as nothing in Phase 1**, with the multi-narration branch built, pinned and unexercised. The D-N-3 posture, verbatim. | §7.1, D-AUD-UI-14 |
+| P2.3 | **One active voice, app-wide and exclusive (D-AUD-26/27/28, FR-AUD-30).** The six per-book download states gain a **voice dimension**; the not-downloaded prompt is promoted from an edge case to the **primary path into downloading**; whole-voice deletion is designed; and the "you have this book, but not in the voice you're listening in" copy problem is resolved. | §7.2–7.4, §8, D-AUD-UI-15…18 |
+| P2.4 | **A1 sizing absorbed.** Every size in this doc was restated against the real mechanism: the pack is a **book**, so "Today's readings · 2.4 MB" is gone and the small units are honestly labelled **book-sets**. ~870 MB → ~853 MB throughout. | §7.3 |
+| P2.5 | **My two placement calls were adopted by product** as D-AUD-19 (root transport, `ReaderAudioSlot` retired) and D-AUD-20 (stats cap 45 % → 30 %), both flagged to the owner as OQ-AUD-10/11. Recorded; no change to the design. | §2, §12 |
 >
 > **Companion reading:** [reader-portion-view.md](reader-portion-view.md) (the two reader contexts),
 > [tile-hint-provider.md](tile-hint-provider.md) (the reactive-hint idiom this design reuses),
@@ -27,14 +41,17 @@ existing `NavigationBar` in `RootScaffold` **only while a session is live**, and
 the Schedule's stats-panel height cap, not out of the readings**. It is the app-wide answer to
 "playback outlives the screen" — it follows you onto the Schedule, into Settings, everywhere — and
 tapping it opens a `ModalBottomSheet` with the full transport, speed, sleep timer, follow-along
-toggle, and the download/voice state for the current passage. Playback is started from a
+toggle, and the download state for the current passage **in the one active voice**. Playback is started from a
 **height-neutral trailing ▶ button** on each Schedule reading card (48 dp, inside the existing
 48 dp checkbox row — 0 dp of new height) and from a top-bar action for the whole day. In the reader
 the reserved `activeVerseId` becomes a **filled `secondaryContainer` highlight with a leading rule
 and a spoken "Now playing" state** — never colour alone — with autoscroll that yields to the user's
 thumb and re-arms from a visible chip. Downloads get their own Settings section and a pushed
 "Downloaded audio" screen; **no byte lands unasked**, and pressing play with nothing downloaded
-opens a two-choice sheet rather than dead-ending or silently substituting a worse voice.
+opens a two-choice sheet rather than dead-ending or silently substituting a different voice. **One
+voice is active app-wide (D-AUD-26)** — coverage is evaluated only against it, a gap is always a
+prompt to download *that* voice, and the app never plays a voice the user did not choose; the
+device voice is a first-class entry in the same selector (D-AUD-27), never a consolation prize.
 
 ---
 

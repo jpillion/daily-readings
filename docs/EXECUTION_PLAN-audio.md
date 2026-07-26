@@ -763,15 +763,26 @@ simplifications, recorded so nobody re-adds them:
   human-triaged and either re-rendered or recorded as an accepted variance with a reason, in the posture
   of Sprint A's five `TEXT_OVERRIDES` and Sprint 1's seven reconciled conflicts.
 - **SF-T4 — Commit the small half; publish the large half (D-AUD-E-3, D-AUD-E-6)** (Jordan) —
-  `audio/timings/<usfm>.json` ×66 (~0.9 MB, human-readable, diffable) + `audio/audio_manifest.json`
-  (1,189 rows of sha256/bytes/durationMs/WER) **to git**; the `.opus` blobs to a GitHub Release on an
-  `audio-corpus-v1` tag, **never to git, never to LFS**. Write the **runbook** (§8, item 2).
+  **[A1] voice-scoped layout from the start (D-M-AUD-7):** `audio/voices/<voiceId>/timings/<usfm>.json`
+  + `audio/voices/<voiceId>/audio_manifest.json` (with the voice descriptor as its head) **to git**; the
+  `.opus` blobs to a GitHub Release on an `audio-corpus-<voiceId>-v1` tag, **never to git, never to
+  LFS**. A second voice adds a directory and a tag; it changes no path that already exists. Write the
+  **runbook** (§8, item 2).
 - **SF-T5 — `AudioTimingVerificationTest` — the sixth standing data gate (M-AUD-2)** (Riley) — Diego's
   ten assertions, offline, ~1 s, **no audio bytes needed**; note assertion 2 is the day-by-day-equality
   analogue and assertion 5 (`endMs[last] == durationMs ± 250 ms`) is the truncation guard. Mutations to
   kill, each by exactly its intended test: drop a verse (→2), delete a superscription (→3), shorten a
   `durationMs` by 20 % (→5 **and not 6**), shift a `startMs` past the next (→4), widen a Psalm 119 window
   by one verse (→9), rename a pack (→10).
+  **[A1] Plus the plug-and-play proof (G-PACKSHAPE), in the Alt-Sprint-C/F idiom:** the gate is written
+  **against the registry, not against ElevenLabs** — it iterates registered voices and asserts the
+  invariants for each — and a **synthetic second-voice fixture** (a handful of chapters, fabricated
+  timings, its own manifest) is registered alongside the real corpus. **Acceptance: the synthetic voice
+  resolves end-to-end — registry → `AudioPackPlan` → `VerseTimingSource` → availability ladder → the
+  Settings voice list — with zero production code change.** That is exactly how Alt Sprint C proved
+  N-streams before a fourth stream existed, and why Chronological (N=1) then shipped with no production
+  code change at all. Mutation: hard-code the gate (or any consumer) to the real voice id ⇒ the
+  synthetic-voice assertions go red.
 - **SF-T6 — `AUD-VERIFY`: SHA-256 verification in the release job** (Jordan) — every blob checked against
   the committed manifest **before** it populates a pack module. Release assets are maintainer-mutable;
   this pin is the guard.
@@ -785,7 +796,14 @@ simplifications, recorded so nobody re-adds them:
 
 **Outcome goal:** the good voice, downloadable by unit, honest about every byte.
 
-**Blocked on `OQ-AUD-E-1`** (the §16.1 unit-table rewrite) before tickets are written.
+**Blocked on `OQ-AUD-E-1`** (the §16.1 unit-table rewrite) before tickets are written. **[A1] Note that
+the unit table is now two-dimensional — units are per (voice × book/testament/everything)** — which is
+another reason to settle it before G rather than during it.
+
+**[A1] The whole of G consumes the registry, never a voice literal (D-M-AUD-7).** If any ticket below
+ends up with a `when (voice)` or an `if (isHighQuality)`, it is wrong and the review should say so. The
+Settings voice row follows **D-N-3's `ReaderVersionSelector` idiom exactly**: one installed voice renders
+a static label, more than one renders the switcher — a branch on *count*, never on *identity*.
 
 **Candidate tickets (titles):**
 - **SG-T1 — `asset-delivery` returns to `:app`** (Avery) — D-M-AUD-3's Phase-2 half; re-run `SA-T0`'s
@@ -802,15 +820,20 @@ simplifications, recorded so nobody re-adds them:
   at our pack sizes, so `request()` checks the transport itself; we still surface
   `showConfirmationDialog()` when Play reports `REQUIRES_USER_CONFIRMATION` (that is how sideload
   manifests, and it must not be swallowed).
-- **SG-T5 — `PackVerseTimingSource`** (Avery) — per-book sidecar in the same pack as its audio; a `null`
-  return at any moment (pack evicted mid-session) degrades to the device voice and **suppresses the
-  highlight rather than guessing** (FR-AUD-11's "correct or absent").
-- **SG-T6 — Settings → Read aloud gains voice + downloads rows (D-AUD-UI-10)** (Priya) — undownloaded
-  high-quality voice = **visible-but-disabled** (the S14/S15 teaser idiom); the no-Play-Store sentence
-  said **once, in Settings, never as a popup**.
+- **SG-T5 — `PackVerseTimingSource`** (Avery) — per-book sidecar in the same pack as its audio, **[A1]
+  located via the pack's own manifest, never a computed path**; a `null` return at any moment (pack
+  evicted mid-session) degrades down the ladder and **suppresses the highlight rather than guessing**
+  (FR-AUD-11's "correct or absent").
+- **SG-T6 — Settings → Read aloud gains voice + downloads rows (D-AUD-UI-10)** (Priya) — **[A1] the voice
+  row is built from the registry, in the D-N-3 idiom: one installed voice ⇒ a static label, more than
+  one ⇒ the `SettingsDropdownRow` switcher.** An undownloaded voice is **visible-but-disabled** (the
+  S14/S15 teaser idiom). Voices are still named by **origin and quality only** (D-AUD-5) — the manifest
+  supplies the display name, so a new voice never needs a new string constant. The no-Play-Store sentence
+  is said **once, in Settings, never as a popup**.
 - **SG-T7 — The "Downloaded audio" pushed screen (D-AUD-UI-11)** (Priya) — over `BookCatalog` (no second
-  book table); one ≥48 dp state-button per row across the six states; delete-all is the **second** tap
-  from Settings (NFR-AUD-E, literally).
+  book table); **[A1] grouped by voice when more than one is installed, and reporting on-disk usage per
+  voice** (NFR-AUD-E gets harder with N voices, RM-14); one ≥48 dp state-button per row across the six
+  states; delete-all is the **second** tap from Settings (NFR-AUD-E, literally).
 - **SG-T8 — Cellular consent + delete confirmations** (Sam) — per-download opt-in that **never** edits the
   standing Wi-Fi-only setting; every size stated before commitment.
 - **SG-T9 — Wire `NeedsSource`'s two-choice sheet to real downloads (D-AUD-UI-12)** (Sam) — play never
@@ -856,8 +879,8 @@ way they are, and it is the artifact I most want the owner to hold.
 
 | # | Condition | Evidence | Sprint | Owner |
 |---|---|---|---|---|
-| 1 | `OQ-AUD-1` answered — which voice source | The three-part experiment; LibriVox disqualified by alignment accuracy or chosen on it | E (`SE-T1`) | Owner |
-| 2 | Vendor timestamp contract confirmed (char/word; survives encode) | One API call | E (`SE-T2`) | Diego |
+| 1 | ✅ **[A1] `OQ-AUD-1` answered — ElevenLabs** | The owner auditioned the field and chose on voice realism | — (resolved 2026-07-25) | Owner |
+| 2 | ElevenLabs' timestamp contract confirmed (char/word; survives encode) | One API call | E (`SE-T2`) | Diego |
 | 3 | **G-VOICE — the pronunciation pilot signed off** (M-AUD-6, R-AUD-3) | The owner has heard 1 Chr 1 / Num 26 / Ezra 2 + the tone set | E (`SE-T3`) | Owner |
 | 4 | The pronunciation lexicon exists, built from the pilot | Pinned, versioned, an input to the renderer | E (`SE-T4`) | Riley |
 | 5 | ASR thresholds calibrated on real output, not proposed | Measured WER + boundary distributions | E (`SE-T5`) | Riley |
@@ -866,12 +889,16 @@ way they are, and it is the artifact I most want the owner to hold.
 | 8 | **G-POSTURE** — the manifest delta is measured and matches | Both diffs, verbatim | A (`SA-T0`) | Jordan |
 | 9 | **G-DELIVERY (a)** — Play accepts the pack layout; `requestFetch`/`assetsPath()` work | `SA-F1` on a real device | A (`SA-T6`) | Owner/Avery |
 | 10 | **G-DELIVERY (b)** — the real update-patch cost is measured, and D-AUD-3 still stands at that price | `SA-F2` + `OQ-AUD-E-2` confirmed | A (`SA-T7`), E (`SE-T8`) | Owner |
-| 11 | Phase 1's queue gate is green — the timing index has an **executable specification** | M-AUD-1, and Phase 1's per-verse TTS boundaries in a shipped build | B (`SB-T10`), C | Riley |
+| 11 | **[A1] re-scoped:** Sprint B's queue gate is green — the timing index has an **executable specification** | M-AUD-1 (`SB-T10`). *Previously also required Phase 1 shipped; with ElevenLabs supplying timestamps this is derivation, not alignment, so B suffices and E/F may overlap C/D* | B | Riley |
 | 12 | The render machine, the vendor account and the budget have a **named owner** | `OQ-AUD-E-5` answered | §8 | **Owner** |
+| **13** | **[A1] G-PACKSHAPE — the pack-manifest shape is frozen and validated** on placeholder bytes through a real Play cycle, and `AudioPackPlan`/the ladder/the settings key are voice-scoped | `SA-F3`; the frozen shape recorded in A's handoff | A (`SA-T9`, `SA-T6`) | Avery / Diego |
 
-**If row 9 fails**, re-group to 8 section packs — one edit to `AudioPackPlan` and the generator, **no
+**If row 9 fails**, re-group to section packs — one edit to `AudioPackPlan` and the generator, **no
 artifact change, no re-render**. That is free today and a re-render after F. **If row 10 fails**, D-AUD-3
 goes back to the owner before a dollar is spent. **If row 3 fails**, nothing downstream happens at all.
+**[A1] If row 13 fails**, the pack layout changes — which after F means re-packaging (and possibly
+re-rendering) ~850 MB. It is on this list for the same reason as everything else here: it is nearly free
+to establish now and expensive to establish later.
 
 ---
 
@@ -898,7 +925,8 @@ Full local command: `./gradlew spotlessCheck lintDebug assembleDebug testDebugUn
 ### 5.2 Sprint-specific gates
 
 - **A:** `SA-T0` matches ESpec §12 exactly for both postures; the PR bundle gate keeps `CEILING=12000000`
-  verbatim and a planted `.opus` under `base/` fails the new job; `SA-F1`/`SA-F2` recorded.
+  verbatim and a planted `.opus` under `base/` fails the new job; `SA-F1`/`SA-F2`/**`SA-F3`** recorded;
+  **[A1]** a pack is identified from its manifest and the derive-from-pack-name mutation is killed.
 - **B (HARD GATE):** **M-AUD-1 green with zero audio bytes in the repo** — Psalm 119 windows exact, the
   two-book portion, all 117 superscriptions spoken-not-numbered, stripped text only, the three stop rules.
 - **C:** `AccessibilityGateTest` extended over every Priya-§10 tag **plus the pinned absence of a
@@ -910,7 +938,8 @@ Full local command: `./gradlew spotlessCheck lintDebug assembleDebug testDebugUn
 - **E:** the §4 checklist, every row.
 - **F (RELEASE GATE):** `AudioTimingVerificationTest` green against the committed index; six mutations
   killed each by its intended test; every over-threshold chapter triaged and logged; `AUD-VERIFY` SHA
-  step green.
+  step green; **[A1] the synthetic second voice resolves end-to-end with zero production code change,
+  and the hard-code-the-voice-id mutation is killed.**
 - **G:** M-AUD-5 JVM-pinned; the degradation ladder green at every rung (downloaded → device → honest
   message) including an evicted pack mid-session.
 - **H:** no `INTERNET` in the merged release manifest; base ≤ 12 MB; zero audio bytes under `base/`; the
@@ -920,12 +949,12 @@ Full local command: `./gradlew spotlessCheck lintDebug assembleDebug testDebugUn
 
 | Sprint | **JVM-provable** | **Device-pass only** |
 |---|---|---|
-| A | `AudioPackPlan` totality; the CI assertions; the four settings keys | **Everything that matters**: Play accepting 66 packs, `requestFetch`, `assetsPath()`, eviction, sideload, the update-patch size. The manifest diff is build-provable, not JVM |
+| A | `AudioPackPlan` totality (× two voices); the CI assertions; the four settings keys; **[A1] manifest parsing + the voice registry + the derive-from-name mutation** | **Everything that matters**: Play accepting the pack count, `requestFetch`, `assetsPath()`, **[A1] manifest discovery after a real fetch**, eviction, sideload, the update-patch size. The manifest diff is build-provable, not JVM |
 | B | The queue (M-AUD-1), the stop rules, the availability ladder, the sleep timer, the focus **transitions**, the controller state machine | Real TTS engines across OEMs; screen-off continuity; the lock screen; a real phone call / sat-nav; API 26/27 engine behaviour |
 | C | Highlight/`activeVerseId` rendering, autoscroll yield logic, the session-scoped tap mode, marking, a11y tags + labels + the pinned `liveRegion` absence, the ban-scan, layout **arithmetic** | Highlight **contrast** in light/dark/dynamic on a real palette; autoscroll **cadence** and fling behaviour; long-press feel; **the two-voice TalkBack collision**; one-screen fit on glass; the bar's slide-in against the nav bar |
 | D | — | The whole sprint |
-| E | The alignment spike's numbers | **The voice itself** (M-AUD-6) and the 24-vs-32 kbps listening check |
-| F | The entire gate — offline, no audio bytes (that is the design) | Nothing; the render happens off-CI on the render machine |
+| E | **[A1]** The ASR threshold calibration numbers; the lexicon's effect, measured re-render vs re-render | **The voice itself** (M-AUD-6) and the 24-vs-32 kbps listening check |
+| F | The entire gate — offline, no audio bytes (that is the design) — **[A1] including the synthetic-second-voice plug-and-play proof** | Nothing; the render happens off-CI on the render machine |
 | G | `verseAt(ms)` binary search, `AudioPackPlan` routing, the ladder with a `HighQuality` rung, M-AUD-5 | Real download / eviction / re-download; cellular dialog on a metered network; storage figures vs the OS; cancel responsiveness |
 | H | The three release assertions | Opus decode on API 26/27; highlight accuracy against the real audio at 2.0×; the full transport matrix |
 
@@ -936,7 +965,7 @@ Full local command: `./gradlew spotlessCheck lintDebug assembleDebug testDebugUn
 | # | Risk / dependency | Impact | Mitigation | Owner |
 |---|---|---|---|---|
 | **RM-1** | **The render is a one-way door.** ~$250–800, and a pronunciation defect means paying again (R-AUD-3). | The classic "expensive re-import" failure V3 was designed to avoid, with a real invoice attached. | The §4 checklist, twelve rows, every one ✅ before F starts. The pilot (`SE-T3`) + the lexicon (`SE-T4`) are the highest-value controls in the epic. **Sprint E exists solely to be the wall in front of F.** | Owner / Morgan |
-| **RM-2** | **The Play review calendar is not ours.** `AUD-C-1` needs **two** cycles and each is days of wall-clock. | Discovering in Sprint F that Play rejects 66 packs means re-grouping *after* the render. | D-M-AUD-1: it moves to **Sprint A** and runs underneath B and C. Being wrong is a one-function edit **today** (D-AUD-E-5). | Morgan / Owner |
+| **RM-2** | **[A1] The Play review calendar is not ours — and it is now the epic's DOMINANT scheduling constraint.** `AUD-C-1` needs **two serial** cycles (cycle 2 needs a device already holding cycle 1's packs). With `OQ-AUD-1` resolved, nothing else on the Phase-2 path is unbounded. | Discovering in Sprint F that Play rejects the pack count means re-grouping *after* the render. Every day of delay in *starting* cycle 1 is a day added to the whole Phase-2 path. | D-M-AUD-1, promoted from prudent to load-bearing: `AUD-C-1` is **Sprint A** and `SA-T5`/`SA-T6` are the **first tickets dispatched in the epic**, before `SB-T1`. Being wrong is a one-function edit **today** (D-AUD-E-5). Everything else compresses under effort; this does not. | Morgan / Owner |
 | **RM-3** | **`SA-T0` is unverified today.** Diego could not build the merged manifest (`platforms;android-37` unpublished). Everything about the delivery posture rests on library-manifest inference. | If the delta differs from §12, the whole delivery approach re-plans. | It is the **first ticket of the first sprint** and it is go/no-go. If no machine can satisfy `compileSdk = 37`, that is itself a finding and the pin goes back to Diego before anything else. | Jordan / Diego |
 | **RM-4** | **This app is live in production at 100 %.** Phase 1 changes a **shipped gesture** (Sprint H's verse tap), adds a persistent bar, and swaps the stats cap. | A regression lands on real users of a 177-country release. | §1.3's four protections, each pinned; the parity rule ("a red shipped pin is a design defect, not a test to update"); **staged** rollouts (D-M-AUD-4), alpha first, and `OQ-AUD-4` answered by the owner before C — because changing a taught gesture is a product decision. | All / Morgan |
 | **RM-5** | **The corpus ops burden is annual and therefore forgettable.** Creating a tag, uploading 66 assets, bumping `AUDIO_CORPUS_TAG` happens roughly once a year. | The one person who knows how forgets, or leaves. | `SF-T4` includes a **written runbook** in `docs/`, and §8 requires a **named owner** — not "Jordan, probably". | §8 / Jordan |
@@ -944,7 +973,9 @@ Full local command: `./gradlew spotlessCheck lintDebug assembleDebug testDebugUn
 | **RM-7** | **The 12 MB gate could quietly become meaningless** once the AAB is ~900 MB. | The install-size guarantee D-V3-20 bought is lost without anyone noticing. | D-AUD-E-7: the number stays **verbatim** on an audio-less PR build, and the release job asserts **zero audio bytes under `base/`** — a structural invariant that cannot be satisfied by accident. Riley plants a fake `.opus` and proves the job fails (`SA-T3`). | Jordan / Riley |
 | **RM-8** | **Timing-index drift (R-AUD-4).** A highlight on the wrong verse is worse than none, and would silently corrupt the Psalm 119 windows. | The headline correctness requirement, broken invisibly. | D-AUD-E-8's ASR boundary agreement is the **only** check on the vendor's timestamps (§16.4 — the PRD's proposed witness compares different audio and proves nothing); ≤ 300 ms hard-fail; `null` timings ⇒ **no highlight**, never a guess. | Riley |
 | **RM-9** | **Scope creep into a media app (R-AUD-6/RE-AUD-8).** Session lifecycle, focus, notifications, speed, timers, downloads, queues. | The largest feature since V3 eats sprints on "just one more control". | Phase 1's cut is the forcing function; the two-seam split means Phase 2 adds **one class**; **no global mini-player** (D-AUD-E-12); PRD §4's non-goals are long on purpose and are scope protection, not commentary. | Morgan / Diego |
-| **RM-10** | **`OQ-AUD-1` unanswered stalls E and F indefinitely.** | The Phase-2 path has no start. | Phase 1 (B/C/D) has **no** dependency on it and ships regardless — that is most of the argument for the two-phase cut. E's `SE-T1` is designed so the *cheap disqualifying test* (alignment accuracy) runs before the expensive one (listening). | Owner |
+| **RM-10** | ~~**`OQ-AUD-1` unanswered stalls E and F indefinitely.**~~ **[A1] RETIRED — resolved 2026-07-25 (ElevenLabs).** | — | Retained as a record: the two-phase cut meant Phase 1 was never exposed to this risk, and would have shipped on schedule even if the answer had taken months. That property is worth keeping in mind for the *next* unbounded owner question. | — |
+| **[A1] RM-13** | **Long-lived-branch drift.** An 8-sprint epic against a `main` that ships owner-tweak sprints most weeks, touching six files the epic also rewrites. | A brutal merge at exactly the moment we least want risk — the Phase-1 ship. | §9.2: **merge `main` → branch at every sprint boundary and immediately after every `main` release tag**, never the reverse; the branch is never more than one release behind; the §1.3 parity suite is the merge's acceptance test; the conflict-prone file list is named in §9.2 so `main`-side work in those files is flagged for an immediate merge rather than waiting. **`D-M-AUD-9`'s flag is the structural alternative** and is recommended for the post-D window. | Jordan (cadence) / Morgan (tracking) |
+| **[A1] RM-14** | **Plug-and-play multiplies the byte problem.** Two voices = ~1.7 GB of potential downloads, ~132 packs, and Play's **4 GB cumulative per-device** ceiling (V13) starts mattering at ~4 voices. | The storage-complaint failure mode (R-AUD-2) scales with voices, and `SA-F1`'s unverified pack-count answer now has to hold at the multi-voice count. | Carry two synthetic voices through the **Sprint A** spike so `SA-F1` answers the real question (`SA-T5`); per-voice usage reporting and per-voice deletion in `SG-T7`; the section-pack fallback halves to 16 packs for two voices. **Generality is a shape decision, not a licence to ship voices** — D-AUD-13 (one voice) still governs what we *ship*. | Avery / Priya |
 | **RM-11** | **One-screen-fit regression at N=4** (R-AUD-8). Four sprints were spent winning it. | The M'Cheyne case re-breaks a guarantee paid for four times. | Height-neutral card ▶ (structurally, not by luck); no new button row; Idle composes nothing; the cap swap **returns more than the bar takes** (Priya §9). Confirmed on glass in `SD-T1` (M-AUD-10). | Priya |
 | **RM-12** | **Opus decode gaps on real API 26/27 devices** (RE-AUD-7). | Phase 2 silently unusable on Android 8.x. | Device pass is a **release gate** (`SH-T1`); `media3-exoplayer-opus` is the known, priced fallback (~1 MB/ABI = a third of our headroom) — **not shipped pre-emptively**. | Avery |
 
@@ -965,13 +996,16 @@ means work genuinely cannot start, not that it would be nice to know.
 | **OQ-AUD-8** | Whole-day playback in the first release? | Owner / **Morgan** | **C** | **Resolved by me: ship it** (D-M-AUD-5). ~a day of work, 0 dp, the commuter's natural unit, and the cleanest thing to delete if the device pass says the top bar is crowded. |
 | **OQ-AUD-7** | Feature naming: "Read aloud" vs "Listen" vs "Audio"; the D-AUD-5 voice labels. | Owner (tone) | **C** (strings) / **D** (release) | "Read aloud". String **ids stay stable** whichever wins, so this can land as late as D's sign-off. |
 | **OQ-AUD-3** | Confirm the two-phase cut — ship Phase 1 standalone? | Owner | **D** (only the release; not B or C) | **Strongly recommended, §1.4.** A "hold" delays users and changes nothing structural. |
-| **OQ-AUD-1** | **Which voice source** — ElevenLabs pre-render vs LibriVox PD human. | Owner | **E's exit and F absolutely** | Maya recommends ElevenLabs, primarily on FR-AUD-10 (timings are essentially free; LibriVox's true cost is a forced-alignment project over ~79 h of volunteer-variable audio). Run the **cheap disqualifying test first** (`SE-T1` step 2). |
+| **OQ-AUD-1** | ~~Which voice source~~ | Owner | ~~E/F~~ | ✅ **[A1] RESOLVED 2026-07-25 — ElevenLabs**, chosen by the owner on voice realism after auditioning the field. Consequences worked through in §1.1 and the E preamble. |
 | **OQ-AUD-6** | 24 vs 32 kbps Opus. | Owner (listening) | **F** — it prices the corpus | 24 kbps (~853 MB, largest pack ~47 MB, every pack under Play's 200 MB threshold). Not an architectural constraint either way. |
 | **OQ-AUD-9 / AR-AUD-1** | Confirm the accepted-risk posture extends to **recordings**, and the attribution obligations of whichever source wins. | Owner | **F** — recorded **before the spend** | Record it in `docs/data/README.md` alongside AR-1 at `SE-T7`. The spend is the commitment point, not the ship. |
 | **OQ-AUD-E-2** | D-AUD-E-19 — audio content never changes in a PATCH release — as a **product** commitment. | Owner | **E** (it is part of D-AUD-3's real price) / **H** (standing rule) | Confirm once `SA-F2` gives the measured number. An audio change rides the automatic app update **with no consent prompt**. |
 | **OQ-AUD-E-1** | The §8 download-unit table (§16.1): book / testament / everything / "the books your next 30 days need"? | Owner + Maya | **G** | Accept §16.1's rewrite and delete the "Today's readings ~2.4 MB" row — a pack is atomic, so that unit cannot exist. The **product rule** ("never forced to take ~850 MB") survives intact. |
 | **OQ-AUD-E-5** | **Who owns the render machine and the spend?** | **Owner** | **E/F** | See §8. This is the largest genuinely unowned item in the epic. |
-| **OQ-AUD-E-4** | Is `AUD-C-1` budgeted as a real ticket with a real Play cycle? | **Morgan** | — | **Resolved: yes — it is Sprint A, and it needs two cycles** (D-M-AUD-1). |
+| **OQ-AUD-E-4** | Is `AUD-C-1` budgeted as a real ticket with a real Play cycle? | **Morgan** | — | **Resolved: yes — it is Sprint A, and it needs two cycles** (D-M-AUD-1). **[A1] Now the epic's dominant scheduling constraint (RM-2) — dispatch it first.** |
+| **[A1] OQ-AUD-E-6** *(new)* | **The pack-manifest schema and the voice-registry contract.** Diego is speccing it concurrently; this plan only decides *where it lands* (D-M-AUD-7). | Diego | **A (`SA-T9`)** — the shape must be frozen before the placeholder packs are uploaded, because a Play cycle is how it gets validated | Mirror the two idioms already trusted here: `registry.json` + `PlanDescriptor` (an artifact declares its own shape) and the `translation` table behind `ReaderVersionSelector` (D-N-3: branch on *count*, never on *identity*). |
+| **[A1] OQ-AUD-E-7** *(new)* | **Does plug-and-play mean we intend to SHIP a second voice, or only that adding one must be data?** | Owner | Not blocking — but it changes G's download-unit table and RM-14's storage story | **Recommend: generality now, one shipped voice** (D-AUD-13 unchanged). The requirement as stated is about *architecture*, and the architecture is cheap; shipping a second voice is another render and another ~850 MB and is a separate decision. |
+| **[A1] `D-M-AUD-9`** | **A feature flag alongside the branch?** | Owner | Recommended for **C**, so **D** can ship with Phase 2 landing dark on `main` | See §9.5. Not a counter-proposal to the branch — a complement to it, and most valuable *after* Phase 1 ships. |
 
 ---
 

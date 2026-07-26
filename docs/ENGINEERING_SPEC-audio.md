@@ -763,7 +763,7 @@ diffable, and partial coverage ("NT only") is expressible without inventing a se
 | | `assets/audio/catalog.json` (**base module**, ~2 KB) | `voice.json` (**inside each pack**) |
 |---|---|---|
 | Answers | "what *could* I download?" | "what *is* installed, and how do I play it?" |
-| Contains | per voice: `voiceId`, `displayName`, `shortCode`, `order` (priority), `packing`, `packNamePattern`, the pack-name list, approximate coverage | the full manifest of §7A.3 |
+| Contains | per voice: `voiceId`, `displayName`, `shortCode`, `packing`, `packNamePattern`, the pack-name list, approximate coverage. *(A2: the `order`/priority field is **cut** — D-AUD-E-29 leaves nothing to prioritise; catalog order is display order in the selector only)* | the full manifest of §7A.3 |
 | Used by | the **download menu only** | **all playback decisions** |
 | Never used for | playback, resolution, path building | enumerating what is downloadable |
 | Cost when the pack is **missing** | still works — the menu is complete | absent, and that *is* the "not installed" signal |
@@ -850,40 +850,152 @@ within a `manifestVersion`, changes are additive only.** The two directions, bot
 
 ### 7A.7 Partial coverage and mixed packs — the resolution rule
 
-The requirement makes a new state reachable: **voice A has Genesis, voice B has Psalms.** This must
-be decided, not discovered.
+> #### ⛔ D-AUD-E-24 — SUPERSEDED by D-AUD-E-29 (owner ruling, 2026-07-25, amendment A2)
+>
+> *Recorded, not deleted, because the reasoning trail matters.* I originally specified per-play-unit
+> resolution: preferred voice if it covers the unit, else the highest-priority installed voice that
+> covers it, else device TTS — with a catalog `order` field as the tie-break. **The owner ruled this
+> out, and he is right on a point I got wrong:** I treated "which voice do we play?" as an
+> *optimisation* (get the best available coverage) when it is a *correctness* question (the user
+> chose a voice and must not be handed a different one without being told). A preferred-voice
+> ordering is a silent substitution mechanism, however deterministic. The `order` field, the
+> cross-voice fallback, and `ResolveVoiceForUnitUseCase` are all **cut**.
 
-**Decision D-AUD-E-24 — resolution is per *play unit*, deterministic, and data-driven:**
+**Owner ruling, verbatim (2026-07-25):** *"As far as mixed voices - a single pack should be selected
+for the whole app context. So even if they've downloaded different assets - the app should read in
+the voice/pack they've selected. So, if they download multiple packs, there should be a
+dropdown/settings in the settings that let them select which one to use, and the whole app points to
+that asset pack. And if a chapter asset is missing for that pack, they're prompted to download it,
+regardless of whether there is an asset/pack for that chapter from a different voice pack."*
 
-1. the user's **preferred voice** (`audio_preferred_voice_id`), **if it covers the whole play unit**;
-2. else the highest-priority **installed, usable** voice that covers the **whole** play unit —
-   ordered by the catalog's `order` field, then `voiceId` lexically for voices the catalog does not
-   list (a later app's pack), so the order is total and reproducible;
-3. else **device TTS** for the whole unit.
+**Decision D-AUD-E-29 — voice selection is app-wide and exclusive. There is exactly one *active
+voice* for the whole app. Coverage is only ever evaluated against the active voice. A chapter the
+active voice does not have installed produces a **prompt to download that voice's pack** — never a
+cross-voice substitution, even when another installed voice covers it.**
 
-**Never mix voices inside a play unit.** A portion is one continuous listening experience; changing
-narrator between Genesis 1 and Genesis 2 — let alone mid-chapter — would read as a defect, not a
-feature. The unit of resolution is the `PlayUnit`, not the chapter. `BrowseChapterUnit` resolves
-per chapter *as it advances*, which is correct: continuous browsing genuinely is a sequence of
-units, and a voice change at a book boundary the user chose to cross is legible.
+This is not a preference and it is not an availability heuristic; it is the same class of rule as
+"the app renders the *active plan's* actual shape" (D-ALT-17). Note how much it collapses:
 
-Consequences worth naming:
+- **`ResolveVoiceForUnitUseCase` is deleted before it is written.** There is no resolution
+  algorithm — there is a *selection*, held in one place, read everywhere.
+- **Cross-voice coverage arithmetic disappears.** Nothing ever asks "does any installed voice cover
+  this?"; the only question is "does *the active voice* cover this?", which is a lookup in one
+  manifest's `coverage`.
+- **The mixed-pack state stops being a state.** A user with voice A for Genesis and voice B for
+  Psalms has one active voice and a gap; the gap is a download prompt, not a fallback.
 
-- **Partial coverage is first-class, not an error.** An NT-only voice is a legal, shippable pack
-  set; it simply never wins for an OT unit. `coverage` is what makes this expressible, which is why
-  it is declared rather than inferred from which files happen to be present.
-- **Falling back to device TTS for a portion the preferred voice half-covers is the *correct*
-  outcome**, and the UI must say why in one honest line rather than silently sounding different.
-- The rule is a **pure function** (`ResolveVoiceForUnitUseCase(units, installedVoices, preferred)`),
-  so every branch — mixed, partial, none, rejected-pack, preferred-not-installed — is JVM-testable
-  with **synthetic manifests and zero audio bytes**. That is how P3 is satisfied before a second
-  voice exists.
+**The distinction that carries the whole rule: substitution is forbidden, offering is required.**
+When the active voice lacks a chapter the app must not quietly sound different — but it may
+absolutely *offer* the alternatives, because an offer is a choice the user makes with their eyes
+open. So the missing-chapter prompt states the passage, the voice, and the size, and offers:
+**"Download <size>"** · **"Read it with the device voice"** (an explicit one-tap election, not a
+substitution) · **Cancel**. That satisfies U-AUD-7 and FR-AUD-22 without violating the ruling.
+The rule the code enforces is precise: *no code path may bind a voice other than the active one
+without a user action naming it.*
+
+**`ActiveVoiceRepository` — mirroring `ActivePlanRepository` exactly (D-ALT-16/17):**
+
+```kotlin
+interface ActiveVoiceRepository {
+    val activeVoiceId: Flow<String>        // absent ⇒ DEVICE_VOICE_ID; unknown/uninstalled ⇒ DEVICE_VOICE_ID
+    val activeVoice: Flow<ActiveVoice>     // the resolved, usable descriptor (device or an installed pack voice)
+    suspend fun setActiveVoiceId(id: String)
+}
+```
+
+`AudioReadingController` and the entry-point use cases `combine` `activeVoice` into their flows, so
+a voice switch re-emits everything live — the D-ALT-17 property, reused rather than reinvented.
+
+### 7A.7a The device voice is a registry entry (`device_tts`)
+
+**Decision D-AUD-E-30 — the Phase-1 device voice is a first-class entry in the same voice registry,
+with id `device_tts`, and it is the default active voice. It is always "installed" and always
+covers the whole canon.**
+
+The coordinator proposed this and I agree — and there are three engineering reasons beyond the
+product tidiness, one of which changes the sprint plan:
+
+1. **It gives "nothing downloaded" a principled home.** Under D-AUD-E-29 the device voice must be
+   *selected*, never silently substituted. Making it a registry entry is the only way to say that
+   coherently: the default user has actively-by-default got `device_tts` selected, so nothing is
+   being substituted for anything.
+2. **It collapses the degradation ladder into selection.** `ResolveAudioAvailabilityUseCase`
+   (D-AUD-E-16) stops being "downloaded → device → message" and becomes "the active voice, or an
+   honest prompt." One concept instead of two. The only genuine unavailability left is *the device
+   has no usable TTS engine and the active voice is `device_tts`* — a real state (R-AUD-7) with a
+   real message.
+3. **It forces the plug-and-play seam to exist in Phase 1, which is where it should be tested.**
+   With `device_tts` in the registry, Phase 1 ships with a registry, a manifest contract, an active-
+   voice key, and the D-N-3 one-vs-many selector — all exercised by real code from day one, with
+   **zero audio bytes and zero PAD dependency**. Phase 2 is then literally "a second entry appears."
+   That is a materially stronger test position than building the seam alongside the first downloaded
+   pack, and **it moves the §7A machinery out of Sprint AUD-C into AUD-A/AUD-B** (§18, amended).
+
+`device_tts` is a **synthetic manifest**, constructed in code, not a file — it has no pack, no bytes
+and no `pathTemplate`. It declares `coverage` = every book at full chapter range, `timing.format` =
+`"utterance-callback-v1"` (the Phase-1 boundary mechanism, §4.3), and `audio.format` = `"device-tts"`.
+That keeps it inside the *same* contract rather than beside it, so the selector, the gate and the
+resolution path have exactly one shape to handle. The only place it is special is that
+`AudioPackPlan` is never asked about it.
+
+### 7A.7b Switching voice mid-playback
+
+**Decision D-AUD-E-31 — a voice switch **stops playback**, and the controller retains the queue and
+`activeVerseId` so the next press resumes the same passage **from the current verse** in the new
+voice.**
+
+The three candidates and why this one:
+
+| Option | Rejected because |
+|---|---|
+| Keep playing in the old voice, apply on next play | Directly contradicts "the whole app points to that asset pack" — the app would be audibly on a voice the Settings screen says is not selected |
+| Seamlessly restart at the current verse | The new voice may not cover the current chapter, so this can *require a download prompt raised from the Settings screen* mid-listen — a bad place for it, and a rule violation if we substituted instead |
+| **Stop, retain position, resume on next press** | ✅ No half-state, no cross-voice moment, no prompt from Settings. Coverage is evaluated where it belongs — at the next press, from the transport, where the download prompt has a natural home |
+
+So the switch is honest and cheap, and "resume where I was" (FR-AUD-25, already in-session state)
+does the work. Practically: the user is in Settings, not listening intently, and one tap on the
+transport puts them back.
+
+### 7A.7c Storage, deletion, and what happens to the selection
+
+**Decision D-AUD-E-32 — downloads are grouped **by voice** in Settings → Audio; "Delete this voice"
+removes all of that voice's packs in one action; a **partially** deleted active voice stays active
+(and prompts per missing chapter, per D-AUD-E-29); a **fully** uninstalled active voice reverts the
+selection to `device_tts` with one honest notice.**
+
+- **Duplication is real and must be visible.** Two voices covering the same books cost twice —
+  ~853 MB each at 24 kbps (§7.2). Under an exclusive-selection rule a second voice is *pure
+  duplication*, which is exactly why the storage surface must show per-voice totals, not one lump.
+  NFR-AUD-E's "always reports its true on-disk usage" now means *per voice*.
+- **Partial deletion is not an error state.** It is the ordinary consequence of per-book packs, and
+  the owner's ruling already says what happens: prompt for that voice's pack.
+- **Full uninstall is the `unknown id ⇒ default` rule** from `ActivePlanRepository` /
+  `BibleProvider.fromStored`, applied to "no longer installed". Reverting to `device_tts` is a
+  *substitution*, so it is **not silent**: one notice, once, stating that the voice's downloads were
+  removed and the device voice is now selected. The stored id is **not** rewritten to `device_tts`
+  — the same indistinguishability discipline as D-S14-1 — so re-downloading the voice restores the
+  user's original choice without them re-picking it. `activeVoiceId` degrades on *read*, not on
+  *write*.
+
+### 7A.7d Persistence
+
+**Decision D-AUD-E-33 — `active_voice_id`, a string key in the existing `SettingsRepository`
+DataStore. Absent ⇒ `device_tts`. A stored id that is not a known, installed, usable voice ⇒
+`device_tts` on read, without rewriting the stored value.** This is the `selected_plan` key
+(D-ALT-16) and the `bible_provider` posture, mirrored field for field. No new DataStore file, no
+Room change.
+
+**Supersedes** §13.3's `audio_voice_source` (A1's `audio_preferred_voice_id` is also cut — there is
+no "preferred" voice now, only an active one).
 
 ### 7A.8 What this invalidates in the rest of this spec — and what it validates
 
 **Changed** (all marked in place): D-AUD-E-5's pack-count half (§7.3 → D-AUD-E-27); D-AUD-E-3's
-timing paths (§6.2, voice-scoped); §13.3's `audio_voice_source` key → `audio_preferred_voice_id`;
-§9's total-bundle ceiling is now per-voice-aware (§9.2 note); the corpus tag is voice-scoped (§8.2).
+timing paths (§6.2, voice-scoped); §13.3's `audio_voice_source` key → **`active_voice_id`**
+(A2, D-AUD-E-33); §9's total-bundle ceiling is now per-voice-aware (§9.2 note); the corpus tag is
+voice-scoped (§8.2). **A2 additionally cuts** `ResolveVoiceForUnitUseCase` and the catalog `order`
+field before either was written, and **folds `ResolveAudioAvailabilityUseCase` (D-AUD-E-16) down to
+"the active voice, or an honest prompt"** (§7A.7a) — a simplification, not a rewrite.
 
 **Not changed, and this is the interesting part:** **§4 (the player) and §5 (the queue) are
 untouched.** Voice resolution happens *above* seam 2 and produces a `VoiceBinding` (resolved file
@@ -910,21 +1022,33 @@ Added to `AudioTimingVerificationTest` (§10.3), all offline, all with zero audi
 | 14 | **Coverage ↔ timing index, both directions**: every declared-covered `(book, chapter)` has a timing entry, and every timing entry is declared covered | the "declared 66 books, rendered 65" silent hole — the superscription-CSV both-directions idiom |
 | 15 | `audio.pathTemplate` renders to a **unique** path per covered chapter, and every rendered path appears in `audio_manifest.json` | a template typo, a collision, a missing file |
 | 16 | Every covered chapter resolves through `AudioPackPlan.packsFor` to **exactly one** pack, and every declared pack name is non-empty and unique | a pack with no chapters, a chapter in two packs |
-| 17 | **Synthetic-second-voice fixture** (test-only, no bytes): the resolution rule (D-AUD-E-24) returns the documented answer for preferred-covers / preferred-partial / mixed / none; the chooser branch renders; an unknown `manifestVersion` is rejected and does **not** enter `installed()` | P3 — the multi-voice machinery is proven while invisible |
+| 17 | **A2 — exclusivity (the correctness rule).** With a synthetic **two**-voice fixture (test-only, zero bytes) where voice A covers Genesis and voice B covers Psalms: with A active, a Psalms unit resolves to **A-with-a-missing-chapter ⇒ prompt**, and **never** to B. Asserted as a *negative*: no binding produced by any entry point ever names a voice other than `activeVoiceId`, for every (active voice × requested passage) pair in the fixture matrix | **D-AUD-E-29** — the silent-substitution failure. This is the load-bearing new assertion |
+| 18 | **A2 — `device_tts` is a registry entry**: it appears in `installed()` with full canon coverage on a device with an engine, is the value of `activeVoiceId` when the key is absent, and is never asked of `AudioPackPlan` | D-AUD-E-30 regressing to a special-cased side path |
+| 19 | **A2 — degradation on read, not on write**: a stored `active_voice_id` naming an uninstalled voice reads as `device_tts` **while the stored value is unchanged**; re-installing that voice restores it as active without a user re-selection | D-AUD-E-32/33 — the D-S14-1 indistinguishability discipline |
+| 20 | **A2 — the D-N-3 branch**: one usable voice ⇒ the selector renders static text and reports no chooser; two ⇒ a chooser listing exactly the installed usable voices plus `device_tts`; an unknown-`manifestVersion` pack is excluded from both | P3 — multi-voice machinery proven while invisible |
 
 Mutation targets: flip one coverage range by one chapter (→ 14); point `pathTemplate` at a
-non-existent file (→ 15); set the fixture voice's `manifestVersion` to 99 and assert it is rejected
-rather than used (→ 17); make `packsFor` return two packs for one chapter (→ 16); change the
-synthetic voice's coverage so it half-covers a portion and assert the resolver falls to device TTS
-rather than mixing (→ 17).
+non-existent file (→ 15); make `packsFor` return two packs for one chapter (→ 16); **make the
+binding fall through to another installed voice when the active one lacks a chapter (→ 17 — the
+mutation that matters most, because it is the exact bug the owner ruled out)**; drop `device_tts`
+from the registry (→ 18); rewrite the stored id on degradation (→ 19); set the fixture voice's
+`manifestVersion` to 99 and assert it is rejected rather than used (→ 20).
 
 ### 7A.10 The voice selector UI — the D-N-3 idiom, literally
 
 **Decision D-AUD-E-28 — `AudioVoiceSelector` follows `ReaderVersionSelector`'s shape exactly: 0 or 1
-usable installed voice ⇒ **no chooser** (Settings → Audio shows the voice as static text: "Voice:
-Standard voice" or "Voice: Device voice"); more than one ⇒ a `SettingsDropdownRow` chooser (the S14
-idiom) writing `audio_preferred_voice_id`. The multi-voice branch is built and tested from day one
-and is unexercised in production while there is one voice.**
+usable voice ⇒ **no chooser** (Settings → Audio shows the voice as static text: "Voice: Device
+voice"); more than one ⇒ a `SettingsDropdownRow` chooser (the S14 idiom) writing the active-voice
+key. The multi-voice branch is built and tested from day one and is unexercised in production while
+there is one voice.**
+
+> **A2 amendment:** the key written is **`active_voice_id`** (D-AUD-E-33), not
+> `audio_preferred_voice_id` — the selector picks *the* voice, app-wide, not a preference among
+> fallbacks. And because `device_tts` is a registry entry (D-AUD-E-30), the **Phase-1 app already
+> has exactly one voice**, so the static-text branch is live in production from Phase 1 and the
+> chooser branch is real code exercised by the two-voice test fixture. This is the D-N-3 situation
+> reproduced precisely: one artifact today, the many-artifact branch built and tested, invisible
+> until a second arrives.
 
 Tags: `audio-voice-row`, `audio-voice-dropdown`, `audio-voice-option-<voiceId>` — mirroring
 `theme-dropdown`/`provider-dropdown`/`reader-version-dropdown`. The static branch is **not** a
@@ -1045,6 +1169,119 @@ minutes of download is a bad time to discover a broken action. Land that PR firs
 ---
 
 ## 10. The render pipeline and its verification gate (problem 6)
+
+### 10.0 The voice source — OQ-AUD-1 RESOLVED (A1)
+
+#### 10.0.1 The decision
+
+**Decision D-AUD-E-20 — the voice source is ElevenLabs.** The owner auditioned the field himself and
+chose on **voice realism**. This is his call to make (it is the M-AUD-6 axis) and it is **not
+re-litigated here**. Everything downstream in this section is written to that choice.
+
+Convenient side-effect worth noting rather than claiming credit for: it also happens to be the
+option my §16 analysis favoured, on FR-AUD-10 grounds — vendor-supplied timestamps versus a
+forced-alignment project over ~79 h of volunteer-variable audio. The owner reached the same
+destination by a different road.
+
+#### 10.0.2 The model pin — `eleven_flash_v2`
+
+This is where the choice stops being a preference and becomes an engineering constraint, because
+**the pronunciation-lexicon requirement narrows the model set to two.**
+
+**Verified (V16):** ElevenLabs phoneme tags — IPA/CMU pronunciation-dictionary *rules* — work on
+**only `eleven_v3` and `eleven_flash_v2`**. Every other model degrades to **alias substitution
+only** (respelling a word and hoping). For a corpus containing Mahershalalhashbaz,
+Chushanrishathaim and Zaphnathpaaneah (R-AUD-3), phoneme-level control is not a nicety; alias
+respelling is guesswork at a scale of thousands of proper nouns. **So the field is `eleven_v3` or
+`eleven_flash_v2`, and nothing else.**
+
+Between those two, the deciding number is ours, not the vendor's (V17, V18):
+
+| | `eleven_v3` | `eleven_flash_v2` |
+|---|---|---|
+| Phoneme tags | ✅ | ✅ |
+| Chars per request | **5,000** (~5 min) | **30,000** (~30 min) |
+| Languages | 70+ | English only |
+| **Our 1,189 chapters that exceed the cap** | **208 (17.5%)** | **0** |
+| Longest chapter (Ps 119, 12,999 chars) | needs ≥3 requests | **one request** |
+| Consequence | ~250+ intra-chapter splice points | **chapter = one atomic render** |
+
+**Decision D-AUD-E-21 — pin `model_id = "eleven_flash_v2"`, and record the pin (with voice id and
+all synthesis parameters) in `audio_manifest.json` so a re-render is reproducible in configuration
+even though it is not reproducible in bytes.**
+
+The reasoning, in one line: **`eleven_flash_v2` is the only phoneme-capable model that renders every
+chapter of our corpus in exactly one request**, and one-request-per-chapter is load-bearing three
+times over —
+
+1. **No splices.** 208 chapters would otherwise be stitched from 2–3 syntheses, each seam a possible
+   click, a prosody discontinuity mid-sentence, and a place for a swallowed word. In a scripture
+   reading that is a defect, not an artifact.
+2. **The timing index stays one unbroken alignment per chapter**, which is exactly what makes
+   §10.3's assertion 5 (`endMs[last] == durationMs`) a meaningful truncation guard. Stitched audio
+   would require offsetting and re-basing alignments across chunk boundaries — a new class of
+   silent, systematic error precisely where R-AUD-4 says a drifting index is worse than none.
+3. **A per-chapter re-render is a single reproducible call** (R-AUD-1's "cheap in dollars even if
+   slow in calendar" mitigation), rather than a chunk plan that must be reconstructed identically.
+
+**"English only" is a non-cost here** — the corpus is the KJV — and it is worth saying out loud
+because it looks like a downgrade on a spec sheet and is not one for this product.
+
+**If the owner prefers `eleven_v3` on the pilot** (it is the expressiveness model, and expressiveness
+is a legitimate thing to prefer for scripture), the cost is named rather than absorbed: sub-chapter
+chunking at sentence/verse boundaries, splice-and-stitch machinery in `render_audio.py`, alignment
+re-basing across chunks, ~250+ new seams to spot-check, and a longer render. That is a real chunk of
+Sprint AUD-D. **It is a decision to put in front of him at the pilot with the price attached, not
+one to make for him** — see OQ-AUD-E-6.
+
+#### 10.0.3 The lexicon must exist before the corpus render
+
+**Decision D-AUD-E-22 — the pronunciation lexicon is a **committed artifact**
+(`audio/lexicon/<voiceId>.json`, phoneme rules in IPA/CMU), built and signed off **before** the
+corpus render, and the SHA-256 of the lexicon actually used is recorded in `audio_manifest.json`
+(gate-asserted equal to the committed file).**
+
+This is not process for its own sake. Under D-AUD-3 + **D-AUD-E-19**, a mispronunciation discovered
+after ship costs (a) a paid re-render of the affected chapters, **and** (b) a wait for a MINOR
+release, **and** (c) a silent asset-patch download to every user who has that book (§7.5). Three
+costs, one of which the user pays. The only cheap moment to fix pronunciation is *before* the corpus
+exists, which makes lexicon construction a **prerequisite of the render, not a follow-up to it** —
+the exact shape of R-AUD-3's "render a pilot first" control, extended one step earlier.
+
+Practically: the pilot (1 Chr 1, Num 26, Ezra 2 for proper nouns; Ps 23, John 11, Isa 53 for tone)
+is rendered *to expose* lexicon gaps; the gaps become rules; the rules are signed off; **then** the
+corpus is commissioned. Sprint AUD-D sequences it that way, and the corpus render is the last thing
+in it.
+
+Sourcing the candidate list is mechanical and should not be hand-guessed: extract every distinct
+token in the corpus not present in a standard English lexicon (a few thousand), rank by occurrence,
+and lexicon the head of that distribution. That extraction is a deterministic script over `bible.db`
+and belongs in `tools/`, so the lexicon's *coverage* is itself reviewable.
+
+#### 10.0.4 Timing-index source chain, and the alternatives footnote
+
+**Decision D-AUD-E-23 — timing sources, in order: (1) the `with-timestamps` character alignment
+returned by the *same* synthesis request; (2) the **Forced Alignment API** for any chapter whose
+timestamps are missing or rejected; (3) fail the chapter and re-render — never estimate.** The
+independent witness is unchanged: local Whisper (D-AUD-E-8), because **vendor alignment cannot check
+itself**, whichever vendor endpoint produced it.
+
+Notes: (1) is free (same request, no extra call) and shares the audio's exact lineage. (2) is
+verified to exist, caps at **10 h of audio** and is priced at the Speech-to-Text rate (V20) — the
+10 h cap is irrelevant per chapter (longest ≈ 15 min) but rules it out as a whole-corpus operation.
+Per-model support for the `with-timestamps` endpoint is **not documented** (V19), which is precisely
+why (2) is specified up front rather than discovered mid-render; `render_audio.py` must handle a
+chapter with no returned alignment as a normal branch.
+
+> **Recorded-considered (footnote, closed).** *LibriVox / public-domain human KJV* was the
+> alternative in OQ-AUD-1. It was $0 for audio but carried a forced-alignment project across ~79 h
+> of volunteer-variable recordings, ~31,219 boundaries to verify, reader/mic/room-tone inconsistency
+> across 66 books, and no way to fix a mispronunciation short of replacing a reading. The owner
+> chose ElevenLabs on voice realism; the engineering analysis independently favoured it on
+> FR-AUD-10. **Closed — do not re-propose without new evidence.** *(Rights note: the ElevenLabs
+> commercial licence on a paid plan settles the recording layer for AR-AUD-1; OQ-AUD-9 still needs
+> the owner's explicit acceptance recorded in `docs/data/README.md` **before** the render is
+> commissioned, since the spend is the commitment point.)*
 
 ### 10.1 The honest statement, up front
 
@@ -1339,7 +1576,9 @@ without it; add it only if the device pass on a real API 26/27 device shows a ga
 ### 13.3 Storage/state
 
 - **No Room schema change. No new database. No new DataStore file.** Four new keys in the existing
-  `SettingsRepository` (`data/prefs`): `audio_voice_source` (string, default `DEVICE`),
+  `SettingsRepository` (`data/prefs`): ~~`audio_voice_source` (string, default `DEVICE`)~~ →
+  **A2: `active_voice_id`** (string, absent ⇒ `device_tts`; unknown/uninstalled ⇒ `device_tts`
+  **on read, without rewriting the stored value** — D-AUD-E-33, the `selected_plan` idiom),
   `audio_wifi_only` (bool, default **true**), `audio_speed` (float, default 1.0f, clamped
   0.75–2.0), `audio_sleep_timer_minutes` (int, 0 = off). Each must also be added to
   `testing/FakeSettingsRepository`.
