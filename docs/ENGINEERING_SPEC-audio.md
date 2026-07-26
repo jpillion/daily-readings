@@ -2149,9 +2149,11 @@ release-only `audio-bundle` CI job; the corpus-asset fetch + checksum verificati
 > [AUDIO_RENDER_RUNBOOK.md](AUDIO_RENDER_RUNBOOK.md) (`SE-T10`, brought forward). The order below is
 > its summary; the runbook is authoritative.
 Ordered strictly, because the last step is the one-way door: **(1)** extract the out-of-lexicon
-token list from `bible.db`; **(2)** render the R-AUD-3 pilot on `eleven_flash_v2` (D-AUD-E-21);
-**(3)** owner voice sign-off (M-AUD-6) **and** the `eleven_v3`-vs-`flash_v2` election with its price
-attached (OQ-AUD-E-6); **(4)** build + commit + sign off the **lexicon** (D-AUD-E-22); **(5)** record
+token list from `bible.db`; **(2)** render the R-AUD-3 pilot on **`eleven_v3`** (D-AUD-E-34 — the
+model is settled and has no fallback; the pilot establishes the **cap** and the **stitching**
+facts, runbook Q1/Q2, not the model); **(3)** owner voice sign-off (M-AUD-6) **and** the seam
+verdict against the D-AUD-E-40 ladder — if the ladder is exhausted with seams still audible, **stop
+and escalate; do not spend**; **(4)** build + commit + sign off the **lexicon** (D-AUD-E-22); **(5)** record
 AR-AUD-1 in `docs/data/README.md` — *before the spend, the spend is the commitment point*;
 **(6)** commission the corpus render; **(7)** `tools/verify_audio_asr.py` over all 1,189 chapters;
 **(8)** commit `audio/timings/<voiceId>/*` + `audio_manifest.json` (incl. the lexicon SHA + the
@@ -2182,10 +2184,17 @@ version bump + rollout.
   commitment, given §7.5's silent-delta finding.
 - **OQ-AUD-E-3 — M-AUD-3's restatement** (§16.3): accept "no `INTERNET` + exactly two new
   foreground-service permissions" as the posture gate.
-- **OQ-AUD-E-6 (A1) — `eleven_flash_v2` (pinned) vs `eleven_v3`, decided at the pilot with the price
-  attached.** Not a free swap: v3's 5,000-char cap splits **208 of 1,189 chapters**, which buys
-  chunk/splice/stitch machinery, alignment re-basing, ~250+ new seams to check, and a longer render
-  (§10.0.2, RE-AUD-15). Recommend flash_v2 unless the pilot shows a difference the owner can hear.
+- ~~**OQ-AUD-E-6 (A1) — `eleven_flash_v2` (pinned) vs `eleven_v3`, decided at the pilot with the
+  price attached.** Recommend flash_v2 unless the pilot shows a difference the owner can hear.~~
+  ✅ **RESOLVED (owner, 2026-07-26) — `eleven_v3`, and there is no fallback.** The owner tested
+  `eleven_multilingual_v2` and `eleven_flash_v2` and rejected both on output quality: *"I do NOT
+  like the output. So, I'll need to find a way to use V3 regardless."* The pilot no longer decides
+  the model — see **D-AUD-E-34** (the pin) and the **A4** note revoking its fallback clause. What
+  the pilot must still establish is narrower and is now runbook **Q1/Q2**: the real per-request cap
+  (a 7× swing in seam count) and whether Request Stitching genuinely does not work on v3. The
+  seam cost this question was originally weighing is not avoidable any more — it is worked through
+  the **D-AUD-E-40** remedy ladder, and **RE-AUD-15 is retired** (it priced electing v3 as a risk;
+  v3 is now the requirement).
 - **OQ-AUD-E-7 (A2) — the missing-chapter prompt's third option.** D-AUD-E-29 forbids substitution
   but permits *offering*, so the prompt reads: "Download <size>" · "Read it with the device voice" ·
   Cancel. Confirm the middle option is wanted — it is the one place the user can end a session in a
