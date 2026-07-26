@@ -1520,9 +1520,16 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   corrected three drifted KDoc blocks (`ReaderViewModel` ×2, `ProviderUrlBuilder` — the last
   asserted a mapping that never existed); `grep -rn "D-H-4" app/src/` now returns nothing. The
   spec line is annotated so a future session cannot re-introduce the retired shim.
-  **Open for owner decision:** *P-Q-1* — Copy does NOT exit selection mode (spec-literal; Copy is
-  not among the listed exits), copy-then-exit is the other common idiom, two lines to flip. And
-  the **en dash** in `Genesis 1:1–2` vs a plain hyphen (one character + 6 expected-string updates).
+  **P-Q-1 RESOLVED (owner, 2026-07-25): Copy IS an exit.** The sprint shipped the spec-literal
+  reading (Copy was not among the listed exits) which left the selection standing; the owner chose
+  the note-taking / mail idiom — Copy completes the task and returns to reading, one tap fewer. The
+  other three exits (X, system back, deselecting the last verse) are unchanged. Applied by the main
+  session in `ReaderViewModel.copySelection`; the old "does NOT clear" pin was rewritten to its
+  inverse and a NEW **order pin** added (the copy is emitted from the selection captured BEFORE the
+  clear, so making Copy an exit can never truncate the clipboard) — mutation-verified:
+  clear-before-emit reddens 4 tests incl. the new pin, restored byte-identically. 878 → 879 tests.
+  Still open: the **en dash** in `Genesis 1:1–2` vs a plain hyphen (one character + 6
+  expected-string updates).
   **15 strings need tone sign-off** (11 new, 4 reworded) — table in the handoff.
   **NOT JVM-provable (not claimed to work):** the big one is **long-press inside a
   `HorizontalPager`** — `performTouchInput { longClick() }` is synthetic and says nothing about
@@ -1533,6 +1540,20 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   are the real mechanism), real TalkBack traversal + live-region announcement, predictive back on
   API 33+, and the cost of one `VerseActionMenu` per verse on Psalm 119 (176 verses; no profile).
   Handoff: [docs/sprints/sprint-00Q-reader-verse-selection.md](docs/sprints/sprint-00Q-reader-verse-selection.md).
+- ✅ **OWNER DEVICE PASS ON 1.6.0 + a locally-built 00Q: PASSED** (`2026-07-25`). Clears the
+  standing device-pass backlog, including the two items the JVM suite provably could NOT cover:
+  the **partial-vs-complete tick colour** (sprint 00P — mutating the partial colour to equal the
+  completed colour left all 10 component tests green) and **long-press inside the reader's
+  `HorizontalPager`** (sprint 00Q — `performTouchInput { longClick() }` is synthetic and says
+  nothing about the gesture fighting the pager drag or the list scroll). Both confirmed working on
+  glass. The 6-card Chronological layout, the clipboard write/paste, and the tap menu were part of
+  the same pass.
+- ✅ **Release 1.7.0 / 10700 SHIPPED TO PRODUCTION at 100% — `2026-07-25`** (tag `v1.7.0`). MINOR
+  bump per D-S9-3 (sprint 00Q is a user-visible feature). **Ships sprint 00Q** (verse selection +
+  verse action menu + clipboard) **and the P-Q-1 owner decision** (Copy exits selection mode).
+  whatsnew rewritten. Second consecutive fully-automated `tag → alpha → promote` release, and the
+  first to exercise the **`tracks: alpha`** migration and the **pinned Fastlane 2.237.0** — both
+  previously unexercised (see the CI entry above).
 - Next up (non-blocking): monitor 1.6.0 **crash/ANR vitals + reviews** (Play Console → Monitor and
   improve; the two minor edge-to-edge "recommended actions" remain noted, non-blocking). Store-title
   rename in review. Still pending: the owner **device pass** on 1.6.0 — especially the sprint-00P

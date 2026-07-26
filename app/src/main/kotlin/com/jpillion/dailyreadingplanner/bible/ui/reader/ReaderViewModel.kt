@@ -283,16 +283,22 @@ class ReaderViewModel
         val copyEvents: Flow<String> = copyChannel.receiveAsFlow()
 
         /**
-         * The action bar's Copy: formats the whole current selection.
+         * The action bar's Copy: formats the whole current selection, then **exits selection mode**.
          *
-         * **P-Q-1 — this does NOT clear the selection.** The spec's exits are X, system back and
-         * deselecting the last verse; Copy is not among them, so a copy leaves the selection intact
-         * (extend and copy again; a mis-tap costs nothing). Flagged for owner confirmation.
+         * **P-Q-1 (owner-decided 2026-07-25): Copy IS an exit.** The sprint shipped the
+         * spec-literal reading — the spec listed only X, system back and deselecting the last verse
+         * as exits — which left the selection standing after a copy. The owner chose the
+         * note-taking / mail idiom instead: Copy completes the task and returns you to reading, one
+         * tap fewer. The other three exits are unchanged.
+         *
+         * Order matters: the copy is emitted from the selection captured BEFORE clearing, so the
+         * clipboard content is unaffected by the exit (mutation-pinned).
          */
         fun copySelection() {
             val current = _selection.value
             val page = current.page ?: return
             emitCopy(page, current.verseIds)
+            _selection.value = current.cleared()
         }
 
         /**

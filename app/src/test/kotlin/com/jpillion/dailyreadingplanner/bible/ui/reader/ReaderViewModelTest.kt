@@ -386,10 +386,11 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `copySelection does NOT clear the selection (P-Q-1, spec-literal, flagged for the owner)`() =
+    fun `copySelection exits selection mode (P-Q-1, owner-decided)`() =
         runTest {
-            // The spec's exits are X, system back and deselecting the last verse — Copy is not one
-            // of them, so a copy leaves the selection intact (extend and copy again).
+            // P-Q-1: the owner chose the note-taking / mail idiom — Copy completes the task and
+            // returns the user to reading. The sprint originally shipped the spec-literal reading
+            // (Copy was not among the listed exits), which left the selection standing.
             val model = vm()
             advanceUntilIdle()
             model.uiStateForPage(genesis1Page)
@@ -398,8 +399,30 @@ class ReaderViewModelTest {
             model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
             model.copySelection()
             advanceUntilIdle()
-            assertThat(model.selection.value.isActive).isTrue()
-            assertThat(model.selection.value.count).isEqualTo(1)
+            assertThat(model.selection.value.isActive).isFalse()
+            assertThat(model.selection.value.count).isEqualTo(0)
+            job.cancel()
+        }
+
+    @Test
+    fun `copySelection copies the full selection even though it then exits`() =
+        runTest {
+            // Order pin: the clipboard string is built from the selection captured BEFORE the
+            // exit, so making Copy an exit cannot truncate or empty what lands on the clipboard.
+            // Mutating copySelection to clear before emitting reddens exactly this test.
+            val model = vm()
+            advanceUntilIdle()
+            model.uiStateForPage(genesis1Page)
+            advanceUntilIdle()
+            val copied = mutableListOf<String>()
+            val job = launch { model.copyEvents.collect { copied += it } }
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            model.onVerseSelectionToggled(genesis1Page, VerseId.encode(1, 1, 2))
+            model.copySelection()
+            advanceUntilIdle()
+            assertThat(copied).hasSize(1)
+            assertThat(copied.single()).contains("Genesis 1:1–2")
+            assertThat(model.selection.value.isActive).isFalse()
             job.cancel()
         }
 
