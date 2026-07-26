@@ -22,6 +22,35 @@
 >
 > Amended text below is marked **[A1]** where it replaces something a reader may remember differently.
 >
+> ### Amendment 2 — 2026-07-26 (Diego's spec landed; one validation moves earlier)
+>
+> **`D-AUD-E-30` — the device voice is a first-class registry entry (`device_tts`), not a fallback.**
+> He is right, and it is worth more to this plan than to his: with `device_tts` in the registry the
+> voice seam has a **real member in Phase 1**, so the plug-and-play proof needs **no audio bytes, no
+> PAD, and no render**. **Verdict: the proof moves from Sprint F to Sprint B** (new `SB-T11`), months
+> earlier and **before the irreversible spend**, with a narrowed residue left at F (§3, `SF-T5`). This
+> is the `SA-T9` argument applied one level up: `SA-T9` validates the pack *shape* before rendering
+> against it; `SB-T11` validates the *resolution mechanism* before rendering against it.
+> **`D-M-AUD-7`'s framing is corrected accordingly** — it said "inside the Phase-2 sprints", which was
+> already stale against its own ticket list (`SA-T2/T4/T5/T6/T9`, `SB-T7` are all Phase 1).
+>
+> Also folded in: **`D-AUD-E-33`** supersedes A1's `audio_voice_source` key with **`active_voice_id`**
+> (degrade **on read, not on write**) — `SA-T4` corrected; and **`D-AUD-E-21`**'s **`eleven_flash_v2`**
+> model pin, which has ticket consequences in D/E/F and was missing from A1 entirely.
+>
+> **`OQ-AUD-E-5` is RESOLVED — the owner owns the render.** Verbatim: *"I will own the rendering and
+> generation of the assets. I might do it in a separate session, but I'll drive that for now."* §8's
+> largest gap is closed and nothing is gated on naming a render owner any more. But *"possibly in a
+> separate session"* **changes the shape of Sprint F**, and that is the part that needed planning, not
+> just unblocking: the render will be executed **without this planning context loaded**, so
+> - **`SE-T10` (new)** — a self-contained, owner-runnable **render runbook**, written and reviewed
+>   **in Sprint E**, on the same side of the one-way door as the pilot and the lexicon; and
+> - **`SF-T0` (new)** — an **artifact intake gate**: the render and the verification are no longer
+>   assumed to happen in the same place, so what comes back, in what layout, checksummed how, and what
+>   it must clear **before a single pack is built from it**, is now specified.
+>
+> Amendment-2 text is marked **[A2]**.
+>
 > **Inputs (decided upstream, not re-decided here):**
 > [PRD-audio.md](PRD-audio.md) (Maya — what/why; `FR-AUD-*`, `NFR-AUD-*`, `D-AUD-1…16`, `M-AUD-1…11`, `R-AUD-1…10`, `OQ-AUD-1…9`) ·
 > [ENGINEERING_SPEC-audio.md](ENGINEERING_SPEC-audio.md) (Diego — how; `D-AUD-E-1…19`, the §0 verification table, **§16's eight pushbacks**, the recommended AUD-A…E breakdown) ·
@@ -98,7 +127,7 @@ asset comes fifth.
 | **G-POSTURE** — the merged-manifest delta matches ESpec §12 exactly | **A** (`SA-T0` = Diego's `AUD-A-0`) | No `INTERNET`; exactly two new foreground-service permissions; three exported components accounted for. Diego **could not build this** (`platforms;android-37` unpublished) — it is an unverified claim until a build machine runs it. | Re-plan the delivery mechanism. Cheap now, catastrophic after F. |
 | **G-DELIVERY** — Play accepts our asset-pack layout (**[A1] at the multi-voice pack count**) and an audio correction's real byte cost is measured | **A** (`SA-T6`/`SA-T7`, two internal-track cycles) | `requestFetch`/`assetsPath()` work; eviction and sideload behave; and **what a re-render actually pushes to existing users on an app update** (V12/§7.5 — the real price of D-AUD-3). | Re-group to section packs (a one-function edit, D-AUD-E-5) — free *before* F, a re-render *after* it. |
 | **G-VOICE** — the pronunciation pilot is in the owner's ears and signed off | **E** (`SE-T3`, M-AUD-6) | The **ElevenLabs** voice is fit for scripture; the proper-noun lexicon is built from what the pilot exposed; the ASR thresholds are calibrated on real output. | R-AUD-3 realised: the whole corpus re-rendered. **This is the gate the money is on.** |
-| **[A1] G-PACKSHAPE** — a pack describes itself, and the app plugs it in without knowing which pack it is | **A** (`SA-T9`, on placeholder bytes) → *proven* **F** (`SF-T5`, synthetic second voice) | The pack manifest's shape survives a real Play cycle and a real `assetsPath()` resolve **before** a byte of audio is rendered against it. | Getting the manifest shape wrong after F means **re-packaging, possibly re-rendering, the corpus** — the shape is baked into ~850 MB of artifact. Free to validate now. |
+| **[A1 · A2] G-PACKSHAPE** — a pack describes itself, and the app plugs it in without knowing which pack it is | **A** (`SA-T9`, the *shape*, on placeholder bytes) → **[A2] proven in B** (`SB-T11`, the *resolution mechanism*, zero bytes, via `device_tts` + a synthetic entry) → narrow residue at **F** (`SF-T5`) | The manifest's shape survives a real Play cycle and a real `assetsPath()` resolve, **and** the app resolves an arbitrary registry entry with no per-voice code — both **before** a byte of audio is rendered against either. | Getting either wrong after F means **re-packaging, possibly re-rendering, the corpus**. **[A2] Both are now provable before the spend**, which is the whole point of `D-AUD-E-30`. |
 
 `AudioTimingVerificationTest` (M-AUD-2, Sprint F) is the *release* gate in the lineage of the plan, text
 and M'Cheyne gates — it becomes the project's **sixth** standing data gate. But it cannot exist before
@@ -185,8 +214,21 @@ These are **sequencing** calls, not product or architecture calls. Each is mine 
   designed UI, and a sprint that cannot be demonstrated cannot be judged. B ships a
   `SPRINT-B TEMPORARY` action (tag `listen-dev`) exactly as V3 Sprint C shipped `open-reader-dev`.
   Its deletion is an acceptance criterion of C.
-- **[A1] D-M-AUD-7 — pack plug-and-play generality lands INSIDE the Phase-2 sprints from their first
-  line; it does NOT get its own sprint; and its *shape* is validated in Sprint A on placeholder bytes.**
+- **[A1 · corrected by A2] D-M-AUD-7 — pack plug-and-play generality lands in PHASE 1 (Sprints A and
+  B); Phase 2's sprints *consume* the seam rather than introducing it; it does NOT get its own sprint;
+  its *shape* is validated in Sprint A on placeholder bytes and its *resolution mechanism* is proven in
+  Sprint B with zero bytes.**
+  > **[A2] What changed and why.** A1 said "inside the Phase-2 sprints from their first line" and put
+  > the proof in F. That was already stale against A1's own ticket list — `SA-T2/T4/T5/T6/T9` and
+  > `SB-T7` are all Phase 1 — and Diego's **`D-AUD-E-30`** makes it decisively wrong: with `device_tts`
+  > a **first-class registry entry** (default, always installed, always fully covering, a synthetic
+  > manifest constructed in code with no pack and no bytes), the registry has a **real member in Phase
+  > 1**. So the whole seam — registry, manifest contract, `ActiveVoiceRepository` + `active_voice_id`,
+  > the D-N-3 count branch, `AudioPackPlan` routing, timing-source resolution — is buildable and
+  > testable with **no audio bytes, no PAD dependency and no render**. Phase 2 then genuinely is *"a
+  > second entry appears."* **The proof moves from `SF-T5` to `SB-T11`**, months earlier and **before
+  > the four-figure irreversible spend** — which is the same argument `SA-T9` already makes one level
+  > down. A narrowed residue stays at F (`SF-T5`), and it is narrow on purpose: see §3.
   This repo has learned the lesson twice and both times the same way round: V3's `BibleTextSource` seam
   (D-V3-3) made the text source the swap unit before a second source existed, and **Alt Sprint C
   generalized every surface to N streams before a fourth-stream plan shipped — after which the
@@ -199,10 +241,11 @@ These are **sequencing** calls, not product or architecture calls. Each is mine 
   pack layout**, because it is baked into ~850 MB of rendered artifact — which is exactly why the shape
   goes into the Sprint-A placeholder payload and through a real Play review cycle *before* the render.
   **Acceptance, in the Alt-Sprint-F idiom: adding a second voice must be data + an asset pack and
-  nothing else.** Proven in `SF-T5` by a synthetic second-voice fixture, mutation-pinned. Tickets
-  touched: `SA-T2`, `SA-T4`, `SA-T5`, `SA-T6`, **`SA-T9` (new)**, `SB-T7`, `SF-T1`, `SF-T4`, `SF-T5`,
-  `SG-T2`, `SG-T3`, `SG-T5`, `SG-T6`, `SG-T7`. *(Diego owns the manifest/registry design; this decision
-  owns only where it lands.)*
+  nothing else.** **[A2] Proven in `SB-T11`** by a synthetic second-voice fixture alongside the real
+  `device_tts` entry, mutation-pinned, zero bytes. Tickets touched: `SA-T2`, `SA-T4`, `SA-T5`, `SA-T6`,
+  **`SA-T9`**, `SB-T7`, **`SB-T11` (new — the proof)**, `SF-T1`, `SF-T4`, `SF-T5` (narrowed), `SG-T2`,
+  `SG-T3`, `SG-T5`, `SG-T6`, `SG-T7`. *(Diego owns the manifest/registry design — `D-AUD-E-30/31/32/33`;
+  this decision owns only where it lands and when it is proven.)*
 - **[A1] D-M-AUD-8 — the epic lives on a long-lived integration branch, `feature/read-aloud`; sprint
   branches merge into it; nothing merges to `main` until a phase ships.** Full mechanics — merge
   cadence, the conflict-prone file list, CI, and what "ship Phase 1" actually consists of — are **§9**.
@@ -257,11 +300,11 @@ Play review.
 | # | Sprint | Owner-visible outcome (one line) | New capability unlocked | Size | Calendar | Owners | Depends on | Gate to exit |
 |---|---|---|---|---|---|---|---|---|
 | **A** | **Posture proof + delivery plumbing on self-describing placeholder packs** *(cheap, reversible, **starts the epic's longest clock**)* | "We now know, with evidence, that audio delivery costs us no `INTERNET`, that Play accepts our pack layout, that a pack tells the app what it is without any per-pack code, and what an audio correction actually pushes to a user's phone." | The three facts the whole Phase-2 architecture rests on are **measured, not assumed**; the 12 MB gate is re-pointed without losing its meaning; the voice-scoped pack mapper and the **pack manifest shape** exist and have survived a real Play cycle. | **S–M** | **L — two serial Play review cycles; [A1] now the epic's dominant constraint** | Jordan (lead), Avery, Owner (Console) | — | **G-POSTURE** + **G-DELIVERY** + **G-PACKSHAPE** (findings `SA-F1`/`SA-F2`/`SA-F3` recorded) |
-| **B** | **The player spine on the device voice** *(cheap, reversible)* | "Press the dev button and the phone reads Genesis 1–2 aloud — screen off, lock-screen controls, and Psalm 119 days play exactly their verses." | A real media3 player exists behind one app-facing seam; the queue is built once from `PortionVerseBridge`; the FR-AUD-4 stop rules are one `when`. **~80 % of the feature's engineering, at $0.** | **L** | — | Diego (lead), Avery, Riley | A's `SA-T0` only | **M-AUD-1 queue gate green with zero audio bytes in the repo** |
+| **B** | **The player spine on the device voice — [A2] and the voice seam, proven** *(cheap, reversible)* | "Press the dev button and the phone reads Genesis 1–2 aloud — screen off, lock-screen controls, Psalm 119 days play exactly their verses — **[A2] and a fake second voice already plugs in with no code change.**" | A real media3 player behind one app-facing seam; the queue built once from `PortionVerseBridge`; the FR-AUD-4 stop rules one `when`. **[A2] Plus the whole plug-and-play seam, proven at $0** — `device_tts` is a registry entry (D-AUD-E-30), so Phase 2 is genuinely "a second entry appears". **~80 % of the feature's engineering, at $0.** | **L** | — | Diego (lead), Avery, Riley | A's `SA-T0` only | **M-AUD-1 queue gate green with zero audio bytes** + **[A2] `SB-T11`: a synthetic second voice resolves end-to-end, zero production code change** |
 | **C** | **Phase 1 complete: Listen bar, follow-along, entry points, marking** | "Read aloud is a finished feature: play from a reading, the day, or the reader; the verse being spoken is highlighted and the page follows; the reading is marked read." | The whole designed UX (D-AUD-UI-1…13) on the device voice. **This is the Phase-1 release candidate.** | **XL** | — | Priya (lead), Sam, Diego, Riley | B; **OQ-AUD-4/5/7/8 + D-AUD-UI-2/3 answered** | A11y gate + ban-scan extended and green; parity suite UNCHANGED; `listen-dev` deleted |
 | **D** | **Phase 1 device pass + release → 1.6.0** *(the owner's ship/hold decision)* | **"Read aloud is live for users, at $0 spend."** | The feature is in the world; the M-AUD-11 adoption signal starts accruing **before** any money is committed. | **S** | **M — owner listening + staged rollout** | Riley (pass), Owner, Jordan (release) | C; **OQ-AUD-3** | M-AUD-9 hands-free pass + the two-voice TalkBack test (Priya's #12) + one-screen fit at N=4 |
-| **E** | **[A1] Pronunciation pilot + the spend decision** *(**the last reversible point**; no longer a bake-off — `OQ-AUD-1` is answered)* | "The owner has heard the ElevenLabs voice reading Mahershalalhashbaz and has said go or no-go, with a number attached." | The pronunciation lexicon exists; the ASR thresholds are calibrated on real output; the timestamp contract is confirmed; AR-AUD-1 is recorded. **The render is authorised or it is not.** | **S–M** (+ a small, reversible pilot spend) | **S–M — owner listening turnaround** | Owner (decides), Riley, Diego | A's findings; **B green** (no longer C/D — see §1.1) | **G-VOICE**: M-AUD-6 sign-off + the §4 checklist all ✅ |
-| **F** | **The corpus render + the offline audio gate** *(**the one-way door — ~$250–800**)* | "Every one of the 1,189 chapters has audio and a per-verse timing index, a test proves it without downloading a byte, **and a synthetic second voice proves a new one is data, not code.**" | The project's **third core content asset** exists and is provably correct; `AudioTimingVerificationTest` becomes the **sixth** standing data gate; **[A1] the plug-and-play claim is proven, not asserted.** | **XL** | **M — render + triage wall time** | Riley (gate), the render-machine owner (§8), Jordan (CI/assets) | **E signed off — no exceptions** | `AudioTimingVerificationTest` green + every over-threshold chapter triaged + **the synthetic second voice resolves end-to-end with zero production code change** |
+| **E** | **[A1] Pronunciation pilot + the spend decision** *(**the last reversible point**; no longer a bake-off — `OQ-AUD-1` is answered)* | "The owner has heard the `eleven_flash_v2` voice reading Mahershalalhashbaz, **[A2] has a runbook he can execute without this session loaded**, and has said go or no-go with a number attached." | The lexicon exists and is signed off; the ASR thresholds are calibrated on real output; the timestamp contract is confirmed; AR-AUD-1 is recorded; **[A2] the render runbook is written and reviewed — on the reversible side of the door.** | **S–M** (+ a small, reversible pilot spend) | **S–M — owner listening turnaround** | Owner (decides + will run the render), Riley, Diego | A's findings; **B green** (no longer C/D — see §1.1) | **G-VOICE**: M-AUD-6 sign-off + **[A2] the runbook reviewed** + the §4 checklist all ✅ |
+| **F** | **The corpus render + the offline audio gate** *(**the one-way door — ~$250–800**)* | "Every one of the 1,189 chapters has audio and a per-verse timing index, and a test proves it without downloading a byte." | The project's **third core content asset** exists and is provably correct; `AudioTimingVerificationTest` becomes the **sixth** standing data gate. **[A2] The plug-and-play *claim* was already proven in B; F proves the real artifact honours the contract the fixture defined.** | **XL** | **M — render + triage wall time; [A2] possibly executed out-of-session by the owner** | **[A2] Owner (runs the render)**, Riley (gate + intake), Jordan (CI/assets) | **E signed off — no exceptions** | **[A2] `SF-T0` intake gate passed**, then `AudioTimingVerificationTest` green + every over-threshold chapter triaged |
 | **G** | **Phase 2 playback + the download surface** | "Choose the high-quality voice, download by book or in bulk, see exactly what it costs, delete it in two taps — and Psalm 119:1–40 plays exactly its verses out of a whole-chapter file." | `FileVersePlayer` + clipping; the full download product surface; the degradation ladder resolving to `HighQuality`. | **L** | — | Avery (player/packs), Priya (downloads UI), Sam, Riley | F; **OQ-AUD-E-1** | M-AUD-5 (zero unconsented bytes) JVM-pinned; the degradation ladder green at every rung |
 | **H** | **Phase 2 hardening + release → 1.7.0** | "The good voice is live, the install is still 8 MB, and the manifest still has no `INTERNET`." | Phase 2 in the world; the release pipeline carries ~850 MB without carrying it on every PR. | **M** | **M — device pass + rollout** | Riley (pass), Jordan (release), Owner | G | Base-module ≤ 12 MB + **zero audio bytes under `base/`** + no `INTERNET`; consolidated device pass |
 
@@ -369,18 +412,24 @@ the Play review clock starts. Small code, large calendar. Nothing user-visible s
 
 **SA-T4 — Four `SettingsRepository` keys + the fakes (D-AUD-E-15)**
 - **Owner:** Avery. **Size:** S. **Deps:** none.
-- **[A1] Note (D-M-AUD-7):** `audio_voice_source` stores a **voice id**, not a two-value
-  device/high-quality enum, and an **unknown stored id degrades to `DEVICE`** — the exact
-  `bible_provider` / `selected_plan` idiom (degrade, never crash). This is the difference between
-  "a second voice is a registry row" and "a second voice is an enum change plus a migration."
-- **Scope:** `audio_voice_source` (string, default `DEVICE`), `audio_wifi_only` (bool, default **true**),
+- **[A2] CORRECTED by `D-AUD-E-33`.** A1's `audio_voice_source` key is **superseded** by
+  **`active_voice_id`** (string). Absent ⇒ **`device_tts`**; an unknown or uninstalled id ⇒ `device_tts`
+  **on read, and the stored value is NOT rewritten** — so re-installing a removed voice silently
+  restores the user's choice. That is the `selected_plan` / `BibleProvider.fromStored` posture field for
+  field, and the not-rewriting half is the **D-S14-1 indistinguishability discipline** (an auto-degrade
+  must never be mistakable for a user's decision). A1's framing — "a voice id, not a two-value enum" —
+  was right and is now the spec's; only the key name and the on-read/on-write precision change.
+- **Scope:** `active_voice_id` (string, absent ⇒ `device_tts`), `audio_wifi_only` (bool, default **true**),
   `audio_speed` (float, default 1.0, clamped 0.75–2.0), `audio_sleep_timer_minutes` (int, 0 = off). Same
   absent-key idiom as `show_streaks`/`persistent_notification_enabled`: an explicitly stored value always
   survives. **No Room schema change, no new database, no new DataStore file.** Add all four to
   `testing/FakeSettingsRepository` in the same commit.
-- **Acceptance:** absent-key defaults pinned; the clamp pinned at both ends; stored values survive.
+- **Acceptance:** absent-key defaults pinned; the clamp pinned at both ends; stored values survive;
+  **[A2]** an uninstalled id reads as `device_tts` **while the stored string is unchanged**.
   **JVM-provable.**
-- **Tests/mutation:** each `?:` default and the clamp bounds mutated and killed.
+- **Tests/mutation:** each `?:` default and the clamp bounds mutated and killed; **[A2] a mutation that
+  degrades on *write* (rewriting the stored id to `device_tts`) must be killed** — it is the one that
+  silently destroys a user's voice choice.
 
 **[A1] SA-T9 — The self-describing pack manifest, validated on placeholder bytes (NEW; D-M-AUD-7, G-PACKSHAPE)**
 - **Owner:** Avery (implementing **Diego's** manifest/registry design — this ticket owns the *validation*,
