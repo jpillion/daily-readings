@@ -167,7 +167,7 @@ them):
 
 ---
 
-## 5. Step 2 — The pilot render (cheap, and it decides two open questions)
+## 5. Step 2 — The pilot render (cheap, and it decides how hard the render will be)
 
 Render **only** these seven chapters, and nothing else:
 
@@ -183,39 +183,61 @@ Render **only** these seven chapters, and nothing else:
 
 **Ceiling: $10.**
 
-The pilot answers four questions. Record each answer in `out/render_log.jsonl` and hand them back:
+> **The model is FIXED: `eleven_v3`.** The owner tested the two alternatives that render a whole
+> chapter in one request and **rejected both on output quality**. **There is no fallback model.**
+> So the pilot is not deciding *whether* to use v3 — it is establishing **how much work is needed to
+> make v3 sound continuous across segment joins**, which is what §8.6 exists for.
 
-**Q1 — Voice sign-off (owner).** Listen. Is this voice fit for scripture? This is the owner's
-judgement and nobody else's. *If no, choose another voice and re-run the pilot before anything else.*
+The pilot answers five questions **in this order**. The order matters: Q1 and Q2 decide how much the
+rest of the pilot even matters. Record every answer in `out/render_log.jsonl` and hand them back.
 
-**Q2 — What is the real per-request character cap for the model, on the endpoint that returns
-timings?** This is the single most important number from the pilot. Published guidance is
+**Q1 — What is the real per-request character cap, on the endpoint that returns timings?**
+*(First, because it is now the highest-value question in the whole pilot.)* Published guidance is
 ambiguous — a documented per-request maximum of ~5,000 characters, and separate guidance suggesting
-reliable generation nearer ~2,000. **Determine it empirically**: submit chapter texts of increasing
-length and find where quality or the timing response degrades. It changes the render's shape by 2×:
+reliable generation nearer ~2,000. **Determine it empirically:** submit chapter texts of increasing
+length and find where output quality or the timing response degrades.
 
-| Effective cap | Requests for the corpus | Chapters that must be split |
-|---|---|---|
-| 30,000 | 1,189 | 0 (0%) |
-| 5,000 | 1,402 | 208 (17.5%) |
-| 3,000 | 1,969 | 665 (56%) |
-| 2,000 | 2,698 | 944 (79%) |
+This is **not** a cost question — the dollar difference is trivial. It is a **seam-count** question,
+and the swing is **7×**:
 
-**Q3 — Are the segment seams audible?** Render 1 Kings 8 split on verse boundaries at the cap from
-Q2, concatenate, and listen **specifically at the joins**. You are listening for a change in energy,
-pitch or pace between segments — not for a click. If chapters sound like they were assembled from
-pieces, say so; that is the finding that would send us to the alternative model (§5.1).
+| Effective cap | Requests | Split chapters | **Seams in the whole Bible** | Chapters with **no seams at all** |
+|---|---|---|---|---|
+| 5,000 | 1,402 | 208 | **213** | **981 (82.5%)** |
+| 3,000 | 1,969 | 665 | 780 | 524 (44.1%) |
+| 2,000 | 2,698 | 944 | **1,509** | 245 (20.6%) |
 
-**Q4 — Does every pilot chapter return usable character-level timings?** If any chapter returns none,
-note it — the fallback path (§9.4) exists for this and needs to be exercised at least once.
+**Q2 — Does Request Stitching work on this model?** Try `previous_text` / `next_text` and
+`previous_request_ids` / `next_request_ids` across two consecutive segments of a long chapter.
 
-### 5.1 If Q2 or Q3 comes back badly
+> Documentation says stitching is **not available for `eleven_v3`**. It is the vendor feature built
+> for precisely our problem — conditioning each request on what came before and after — so **if it
+> works, it is the answer and most of §8.6 becomes unnecessary.** Documentation changes, and this
+> single fact reshapes the entire render, so **verify it rather than assuming it.** Report the
+> result either way, including a negative.
 
-The chosen model is the expressive one, and the owner chose it deliberately. If the pilot shows the
-per-request cap is very low **and** the seams are audible, the fallback is a different model that
-renders every chapter in a single request with no seams at all, at half the cost, at some loss of
-expressiveness. **That is an owner decision, not a render-machine decision** — stop, report Q2 and
-Q3 with audio examples, and wait.
+**Q3 — Voice sign-off (owner).** Listen to the tone chapters (Psalm 23, Isaiah 53, John 11). Is this
+voice fit for scripture? The owner's judgement, nobody else's. *If no, choose a different **v3**
+voice and re-run — the model is fixed, the voice is not.*
+
+**Q4 — Are the segment seams audible?** Render **1 Kings 8** (11,367 chars) split on verse
+boundaries at the Q1 cap, concatenate, and listen **specifically at the joins**. Listen for a change
+in **energy, pitch or pace** between segments — a *level step* is far more audible than a click. If
+chapters sound assembled from pieces, that is the finding that sends you to §8.6.
+
+**Q5 — Does every pilot chapter return usable character-level timings?** If any returns none, note
+it — the forced-alignment path (§9.4) exists for exactly this and should be exercised at least once
+here rather than discovered mid-corpus.
+
+### 5.1 If the seams are audible (Q4)
+
+**There is no model to fall back to** — that door was closed by the owner's quality judgement, and
+Request Stitching was closed by the vendor. So this is not a decision point, it is a work item:
+**work the remedy ladder in §8.6, in order, until the seams are inaudible**, then re-run Q4 to
+confirm on the same chapter.
+
+If you reach the end of the ladder and the seams are **still** audible: **stop, and escalate to the
+owner before any corpus spend** (§13). Do not proceed and hope — the corpus render is the one-way
+door, and shipping 1,509 audible joins into a scripture app is not a thing to discover afterwards.
 
 ---
 
@@ -306,7 +328,104 @@ continue.
 > The two guards together are what catch a **truncated render** — the most likely silent failure.
 > A per-chapter check alone would miss a segment that came back short in the middle of a chapter.
 
-### 8.5 Headings
+### 8.5 The seam remedy ladder — apply in order, do not skip
+
+Only split chapters have seams. At the documented cap that is 208 chapters (213 seams) and **981
+chapters have none at all**; at the pessimistic cap it is 944 chapters (1,509 seams). The remedies
+below are cumulative and are applied **in this order** — each is cheaper and safer than the next.
+
+**If Q2 showed Request Stitching works, stop here: use it, and skip to §8.6.** Everything below
+exists because it is documented as unavailable for this model.
+
+**Rung 1 — Split at the strongest available break.** When choosing between candidate verse
+boundaries, prefer one where the *preceding* verse ends with `.` `?` `!`; failing that `:` `;`;
+only then any verse boundary. A join at a full stop is far more forgiving than one mid-clause.
+You will almost never be forced onto a weak break: **82.9%** of KJV verses end in strong terminal
+punctuation and **94.5%** end sentence- or clause-terminally. Free, deterministic.
+
+**Rung 2 — Balanced segmentation, not greedy fill.** Do not pack greedily up to the cap — that
+leaves a short tail segment, and tails are where prosody drifts worst. Split the chapter into
+roughly equal parts on verse boundaries instead. Be clear about what this does: **it does not reduce
+the number of seams** (the request count is the same), it reduces the number of pathological
+segments. Free.
+
+**Rung 3 — Level matching, then one chapter-level loudness pass.** A *level step* is the most
+audible seam artefact, and this removes it without touching the model.
+
+1. Measure each segment's integrated loudness (EBU R128).
+2. Compute each segment's deviation from the **chapter mean**, and apply a **corrective gain capped
+   at ±2 dB**.
+3. Then apply **one** R128 normalisation pass across the whole concatenated chapter.
+
+> **Do not simply normalise each segment to a fixed target.** That flattens the chapter's own
+> dynamics — a deliberately quiet passage would be pushed up to match a loud one. We are removing
+> *steps between segments*, not equalising the chapter.
+
+Gain changes amplitude, not time, so **the timing index is unaffected by this rung.**
+
+**Rung 4 — Silence trim and a controlled gap.** Trim each segment's leading and trailing silence,
+then insert a fixed gap of ~250–350 ms at each join so it reads as a deliberate pause rather than a
+splice.
+
+> ⚠️ **This rung changes segment durations, and getting it wrong silently corrupts the timing
+> index.** Follow exactly:
+> - Compute cumulative offsets from the **final, post-trim, post-gap PCM lengths** — **never** from
+>   the durations the API reported.
+> - Within a segment, every verse time shifts by **−leadTrim**.
+> - Clamp the segment's last verse end time to the trimmed segment duration.
+> - Run the §8.4 per-segment and sum guards **after** trimming, not before.
+>
+> If you do this correctly the guards pass. If you do it wrong they fail — which is the point: the
+> mistake is caught here rather than shipped.
+
+**Rung 5 — Outlier detection and bounded targeted re-render.** For each segment in a chapter,
+compute integrated loudness and speaking rate (characters per second). Compare each against that
+chapter's own segment distribution and flag anything beyond a median-absolute-deviation threshold.
+Re-render **only** flagged segments — a few hundred characters each, so this is cheap.
+
+> **Termination rule — this is mandatory, not advisory.** At most **2 re-render passes per chapter**,
+> and on each pass keep the **best of N by the outlier metric** — not "re-render until it sounds
+> good". This model varies between generations, so an unbounded loop may never converge and will
+> spend real money failing to. A segment still flagged after 2 passes is **accepted and logged**, or
+> the chapter is escalated. The ledger's spend accumulator (§10) enforces the ceiling regardless.
+
+**Rung 6 — Pin a seed**, if the timing endpoint accepts one. Record it. It reduces cross-generation
+variance; it will not make output byte-reproducible.
+
+**Rung 7 — `stability` toward the robust/consistent end. OWNER DECISION — do not apply this
+yourself.**
+
+> This is the one remedy that trades away **the exact quality the owner chose this model for.**
+> Raising stability buys cross-generation consistency by reducing expressiveness. That may well be
+> the right trade, but it is his to make, not the render session's. **A/B two versions of a tone
+> chapter (Psalm 23 or Isaiah 53) at different stability settings, send both, and wait.** Never
+> quietly dial it in to make a metric pass.
+
+**Rung 8 — Research: ElevenLabs Studio / Projects.** Studio is the long-form/audiobook product, is
+documented as supporting the latest models including v3, and has API endpoints for projects and
+chapters. If it handles chapter-length text with internal continuity, it removes the seam problem at
+the root instead of patching it. Three questions, and the third is the one that decides it:
+
+1. Can it be driven headlessly from the API at 1,189-chapter scale?
+2. Does it return per-character/word timestamps? *(Probably not directly — but Forced Alignment
+   (§9.4) already covers that and caps at 10 h, which is irrelevant per chapter. Likely surmountable.)*
+3. **How does Studio achieve continuity for v3 when stitching is unavailable for v3?** Either it has
+   an internal mechanism the TTS API does not expose — in which case Studio is the answer — or it
+   segments internally and has the same problem, in which case it buys nothing. **No documentation
+   answers this. Only trying it does.**
+
+Also record: whether pronunciation dictionaries (§6) apply in Studio, and how it bills.
+
+**This is a research spike, not a step.** If it is being run, it should be run *before* the corpus,
+alongside the pilot — not discovered halfway through a render.
+
+### 8.6 Re-confirm
+
+After applying whichever rungs were needed, **re-render 1 Kings 8 end to end and listen at the joins
+again** (Q4). Record which rungs were applied, in the manifest and the log — they are part of the
+corpus's provenance, and a future re-render must be able to reproduce the same treatment.
+
+### 8.7 Headings
 
 Render the 1,401 heading clips from `audio/headings/inventory.json` using the **same voice, model and
 settings** as the corpus. They must sound like the same reader, because they play immediately before
@@ -390,8 +509,11 @@ Produce this on the render machine, then hand it over:
    SHA-256, and the Whisper model + revision used for verification.
 5. **`out/render_log.jsonl`** — per chapter: segment plan, requests made, characters billed, retries,
    any variance recorded.
-6. **The pilot answers** Q1–Q4 from §5, in writing.
-7. **Total characters billed and the actual cost.**
+6. **The pilot answers** Q1–Q5 from §5, in writing — including the Request Stitching result (Q2),
+   negative or positive.
+7. **Which remedy rungs (§8.5) were applied**, and the before/after audio for one seam. These are
+   part of the corpus's provenance: a future re-render must be able to reproduce the same treatment.
+8. **Total characters billed and the actual cost.**
 
 **On arrival, the checksums are re-verified** (`sha256sum -c SHA256SUMS`) before anything is
 published. The blobs are large and do not go into git; they are pinned by the checksums in the
@@ -407,6 +529,7 @@ manifest, which does. That is what makes a tampered or truncated file impossible
       superscriptions included
 - [ ] Every chapter passes the per-segment guard, the sum guard, monotonicity, and plausibility (§8.4)
 - [ ] Every chapter passes WER ≤ 5% and boundary agreement ≤ 300 ms — or is logged with a reason
+- [ ] **Seams are inaudible on the re-confirm listen (§8.6)**, and the rungs applied are recorded
 - [ ] The lexicon is committed, signed off, and its SHA recorded in the manifest
 - [ ] The rights note is recorded in `docs/data/README.md` (§7)
 - [ ] Manifest, timings, log and `SHA256SUMS` produced; checksums re-verified on arrival
@@ -415,7 +538,26 @@ manifest, which does. That is what makes a tampered or truncated file impossible
 
 ---
 
-## 13. If you are unsure
+## 13. Stop conditions, and if you are unsure
+
+### 13.1 The hard stop — seams
+
+**If you have worked the entire §8.5 ladder and the seams are still audible on the §8.6 re-confirm
+listen: STOP. Escalate to the owner. Do not begin the corpus render.**
+
+This is a real stop condition, not a caution. The reasoning, so it is not talked past:
+
+- The model is fixed — there is no fallback to switch to.
+- Request Stitching, the vendor feature built for this exact problem, is unavailable for it.
+- The corpus render is a **one-way, ~$500–688 door** producing audio that is not reproducible.
+
+So "proceed and see how it sounds" is not a recovery plan — by the time you know, the money is spent
+and the artefact exists. What to send when you stop: the Q1/Q2/Q4 answers, which rungs were applied,
+and audio of one bad seam. The decisions available to the owner at that point (accepting seams,
+accepting a stability trade, funding the Studio spike properly) are **all his**, and all of them are
+cheaper before the render than after.
+
+### 13.2 If you are unsure
 
 Stop and ask. Every step before §8 is cheap to repeat; §8 is not. There is no deadline that makes it
 cheaper to guess. In particular, do not:
@@ -423,4 +565,7 @@ cheaper to guess. In particular, do not:
 - raise the spend ceiling to finish a run,
 - edit a timing value to make a check pass,
 - accept "close enough" on pronunciation because a re-render is inconvenient,
+- apply the `stability` trade (§8.5 rung 7) yourself — it trades away the quality the model was
+  chosen for, so it is the owner's call,
+- proceed past an exhausted remedy ladder because the seams are "probably fine",
 - or touch `bible.db` for any reason at all.

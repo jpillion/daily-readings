@@ -23,6 +23,19 @@
 > key in **§13.3**, and the single-voice reading of the §9.2 total ceiling. **Nothing in §4 (the
 > player) or §5 (the queue) is invalidated** — see §7A.8, which is the interesting part.
 >
+> ### Amendment A4 — 2026-07-26 — `eleven_v3` is mandatory; the seam problem must be solved
+>
+> **The owner rejected `eleven_multilingual_v2` and `eleven_flash_v2` on output quality**, so A3's
+> "named fallback" is **revoked** — there is no model to fall back to. **And Request Stitching, the
+> vendor feature designed to make segmented long-form generation continuous, is unavailable for
+> `eleven_v3`** (verified; **D-AUD-E-41**). Both escape routes are therefore closed and RE-AUD-18 is
+> re-rated **HIGH**: the seams must be *solved*. **D-AUD-E-40** is an ordered remedy ladder with no
+> early exit (§10.0.2b), and the runbook gains a hard **stop-and-escalate** condition if the ladder
+> is exhausted with seams still audible. The pilot is **re-ordered so the per-request cap is
+> question one, ahead of voice** — it is now a seam-count question with a 7× swing (213 seams at a
+> 5,000 cap vs 1,509 at 2,000). **Recommendation: spike this before Sprint AUD-D is scheduled** —
+> it blocks nothing, because Phase 1 has no render dependency.
+>
 > ### Amendment A3 — 2026-07-26 — spoken headings, the v3 verdict, and the render runbook
 >
 > **(B) Spoken headings (closes OQ-AUD-5).** Verse numbers are never spoken; a reading announces
@@ -1402,9 +1415,19 @@ one to make for him** — see OQ-AUD-E-6.
 
 #### 10.0.2a A3 — the v3 verdict: **pin `eleven_v3`**, with two pilot gates
 
+> #### A4 (2026-07-26) — D-AUD-E-34's fallback clause is REVOKED; see D-AUD-E-40/41
+>
+> The owner tested `eleven_multilingual_v2` and `eleven_flash_v2` and **rejected both on output
+> quality**: *"I do NOT like the output. So, I'll need to find a way to use V3 regardless. We can
+> address those transitions in the generation options."* **`eleven_v3` is mandatory, not preferred.**
+> The "named fallback" below **does not exist** — there is no model to fall back *to*, because the
+> only two candidates that render a chapter in one request are the two he rejected. RE-AUD-18
+> therefore cannot be escaped; it has to be **solved**. And the mitigation I would have reached for
+> first is gone: see D-AUD-E-41.
+
 **Decision D-AUD-E-34 — pin `model_id = "eleven_v3"`, subject to two facts the pilot must establish
-(§5 of the runbook, Q2 and Q3). `eleven_flash_v2` is the named fallback if either comes back badly,
-and that fallback is an *owner* decision, not a render-machine one.**
+(§5 of the runbook, Q2 and Q3). ~~`eleven_flash_v2` is the named fallback if either comes back badly,
+and that fallback is an *owner* decision, not a render-machine one.~~ (A4: fallback revoked.)**
 
 **Where I was wrong, stated plainly.** D-AUD-E-21 rested on "208 chapters must be split ⇒ ~250 splice
 points ⇒ audible seams and a stitched alignment." That is true of *arbitrary* splits. It is not true
@@ -1476,6 +1499,84 @@ D-AUD-E-35's sum guard. Recorded as **R7** in the runbook.
 **Verdict.** I do not think v3 is the wrong call. My objection was to arbitrary splitting, and we do
 not have to split arbitrarily. The one thing I would not wave through is risk 1 — so the pin is
 real, and Q3 is a genuine gate rather than a formality.
+
+#### 10.0.2b A4 — the seam problem must be solved, not escaped
+
+**Decision D-AUD-E-41 — Request Stitching is unavailable for `eleven_v3`, so the obvious mitigation
+is off the table. This is verified, load-bearing, and re-verified at the pilot before we design
+around it.**
+
+ElevenLabs' Request Stitching (`previous_text`/`next_text`, `previous_request_ids`/`next_request_ids`)
+exists precisely to make segmented long-form generation prosodically continuous — it conditions each
+request on what came before and after. **Documentation states it is not available for `eleven_v3`.**
+I verified this independently rather than taking it on report, because it is the single fact that
+decides how much work §10.0.2b is: if it *were* supported, it would be the answer and almost
+everything below would be unnecessary. Docs change, so **runbook Q2 re-verifies it empirically on
+live pilot output.** If it turns out to work, the ladder collapses to "use stitching" and the render
+is straightforward.
+
+**How bad the problem is, measured** (verse-boundary packing over the real corpus):
+
+| Effective cap | Requests | Split chapters | **Seams** | Chapters that are **seam-free** |
+|---|---|---|---|---|
+| 5,000 | 1,402 | 208 | **213** | **981 (82.5%)** |
+| 3,000 | 1,969 | 665 | 780 | 524 (44.1%) |
+| 2,000 | 2,698 | 944 | **1,509** | 245 (20.6%) |
+
+**This is why the cap is now the pilot's first question, ahead of voice** (runbook §5, re-ordered).
+It is no longer a cost question — the dollar delta is trivial — it is a **seam-count** question, and
+the swing is 7×. It also reframes the risk usefully for the owner: even at the worst cap, **20.6% of
+the Bible has no seams at all**, and at the documented cap **82.5% does**. The problem is
+concentrated in long chapters, not spread across scripture.
+
+**Decision D-AUD-E-40 — the remedy ladder.** Ordered cheapest-and-safest first. The render session
+works down it until the seams are inaudible; it does **not** get to stop early because there is no
+fallback model to stop *into*.
+
+| # | Remedy | Verdict | Notes |
+|---|---|---|---|
+| **1** | **Split at the strongest available break.** Prefer verse boundaries whose preceding verse ends in `.` `?` `!`; then `:` `;`; then any verse boundary | **Keep — first, free** | Measured: **82.9%** of KJV verses end in strong terminal punctuation and **94.5%** end sentence- or clause-terminally, so a preferring splitter has abundant choice and will almost never be forced onto a weak break. A join at a full stop is far more forgiving than one mid-clause. Pure, deterministic, unit-testable |
+| **2** | **Balanced segmentation, not greedy fill** | **Keep — free** | Greedy filling to the cap leaves a short tail segment, and tails are where prosody drifts worst. Balanced splitting gives the **same request count** for far fewer pathological segments — it does not reduce the seam *count*, it reduces the badness of the worst segment. Say that honestly rather than overselling it |
+| **3** | **Per-segment corrective gain + one chapter-level R128 pass** | **Keep — the highest-value deterministic fix** | A *level step* is the most audible seam artefact, and this removes it without touching the model. **Not** plain per-segment normalisation — that would flatten intra-chapter dynamics. Measure each segment's integrated loudness, compute its deviation from the chapter mean, apply a **capped corrective gain (±2 dB)**, then one EBU R128 pass over the whole chapter for corpus-wide consistency. Gain does not shift time, so the timing index is untouched |
+| **4** | **Silence trim + a controlled inter-segment gap** | **Keep — with a correctness hazard flagged** | Trimming each segment's leading/trailing silence and inserting a fixed ~250–350 ms gap makes a join read as a deliberate pause rather than a splice. **But it changes segment durations, so cumulative offsets must be computed from the FINAL post-trim PCM lengths, never from the API-reported durations; verse times shift by −leadTrim within their segment; and the last verse's end must be clamped to the trimmed duration.** D-AUD-E-35's per-segment guard is evaluated **after** trimming. This is the single easiest way to silently corrupt the index, so it is spelled out in the runbook |
+| **5** | **Outlier detection + bounded targeted re-render** | **Keep — with a termination rule** | Per segment, compare integrated loudness and speaking rate (chars/sec) against the chapter's own segment distribution; flag deviations beyond a MAD threshold; re-render flagged segments only (a few hundred characters — cheap). **Termination: at most 2 re-render passes per chapter, keeping the best of N by the outlier metric, not "re-render until good"** — v3's variance means an unbounded loop may never converge and would spend real money doing it. A segment still flagged after 2 passes is accepted and logged, or the chapter escalates |
+| **6** | **Seed**, if the v3 timing endpoint accepts one | **Keep — open question** | Reduces cross-generation variance; will not make output byte-reproducible. Already RE-AUD-19 |
+| **7** | **v3 `stability` toward the robust/consistent end** | **Keep — but LAST, and it is the owner's call** | This is the one remedy that trades away **the exact thing he chose v3 for.** It must not be quietly dialled in by the render session: any change is A/B'd by the owner on pilot audio, with the expressiveness cost stated. Naming the trade is the point |
+| **8** | **ElevenLabs Studio / Projects** | **Research spike — see below** | Potentially sidesteps segmentation entirely |
+| ✗ | **Cross-fading the joins** | **Rejected** | Overlapping audio makes two verses claim the same milliseconds precisely at the seam. It trades an audible artefact for an **index-correctness** one, and index correctness is R3 / D-AUD-E-35. Not a trade we make |
+| ✗ | **Re-render whole chapters until seams vanish** | **Rejected** | Unbounded spend with no termination, and v3 variance means it may not converge. Superseded by remedy 5's bounded best-of-N |
+| ✗ | **Hand-editing seams in an audio editor** | **Rejected** | 1,509 seams is not hand-workable, and it destroys reproducibility — nothing would be re-derivable from the runbook, which is the property that makes the corpus trustworthy |
+| ✗ | **Accept audible seams and document them** | **Rejected as a remedy** | That is surrender, not mitigation. It remains available only as the escalation outcome in §13 of the runbook, and only as an owner decision |
+
+**The Studio spike (remedy 8) — verdict: research, not a plan.** ElevenLabs Studio is the long-form
+/ audiobook product, it is documented as supporting the latest models **including v3**, it has API
+endpoints for creating projects and chapters, and it exports per chapter. If it handles
+chapter-length text with internal continuity, it removes the seam problem at the root rather than
+patching it. Three questions decide it, and **two are unanswerable from documentation**:
+
+1. **Can it be driven headlessly from the API at 1,189-chapter scale?** (Endpoints exist; the
+   ergonomics at that scale are unknown.)
+2. **Does it return per-character or per-word timestamps?** Documentation points at **Forced
+   Alignment** for that, not at Studio itself. Since Forced Alignment is *already* our specified
+   fallback (D-AUD-E-23) and caps at 10 h of audio — irrelevant per chapter — **this is probably
+   surmountable**: Studio for the audio, Forced Alignment for the index.
+3. **The decisive unknown: how does Studio achieve continuity for v3, given stitching is
+   unavailable for v3?** Either it has an internal mechanism we cannot get at through the TTS API —
+   in which case it is the answer — or it segments internally and has *the same problem*, in which
+   case it buys nothing. **No document answers this. Only a spike does.**
+
+Also unknown and worth capturing in the spike: whether pronunciation dictionaries (D-AUD-E-22) apply
+in Studio, and how it bills.
+
+**My recommendation on scheduling.** **Do not accept v3-without-stitching as-is; spike it before
+Sprint AUD-D is scheduled.** The reasoning is about asymmetry, not pessimism: the corpus render is a
+**one-way, ~$500–688 door**, the fallback model has been removed by the owner's own quality
+judgement, and the best mitigation has been removed by the vendor — so the two escape routes that
+would normally make "try it and see" safe are both gone. Against that, the spike is a few dollars of
+pilot spend and about a day, and — this is the part that makes it cheap — **it blocks nothing**:
+Sprints AUD-A and AUD-B (the entire player, follow-along, entry points, marking, and the
+plug-and-play seam) have no dependency on the render whatsoever and ship as Phase 1 on the device
+voice. So the spike costs a day of one person's time and delays nothing that a user can see.
 
 #### 10.0.3 The lexicon must exist before the corpus render
 
@@ -1873,7 +1974,10 @@ without it; add it only if the device pass on a real API 26/27 device shows a ga
 | **RE-AUD-15** (A1) | Owner elects `eleven_v3` at the pilot, adding chunk/splice/stitch machinery to AUD-D | Medium | Priced in §10.0.2 and put to him **with the price attached** at pilot time (OQ-AUD-E-6), not absorbed silently |
 | **RE-AUD-16** (A1) | A mispronunciation ships and costs a paid re-render + a MINOR wait + a silent patch to users | Medium | D-AUD-E-22: lexicon built, signed off and **committed before** the corpus render; candidate list extracted mechanically from `bible.db`, so lexicon *coverage* is reviewable |
 | **RE-AUD-17** (A2) | Two voices = paying for the same books twice (~853 MB each) | Medium | Exclusive selection makes a second voice pure duplication — so per-voice storage totals and one-action "delete this voice" are requirements, not polish (D-AUD-E-32) |
-| **RE-AUD-18** (A3) | **Prosody/level discontinuity at segment seams** — the one v3 risk that survives verse-boundary splitting, and it partially erodes the expressiveness being bought | **Medium-High** | Runbook **Q3**: render 1 Kings 8 (11,367 chars) segmented and listen *at the joins*. Cheap, decisive, and a genuine gate — not a formality |
+| **RE-AUD-18** (A3, **re-rated A4**) | **Prosody/level discontinuity at segment seams.** ~~Mitigated by falling back to flash_v2.~~ **A4: there is no fallback** — the owner rejected both single-request models on quality, and Request Stitching (the designed mitigation) is unavailable for v3. This risk must be *solved* | **HIGH** (was Medium-High) | The **D-AUD-E-40 remedy ladder**, worked in order, plus the Studio spike. Runbook **Q4** listens at the joins; **§13 makes "ladder exhausted, seams still audible" a hard stop-and-escalate before any corpus spend** |
+| **RE-AUD-23** (A4) | Request Stitching unavailable for v3 removes the best mitigation | **High** | Verified independently; **re-verified empirically at the pilot (Q2)** because docs change and this one fact would collapse the whole ladder if it flipped |
+| **RE-AUD-24** (A4) | The silence-trim/gap remedy (ladder #4) **silently corrupts the timing index** if offsets are taken from API-reported durations instead of final PCM lengths | **High** | Spelled out step-by-step in the runbook; D-AUD-E-35's per-segment guard is evaluated **after** trimming, so a mistake here fails the gate rather than shipping |
+| **RE-AUD-25** (A4) | An outlier re-render loop spins and spends without converging | Medium | Bounded: **max 2 passes per chapter, best-of-N by metric**, then accept-and-log or escalate. The ledger's spend accumulator enforces the ceiling across restarts |
 | **RE-AUD-19** (A3) | v3's generation variance now sits *inside* a chapter rather than between chapters | Medium | Pin a seed if the endpoint accepts one; fixed voice settings for the whole corpus; both recorded in the manifest |
 | **RE-AUD-20** (A3) | The real per-request cap is unverified and swings the request count 2× (1,402 vs 2,698) | Medium | Runbook **Q2** establishes it empirically **before** the corpus is commissioned |
 | **RE-AUD-21** (A3) | v3 timestamp support is undocumented per model | Medium | Runbook **Q4** confirms on real pilot output; the Forced Alignment fallback (D-AUD-E-23) already covers a chapter that returns none |
@@ -1994,6 +2098,9 @@ Recorded rather than silently resolved, per Maya's own review note.
 | **A3 — headings, and the v3 verdict** | |
 | D-AUD-E-34 | **Pin `model_id = "eleven_v3"`** (supersedes D-AUD-E-21), subject to two pilot gates: the real per-request cap (Q2) and seam audibility on a segmented long chapter (Q3). `eleven_flash_v2` is the named fallback, and taking it is an **owner** decision. Verse-boundary splitting is always feasible (longest verse = Esther 8:9, 529 chars), which defeats the alignment-integrity objection; the $250–344 delta was never prohibitive. |
 | D-AUD-E-35 | The truncation guard becomes **per-segment** (`endMs[last] == segmentDuration`) **plus a sum guard** (`Σ segments == chapter duration`). The chapter-level invariant survives as a consequence and is now *stronger* — a short segment mid-chapter is caught where the chapter-level check alone would miss it. Concatenate **PCM then encode once**; never join encoded files. |
+| **A4 — v3 mandatory; the seam problem** | |
+| D-AUD-E-40 | **The remedy ladder** for segment seams, worked in order and with no early exit: strongest-break splitting (82.9% of verses end sentence-terminally) → balanced segmentation → per-segment corrective gain + one chapter R128 pass → silence-trim + controlled gap (with the offset hazard) → bounded outlier re-render (max 2 passes, best-of-N) → seed → **stability, last, and the owner's call because it trades away what he chose v3 for** → the Studio spike. **Rejected:** cross-fades (they corrupt the index), unbounded whole-chapter re-renders, hand-editing, and "document the seams". |
+| D-AUD-E-41 | **Request Stitching is unavailable for `eleven_v3`** — the designed mitigation for segmented long-form continuity is off the table. Verified independently and **re-verified at the pilot**, because if it flipped, the ladder would collapse to one line. This is what makes RE-AUD-18 HIGH and un-escapable, since the owner's quality rejection also removed the fallback model. |
 | D-AUD-E-36 | Headings are **voice-specific**, live **inside the voice pack**, and are declared by its manifest (`headings` block), keyed by `clipId` — plug-and-play by construction, ~5 MB/voice. A future unbounded-heading feature is an additive generator against this seam. |
 | D-AUD-E-37 | A heading is a **separate media item**; verse timings stay **chapter-relative** and **no heading audio is ever inside a chapter file** — so §10.3 assertion 5 and D-AUD-E-35's guards are completely unaffected. `activeVerseId` is null while a heading plays (a legal, already-handled state). |
 | D-AUD-E-38 | Heading selection is the pure `HeadingPlan.headingsFor(queue)`: **full form whenever the *book* changes** (so 3 John in the Jun 19 / Dec 19 portion takes the full form), short form otherwise; single-chapter books get the book name alone; Psalms singular **via `ReadingFormatter.singularizeBookName`, never reimplemented**; windowed refs take the verse form. |
