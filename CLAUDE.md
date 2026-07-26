@@ -1588,6 +1588,24 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   clean, five data/Room gates UNCHANGED (11/10/8/18/5).
   **Standing lesson for this repo: a debug-build device pass does NOT cover R8. Any release carrying
   ViewModel/DI/coroutine changes should be smoke-tested from `assembleRelease`, not `assembleDebug`.**
+- ✅ **1.7.1 also assigned to the INTERNAL testing track** (`2026-07-25`, owner request), via a new
+  **`.github/workflows/assign-track.yml` — "Assign build to a Play track"** (additive; distinct from
+  the promote workflow). A versionCode can only be UPLOADED once, so getting an existing build onto
+  another track means moving/assigning the existing bundle — `release.yml` cannot be re-run for it.
+  **Three shapes were tried; the first two are dead ends, recorded in the workflow so nobody retries
+  them:** (1) `--track <target> --version_code N` with every `--skip_upload_*` and no promotion →
+  *"No local metadata, apks, aab, or track to promote were found"* (nothing to upload + nothing to
+  promote = no-op); (2) adding `--rollout` → takes supply's `update_rollout` path, which UPDATES an
+  existing release → *"Unable to find the requested release on track - 'internal'"* when the target
+  track is empty. **(3) `--track_promote_to` is the only working route — but `deactivate_on_promote`
+  defaults to TRUE**, which with `production` as the source would have pulled the live 1.7.1 release
+  OFF production. It is pinned **false**, so the source keeps its release and the build simply also
+  appears on the target (Play allows one versionCode live on several tracks). The workflow also
+  exposes **`--validate_only`** (default **true**) so any track move can be dry-run against Play
+  first; the internal assignment was dry-run (green) BEFORE committing, then run for real
+  ("Successfully finished the upload to Google Play"), and **production was re-verified afterwards**
+  by a second dry run that still finds 10701 on production. Use `validate_only=true` first for every
+  future track operation.
 - Next up (non-blocking): monitor 1.6.0 **crash/ANR vitals + reviews** (Play Console → Monitor and
   improve; the two minor edge-to-edge "recommended actions" remain noted, non-blocking). Store-title
   rename in review. Still pending: the owner **device pass** on 1.6.0 — especially the sprint-00P
