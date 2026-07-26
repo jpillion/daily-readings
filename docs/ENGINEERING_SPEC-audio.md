@@ -23,6 +23,24 @@
 > key in **§13.3**, and the single-voice reading of the §9.2 total ceiling. **Nothing in §4 (the
 > player) or §5 (the queue) is invalidated** — see §7A.8, which is the interesting part.
 >
+> ### Amendment A3 — 2026-07-26 — spoken headings, the v3 verdict, and the render runbook
+>
+> **(B) Spoken headings (closes OQ-AUD-5).** Verse numbers are never spoken; a reading announces
+> **Book + Chapter** once, then **"Chapter N"** for subsequent chapters — with the full form
+> repeated whenever the **book** changes (so 3 John in the Jun 19 / Dec 19 portion is announced in
+> full). Pre-rendered as a closed **1,401-clip** set (~$3–4), living **inside the voice pack**. New
+> **§5A**; decisions **D-AUD-E-36 … D-AUD-E-39**. **The verse timing index and its truncation guard
+> are untouched** (D-AUD-E-37) — headings are separate media items, never inside a chapter file.
+>
+> **(C) `eleven_v3` is pinned; D-AUD-E-21 is SUPERSEDED by D-AUD-E-34.** My objection assumed
+> arbitrary splits; splitting on **verse boundaries** is always feasible (longest verse: Esther 8:9,
+> 529 chars) and defeats it. The truncation guard is reworked to **per-segment + sum** (D-AUD-E-35)
+> and comes out *stronger*. Two pilot gates remain (real per-request cap; seam audibility). §10.0.2a.
+>
+> **(A) New sibling document: [AUDIO_RENDER_RUNBOOK.md](AUDIO_RENDER_RUNBOOK.md)** — the
+> owner-runnable procedure for producing the corpus, written to be read with **no other context
+> loaded** (ticket `SE-T10`, brought forward).
+>
 > ### Amendment A2 — owner ruling on mixed/partial coverage
 >
 > **Voice selection is app-wide and exclusive.** One active voice for the whole app; coverage is
@@ -455,6 +473,133 @@ Everything the PRD asks for falls out of this rather than being special-cased:
 → append the next chapter via `GlobalChapterIndex` (which already crosses book boundaries and is
 bounded at Gen 1 / Rev 22 — Sprint H, D-H-2) and keep going. One `when`, one home, fully
 JVM-testable.
+
+---
+
+## 5A. Spoken headings (NEW OWNER REQUIREMENT, A3 — closes OQ-AUD-5)
+
+**Owner ruling (2026-07-26).** Verse numbers are **never** spoken (FR-AUD-9, unchanged). A reading
+**announces Book + Chapter once at the start**; subsequent chapters *within the same reading* get
+**"Chapter N" only**. His example: `Genesis 1-2` → *"Genesis Chapter 1."* → chapter 1 →
+*"Chapter 2."* → chapter 2.
+
+### 5A.1 Why this is pre-rendered, not synthesised at runtime
+
+The heading space is **closed and enumerable at build time**, which is the whole reason this is
+cheap. A realtime API path was considered and **rejected by the owner**: it needs either an
+on-device key (unshippable) or a proxy of ours (reintroduces the hosting D-AUD-1 exists to avoid),
+and either way it needs `INTERNET` — which would undo the reason Play Asset Delivery was chosen at
+all (NFR-AUD-A). Pre-rendering costs **~$3–4 once**.
+
+**Inventory — computed from `BookCatalog` and the three bundled plan assets, not estimated:**
+
+| Form | Count | Example |
+|---|---|---|
+| Full, per canon chapter | **1,189** | "Genesis Chapter 1." |
+| Full, per distinct verse window | **31** | "Psalm 119, verses 1 to 40." |
+| Short, **book-agnostic** | **150** | "Chapter 2." |
+| Short, per distinct verse window | **31** | "Chapter 119, verses 1 to 40." |
+| **Total distinct clips** | **1,401** | **~24,900 chars ⇒ ~$3–4** |
+
+> **Reconciliation note.** My first count came to 1,370 because I generated only one form per
+> windowed reference. The extra **31** are the *short* forms of the windowed headings, reachable
+> when a windowed chapter is not the first chapter of its reading. Rather than reason about
+> reachability, **we generate the closure** — 31 extra two-second clips is far cheaper than a
+> missing clip at runtime. The two counts now agree at 1,401.
+>
+> Windowed refs per plan: Bible Companion **4**, M'Cheyne **38**, Chronological **0** — collapsing
+> to **31 distinct** windows across all plans (the plans share some divisions).
+
+**A property worth recording, because it pays off later (D-AUD-E-19):** the full form covers *every*
+canon chapter and the short form is *book-agnostic*, so **any future whole-chapter reading plan
+needs zero new heading audio.** Only a plan introducing a *novel verse window* would — and under
+D-AUD-E-19 (audio never changes in a patch release) that is exactly the kind of coupling worth
+knowing about in advance. A new plan is still a pure data drop unless it invents a new window.
+
+### 5A.2 The selection rule
+
+**Decision D-AUD-E-38 — heading selection is a pure function of the queue,
+`HeadingPlan.headingsFor(queue): List<HeadingRef?>`, one entry per `QueueChapter`.** The rule:
+
+1. **Full form when the *book* changes** — including the first chapter of the reading. This is
+   deliberately "book changes", not "first chapter": the Jun 19 / Dec 19 portion is **2 John +
+   3 John**, so 3 John takes the **full** form. A "first chapter only" rule would announce
+   *"3 John Chapter 1"* as *"Chapter 1"*, which is wrong.
+2. **Short form otherwise** — subsequent chapters of the same book within the reading.
+3. **Single-chapter books: book name only, no chapter number** — Obadiah, Philemon, 2 John, 3 John,
+   Jude (verified: exactly 5).
+4. **Psalms is singular for one chapter**: "Psalm 23", never "Psalms Chapter 23". This **reuses
+   `ReadingFormatter.singularizeBookName(canonicalName, singleChapter)`** — the D-UI-2 rule already
+   shared by the Schedule and the reader. **It is not reimplemented**; a fourth copy of that rule is
+   exactly the drift this codebase kills on sight.
+5. **Windowed refs take the verse form**: "Psalm 119, verses 1 to 40."
+6. `BrowseChapterUnit` auto-advance announces each chapter as it arrives, applying the same rule —
+   so browsing from Genesis 50 into Exodus 1 announces the book, because the book changed.
+
+### 5A.3 Where the clips live, and the drift guard
+
+**Decision D-AUD-E-36 — headings are voice-specific, so they live **inside the voice pack** and are
+declared by its manifest like everything else (D-AUD-E-25/26), keyed by a stable `clipId`.**
+
+```json
+"headings": { "format": "headings-v1", "pathTemplate": "audio/_headings/{clipId}.opus",
+              "inventorySha256": "…" }
+```
+
+They must be voice-specific for the obvious reason — a heading in a different voice from the chapter
+it introduces would be jarring — and putting them in the pack means they are plug-and-play by
+construction: a second voice ships its own headings and **no code changes**. Cost: **~5 MB per
+voice**, under 1% of the corpus.
+
+Because headings are keyed by reference and resolved through the manifest, a future *unbounded*
+heading feature (arbitrary references, e.g. spoken cross-references) is an **additive generator
+against an existing seam**, not a retrofit.
+
+**Decision D-AUD-E-39 — the heading inventory is GENERATED from `BookCatalog` + the plan registry
+into a committed `audio/headings/inventory.json`, and the render reads *that file*; the heading
+strings are never hand-authored and never re-derived in Python.** This is the `exportBookCatalog`
+discipline (D-V3-5/§6) applied to audio: the wording rules — especially the Psalms singular rule —
+live in Kotlin, are exported once, and the render machine consumes the export. A Python
+reimplementation of `singularizeBookName` would be a second source of truth for how scripture is
+announced. The app computes a `clipId` with the *same* Kotlin code that generated the inventory, so
+lookup and generation cannot drift.
+
+### 5A.4 The timing index is untouched — stated explicitly
+
+**Decision D-AUD-E-37 — a heading is a SEPARATE media item, played before its chapter. Verse timings
+remain relative to the chapter file, and the truncation guard is unchanged.**
+
+The alternative — prepending the heading audio to the chapter file — would shift every verse offset
+by the heading's duration and make the chapter's duration include narration that is not scripture.
+That would quietly break the invariant that `endMs[last] == chapterDurationMs`, which is the
+single most valuable check in the whole verification gate (§10.3 assertion 5, and now D-AUD-E-35's
+per-segment form). **It is not worth trading a truncation guard for a file-count saving.**
+
+So, concretely, and this is the sentence to hold onto: **§10.3's assertion 5 and D-AUD-E-35's
+per-segment guard are completely unaffected by the heading layer, because no heading audio is ever
+inside a chapter file.** Headings have their own durations in the manifest and need no timing index
+at all (each is one short utterance).
+
+Player-side this is free: the media timeline (D-AUD-E-4) already holds one item per chapter, and a
+heading is simply another item ahead of it. `activeVerseId` is `null` while a heading plays — which
+is already a legal state the reader handles (highlight absent rather than wrong, FR-AUD-11).
+
+### 5A.5 What the gate asserts
+
+Added to §10.3 / §7A.9:
+
+| # | Assertion | Catches |
+|---|---|---|
+| 21 | **Totality**: every heading any queue can request — over all bundled plans, every canon chapter, and every browse transition — exists in the inventory, and the inventory contains **no unreachable entries** beyond the deliberate windowed-short closure | a missing clip at runtime, i.e. a silent gap before a chapter |
+| 22 | The inventory is **byte-identical to a fresh generation** from `BookCatalog` + the plan registry | a hand-edited heading string |
+| 23 | Psalms single-chapter entries read "Psalm N", multi-chapter "Psalms"; the 5 single-chapter books carry **no** chapter number; every windowed entry has both forms | a reimplemented or drifted `singularizeBookName` |
+| 24 | The Jun 19 / Dec 19 portion yields **full** form for both 2 John and 3 John | the "first chapter only" bug — the exact case the book-change rule exists for |
+| 25 | Manifest `headings.inventorySha256` equals the committed inventory's SHA | a pack rendered against a different inventory |
+
+Mutation targets: change the rule to "first chapter only" (→ 24); force plural Psalms (→ 23); drop
+the windowed short forms (→ 21); prepend heading audio into a chapter file and confirm the *existing*
+truncation guard goes red (→ §10.3 assertion 5, proving D-AUD-E-37 is enforced and not merely
+asserted).
 
 ---
 
@@ -1217,6 +1362,16 @@ Between those two, the deciding number is ours, not the vendor's (V17, V18):
 | Longest chapter (Ps 119, 12,999 chars) | needs ≥3 requests | **one request** |
 | Consequence | ~250+ intra-chapter splice points | **chapter = one atomic render** |
 
+> #### ⛔ D-AUD-E-21 — SUPERSEDED by D-AUD-E-34 (amendment A3, 2026-07-26)
+>
+> **My objection was built on a premise I did not check: that splitting a chapter means splitting it
+> arbitrarily. It does not.** We assemble chapter text *from verses*, so we can split strictly on
+> **verse boundaries** — which is where an audio Bible pauses anyway. That defeats most of the
+> argument below, and the dollar delta ($250–344 one-time) was never prohibitive. The owner's
+> preference for `eleven_v3` stands. See **§10.0.2a** for the verdict, the reworked truncation guard,
+> and the residual risks that are real. *(The reasoning is kept because the "one request per chapter"
+> property is still genuinely valuable, and is still the reason flash_v2 is the named fallback.)*
+
 **Decision D-AUD-E-21 — pin `model_id = "eleven_flash_v2"`, and record the pin (with voice id and
 all synthesis parameters) in `audio_manifest.json` so a re-render is reproducible in configuration
 even though it is not reproducible in bytes.**
@@ -1244,6 +1399,83 @@ chunking at sentence/verse boundaries, splice-and-stitch machinery in `render_au
 re-basing across chunks, ~250+ new seams to spot-check, and a longer render. That is a real chunk of
 Sprint AUD-D. **It is a decision to put in front of him at the pilot with the price attached, not
 one to make for him** — see OQ-AUD-E-6.
+
+#### 10.0.2a A3 — the v3 verdict: **pin `eleven_v3`**, with two pilot gates
+
+**Decision D-AUD-E-34 — pin `model_id = "eleven_v3"`, subject to two facts the pilot must establish
+(§5 of the runbook, Q2 and Q3). `eleven_flash_v2` is the named fallback if either comes back badly,
+and that fallback is an *owner* decision, not a render-machine one.**
+
+**Where I was wrong, stated plainly.** D-AUD-E-21 rested on "208 chapters must be split ⇒ ~250 splice
+points ⇒ audible seams and a stitched alignment." That is true of *arbitrary* splits. It is not true
+of the split we actually get to take: we build chapter text by concatenating verses, so we can pack
+**whole verses** into segments. I checked the one thing that could have made this infeasible — the
+longest single verse in the KJV is **Esther 8:9 at 529 characters** — so even at a 2,000-char cap
+**no verse ever needs an intra-verse split.** Verse-boundary segmentation is always available.
+
+Once seams fall between verses, the three sub-arguments collapse in turn:
+
+| My objection | Status under verse-boundary splitting |
+|---|---|
+| Seams mid-sentence, swallowed words | **Gone.** Seams land where an audio Bible pauses anyway |
+| "The timing index stops being one unbroken alignment" | **Answered.** Each segment carries a whole number of verses, so its alignment is exact and self-contained; chapter-relative times are segment-relative times plus a cumulative offset. Offsets are *additive* precisely because no verse straddles a boundary |
+| "A per-chapter re-render stops being one reproducible call" | **Weakened to a bookkeeping cost.** It becomes one reproducible *segment plan* — deterministic given the text and the cap, and recorded in the manifest |
+| Dollars | **Never the obstacle.** ~4,168,411 billable chars; v3 bills 1 credit/char vs flash_v2's 0.5 ⇒ **$688 vs $344** at Scale, **$500 vs $250** at Business overage. A **$250–344 one-time** delta on a once-forever asset |
+
+**Measured cost of the choice** (computed over the real corpus, verse-boundary packing):
+
+| Effective cap | Requests | Chapters split | Infeasible verses |
+|---|---|---|---|
+| 30,000 (`flash_v2`) | 1,189 | 0 (0%) | 0 |
+| 5,000 (`v3` documented max) | **1,402** | 208 (17.5%) | 0 |
+| 3,000 | 1,969 | 665 (56%) | 0 |
+| 2,000 (`v3` reliable-generation signal) | **2,698** | 944 (79%) | 0 |
+
+So the engineering cost is **real but not prohibitive**: a segment planner, PCM concatenation, an
+offset-additive timing merge, and a per-segment guard — roughly a day inside `render_audio.py`,
+which Sprint AUD-D already owns. That is *inconvenient*, not *disqualifying*, and the bar the owner
+set is the right one.
+
+**Decision D-AUD-E-35 — the truncation guard becomes per-segment, and the chapter-level invariant
+survives as its consequence.** This is the load-bearing change, so it is stated precisely:
+
+- **Per segment:** `endMs[last verse of segment] == segmentDurationMs` (±250 ms).
+- **Sum:** `Σ segmentDurationMs == chapterDurationMs` (±250 ms), measured on the *encoded* file.
+- **Therefore, unchanged:** `endMs[last verse of chapter] == chapterDurationMs` — §10.3's assertion
+  5 **survives verbatim**, and is now *stronger*, because a segment that came back short **in the
+  middle** of a chapter is caught by the per-segment guard where the chapter-level check alone would
+  have missed it (the interior verses would simply shift).
+
+**Residual risks — real, named, and pilot-checkable:**
+
+1. **Prosody discontinuity between segments (RE-AUD-18).** This is the one that survives, and it is
+   a *quality* risk rather than an integrity one. `eleven_v3` is the expressive model, and
+   expressiveness is context-dependent: each segment is generated with no knowledge of its
+   neighbours, so energy, pitch and pace can step at a seam. A click is not the worry — a *level
+   change* is, and it is more audible than a boundary artifact. At a 2,000-char cap this is 2,698
+   independent generations, and it partially erodes the very quality being bought. **Mitigation: the
+   pilot renders 1 Kings 8 (11,367 chars) segmented and the owner listens at the joins** (runbook
+   Q3). This is cheap and decisive.
+2. **Generation variance within a chapter (RE-AUD-19).** v3 is documented as more variable
+   generation-to-generation. With one request per chapter that variance sits *between* chapters,
+   where nobody notices. Segmented, it sits *inside* one chapter, where they might. Pinning a seed
+   (if the endpoint accepts one) and fixed voice settings reduces but does not remove it.
+3. **The cap is unverified and swings the burden 2× (RE-AUD-20).** Documented max ~5,000 vs a
+   reliable-generation signal nearer ~2,000. **Runbook Q2 establishes it empirically before the
+   corpus is commissioned** — this is exactly the kind of number we do not take on trust.
+4. **Timestamp availability on v3 (RE-AUD-21).** v3 does have a speech-with-timing path, so the
+   index survives — but per-model support is not documented, so **runbook Q4 confirms it on real
+   pilot output**, and the Forced Alignment fallback (D-AUD-E-23) is already specified for any
+   chapter that returns none.
+
+**Encoding rule that this decision forces (and that is easy to get wrong):** concatenate the
+**PCM**, then encode **once**. Never concatenate encoded `.opus` files — that produces boundary
+artifacts *and* a container duration that no longer matches the timing index, silently breaking
+D-AUD-E-35's sum guard. Recorded as **R7** in the runbook.
+
+**Verdict.** I do not think v3 is the wrong call. My objection was to arbitrary splitting, and we do
+not have to split arbitrarily. The one thing I would not wave through is risk 1 — so the pin is
+real, and Q3 is a genuine gate rather than a formality.
 
 #### 10.0.3 The lexicon must exist before the corpus render
 
@@ -1641,6 +1873,11 @@ without it; add it only if the device pass on a real API 26/27 device shows a ga
 | **RE-AUD-15** (A1) | Owner elects `eleven_v3` at the pilot, adding chunk/splice/stitch machinery to AUD-D | Medium | Priced in §10.0.2 and put to him **with the price attached** at pilot time (OQ-AUD-E-6), not absorbed silently |
 | **RE-AUD-16** (A1) | A mispronunciation ships and costs a paid re-render + a MINOR wait + a silent patch to users | Medium | D-AUD-E-22: lexicon built, signed off and **committed before** the corpus render; candidate list extracted mechanically from `bible.db`, so lexicon *coverage* is reviewable |
 | **RE-AUD-17** (A2) | Two voices = paying for the same books twice (~853 MB each) | Medium | Exclusive selection makes a second voice pure duplication — so per-voice storage totals and one-action "delete this voice" are requirements, not polish (D-AUD-E-32) |
+| **RE-AUD-18** (A3) | **Prosody/level discontinuity at segment seams** — the one v3 risk that survives verse-boundary splitting, and it partially erodes the expressiveness being bought | **Medium-High** | Runbook **Q3**: render 1 Kings 8 (11,367 chars) segmented and listen *at the joins*. Cheap, decisive, and a genuine gate — not a formality |
+| **RE-AUD-19** (A3) | v3's generation variance now sits *inside* a chapter rather than between chapters | Medium | Pin a seed if the endpoint accepts one; fixed voice settings for the whole corpus; both recorded in the manifest |
+| **RE-AUD-20** (A3) | The real per-request cap is unverified and swings the request count 2× (1,402 vs 2,698) | Medium | Runbook **Q2** establishes it empirically **before** the corpus is commissioned |
+| **RE-AUD-21** (A3) | v3 timestamp support is undocumented per model | Medium | Runbook **Q4** confirms on real pilot output; the Forced Alignment fallback (D-AUD-E-23) already covers a chapter that returns none |
+| **RE-AUD-22** (A3) | A heading clip is missing at runtime ⇒ a silent gap before a chapter | Low | Gate assertion 21 asserts **totality** over all bundled plans and all canon chapters; we generate the closure (incl. the 31 windowed short forms) rather than reason about reachability |
 
 ---
 
@@ -1648,9 +1885,9 @@ without it; add it only if the device pass on a real API 26/27 device shows a ga
 
 Recorded rather than silently resolved, per Maya's own review note.
 
-> **A1/A2 status.** **OQ-AUD-1 is resolved (ElevenLabs, D-AUD-E-20)** — items below that assumed it
-> open are historical. **Item 9 is new in A2 and is a disagreement I lost, correctly** — recorded
-> because the reasoning is worth keeping.
+> **A1/A2/A3 status.** **OQ-AUD-1 is resolved (ElevenLabs, D-AUD-E-20)** and **OQ-AUD-5 is resolved**
+> (spoken headings, §5A) — items below that assumed either open are historical. **Items 9 and 11 are
+> disagreements I lost**, both recorded because the reasoning is worth keeping.
 
 1. **§8's download-unit table is not deliverable as written, and the sizes are optimistic.** An asset
    pack is the *atomic* download unit, so "Today's readings ~2.4 MB" cannot exist — today's readings
@@ -1698,7 +1935,15 @@ Recorded rather than silently resolved, per Maya's own review note.
    also strictly simpler: it deletes an algorithm, a config field, a use case, and a whole class of
    state (mixed coverage) from the design. Recorded because "the simpler rule was also the correct
    one" is worth remembering the next time availability logic starts growing a preference order.
-10. **Agreement, recorded:** D-AUD-7 (two-phase) is right, and the reason is stronger than the PRD
+11. **A3 — the second disagreement I lost, and the lesson in it.** I ruled out `eleven_v3`
+    (D-AUD-E-21) on splice-integrity grounds without checking whether the splits had to be
+    arbitrary. They did not: we assemble chapter text from verses, so we can split on verse
+    boundaries, and one query against the corpus (longest verse = **Esther 8:9, 529 chars**) shows
+    that is *always* feasible even at the most pessimistic cap. The lesson is narrow and worth
+    keeping: **I priced a constraint before checking whether it was one.** The residual risk
+    (RE-AUD-18, prosody at seams) is real and is now a pilot gate rather than a reason to overrule
+    the owner — which is the right shape for a taste decision with an engineering cost attached.
+12. **Agreement, recorded:** D-AUD-7 (two-phase) is right, and the reason is stronger than the PRD
    states — with `SimpleBasePlayer`, Phase 1 is not merely "the UX before the spend," it is the
    *same media3 player architecture*, so Phase 2 is one class. And D-AUD-8 (play marks read via the
    existing seam) is right: the alternative needs completion tracking, is ambiguous on partial
@@ -1746,6 +1991,13 @@ Recorded rather than silently resolved, per Maya's own review note.
 | D-AUD-E-30 | The **device voice is a registry entry** (`device_tts`), the default, always installed, always fully covering — a synthetic manifest inside the same contract. Collapses the degradation ladder into selection and **forces the plug-and-play seam into Phase 1**, where it is tested with zero bytes and no PAD dependency. |
 | D-AUD-E-31 | A voice switch **stops playback** and retains queue + `activeVerseId`, so the next press resumes the same passage from the current verse in the new voice — no half-state, no cross-voice moment, and no download prompt raised from the Settings screen. |
 | D-AUD-E-32 | Downloads are grouped **by voice**; "delete this voice" is one action; a **partially** deleted active voice stays active and prompts per missing chapter; a **fully** uninstalled active voice reverts to `device_tts` **with one notice** (never silently) and **without rewriting the stored id**, so re-downloading restores the user's choice. |
+| **A3 — headings, and the v3 verdict** | |
+| D-AUD-E-34 | **Pin `model_id = "eleven_v3"`** (supersedes D-AUD-E-21), subject to two pilot gates: the real per-request cap (Q2) and seam audibility on a segmented long chapter (Q3). `eleven_flash_v2` is the named fallback, and taking it is an **owner** decision. Verse-boundary splitting is always feasible (longest verse = Esther 8:9, 529 chars), which defeats the alignment-integrity objection; the $250–344 delta was never prohibitive. |
+| D-AUD-E-35 | The truncation guard becomes **per-segment** (`endMs[last] == segmentDuration`) **plus a sum guard** (`Σ segments == chapter duration`). The chapter-level invariant survives as a consequence and is now *stronger* — a short segment mid-chapter is caught where the chapter-level check alone would miss it. Concatenate **PCM then encode once**; never join encoded files. |
+| D-AUD-E-36 | Headings are **voice-specific**, live **inside the voice pack**, and are declared by its manifest (`headings` block), keyed by `clipId` — plug-and-play by construction, ~5 MB/voice. A future unbounded-heading feature is an additive generator against this seam. |
+| D-AUD-E-37 | A heading is a **separate media item**; verse timings stay **chapter-relative** and **no heading audio is ever inside a chapter file** — so §10.3 assertion 5 and D-AUD-E-35's guards are completely unaffected. `activeVerseId` is null while a heading plays (a legal, already-handled state). |
+| D-AUD-E-38 | Heading selection is the pure `HeadingPlan.headingsFor(queue)`: **full form whenever the *book* changes** (so 3 John in the Jun 19 / Dec 19 portion takes the full form), short form otherwise; single-chapter books get the book name alone; Psalms singular **via `ReadingFormatter.singularizeBookName`, never reimplemented**; windowed refs take the verse form. |
+| D-AUD-E-39 | The 1,401-clip inventory is **generated** from `BookCatalog` + the plan registry into a committed `audio/headings/inventory.json`; the render consumes that export and never re-derives heading strings in Python (the `exportBookCatalog` anti-drift discipline). |
 | D-AUD-E-33 | **`active_voice_id`** string key in the existing DataStore. Absent ⇒ `device_tts`; unknown/uninstalled ⇒ `device_tts` **on read, not on write** — the `selected_plan` / `BibleProvider.fromStored` posture, field for field. Supersedes A1's `audio_preferred_voice_id` and §13.3's `audio_voice_source`. |
 
 ---
@@ -1786,6 +2038,9 @@ release-only `audio-bundle` CI job; the corpus-asset fetch + checksum verificati
 **This sprint is the gate on commissioning the render.**
 
 **Sprint AUD-D — The render + the gate (the data project).**
+> **A3:** the owner runs this from a standalone session — the step-by-step procedure now lives in
+> [AUDIO_RENDER_RUNBOOK.md](AUDIO_RENDER_RUNBOOK.md) (`SE-T10`, brought forward). The order below is
+> its summary; the runbook is authoritative.
 Ordered strictly, because the last step is the one-way door: **(1)** extract the out-of-lexicon
 token list from `bible.db`; **(2)** render the R-AUD-3 pilot on `eleven_flash_v2` (D-AUD-E-21);
 **(3)** owner voice sign-off (M-AUD-6) **and** the `eleven_v3`-vs-`flash_v2` election with its price
