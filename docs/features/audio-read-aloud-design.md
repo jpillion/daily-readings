@@ -181,7 +181,7 @@ so it is a pattern the app already teaches:
 │  Speed                            1.0× ▾     │  SettingsDropdownRow idiom
 │  Sleep timer                         Off ▾   │  SettingsDropdownRow idiom
 │  ────────────────────────────────────────    │
-│  High-quality voice · Genesis downloaded     │  source status (§7)
+│  High-quality voice · Genesis downloaded     │  active-voice source status (§7)
 └──────────────────────────────────────────────┘
 ```
 
@@ -211,7 +211,7 @@ sealed interface ListenState {
 |---|---|---|---|
 | Idle | ▶ on a card / top bar / reader | Preparing | Bar **slides in** (`AnimatedVisibility`, `expandVertically` 180 ms); indeterminate glyph; reading marked read (FR-AUD-15) |
 | Preparing | source ready | Playing | ⏸ glyph, status "Playing" |
-| Preparing | source missing | NeedsSource | Bar shows the passage + "Not downloaded"; sheet auto-opens with the two-choice block (§7) |
+| Preparing | passage missing **from the active voice** | NeedsSource | Bar shows the passage + "Not downloaded"; sheet auto-opens at the download decision — the primary download path (§7.4) |
 | Playing | ⏸ / headset / focus loss | Paused | ⏵ glyph, status "Paused" |
 | Playing | end of unit (FR-AUD-4 stop rules) | Idle | Bar **slides out**; no lingering "finished" chrome, no replay affordance — re-entry is tapping the reading again |
 | any live | ✕ on the bar, or Stop on the notification | Idle | Bar slides out immediately |
@@ -947,18 +947,23 @@ picks "Listen" or "Audio", the ids stay and only the values change.
 |---|---|---|
 | `audio_section_title` | Read aloud | Settings section |
 | `audio_voice_title` | Voice | dropdown row label |
-| `audio_voice_device` | Device voice | **D-AUD-5: origin/quality only** |
-| `audio_voice_high` | High-quality voice | **D-AUD-5** |
-| `audio_voice_high_undownloaded` | High-quality voice (not downloaded) | disabled menu item |
+| `audio_voice_device` | Device voice | **D-AUD-5: origin/quality only.** Listed first, never framed as a fallback (D-AUD-27) |
+| `audio_voice_high` | High-quality voice | **D-AUD-5** — the ElevenLabs decision (D-AUD-22) changes **no** user-visible string; the vendor is never named |
+| ~~`audio_voice_high_undownloaded`~~ | ~~High-quality voice (not downloaded)~~ | **SUPERSEDED (P2).** §7.1: an empty narration is *selectable*, not a disabled teaser — the string is deleted, not reworded |
 | `audio_voice_dropdown_description` | Voice, %1$s | |
 | `audio_wifi_only_title` | Download over Wi-Fi only | on by default |
-| `audio_help` | The high-quality voice downloads only when you ask. Books you download stay on your phone until you delete them. | |
+| `audio_help` | The high-quality voice downloads only when you ask. Books you download stay on your phone until you delete them. Audio improvements arrive with app updates. | third sentence is the standing D-AUD-18 disclosure |
 | `audio_no_play_store` | The high-quality voice needs the Google Play Store, which isn't available on this device. Read aloud still works with your device voice. | said once, in Settings |
-| `audio_source_missing_title` | This reading isn't downloaded yet. | sheet |
-| `audio_source_download` | Download %1$s | %1$s = book |
-| `audio_source_size_wifi` | %1$s · Wi-Fi | e.g. "14 MB · Wi-Fi" |
-| `audio_source_device_now` | Listen now with the device voice | |
-| `audio_using_device_voice` | Device voice | bar status |
+| `audio_source_missing_title` | %1$s isn't downloaded yet — about %2$s. | **reworded P2**: names the *book* and its size, because the pack is a book (A1.1) and this is now the primary download path |
+| `audio_source_download` | Download | the filled primary action |
+| `audio_source_size_wifi` | %1$s · Wi-Fi | e.g. "21 MB · Wi-Fi" |
+| `audio_source_download_description` | Download %1$s, %2$s, over Wi-Fi | a11y for the filled button |
+| `audio_source_device_now` | Or listen now with the device voice | **the user's action, never the app's** — never "Using the device voice instead" (§7.4) |
+| `audio_source_device_while` | Listen with the device voice while it downloads | shown once a transfer is running |
+| `audio_source_ready` | Ready to play | after a completed download, or after a mid-playback voice switch |
+| `audio_using_device_voice` | Device voice | bar source line, app-wide selection |
+| `audio_device_voice_this_time` | Device voice · this reading | bar source line for the **one-listen** choice (§7.4) — makes the scope visible without rewriting the setting |
+| `audio_device_voice_no_downloads` | The device voice doesn't need downloads. | downloads screen when the active voice has no packs (§7.2) |
 | `audio_no_engine_title` | No voice installed | dialog |
 | `audio_no_engine_body` | This device doesn't have a voice installed for reading aloud. You can add one in your device's settings, or download the high-quality voice. | |
 | `audio_no_engine_settings` | Open device settings | |
@@ -970,12 +975,17 @@ picks "Listen" or "Audio", the ids stay and only the values change.
 | id | string | note |
 |---|---|---|
 | `audio_downloads_title` | Downloaded audio | row + screen title |
-| `audio_downloads_used` | %1$s used | e.g. "1.24 GB used" |
+| `audio_downloads_used` | %1$s used | e.g. "1.24 GB used" — **aggregates across every voice** (§7.2) |
+| `audio_downloads_scope` | Showing what's downloaded for %1$s | **new P2** — the one line that teaches the D-AUD-26 model; not repeated per row |
 | `audio_delete_all` | Delete all | error colour |
 | `audio_delete_all_confirm_title` | Delete downloaded audio? | |
-| `audio_delete_all_confirm_body` | This deletes %1$s. Read aloud will use your device voice until you download again. | factual, no scolding |
-| `audio_unit_today` | Today's readings | |
-| `audio_unit_next30` | Next 30 days of readings | |
+| ~~`audio_delete_all_confirm_body`~~ | ~~This deletes %1$s. Read aloud will use your device voice until you download again.~~ | **SUPERSEDED (P2)** — it describes a silent fallback that D-AUD-26 forbids |
+| `audio_delete_all_confirm_body` | This deletes %1$s. You'll still be listening in %2$s, so readings will ask you to download again. You can switch to the device voice in Settings. | **reworded P2** (§7.5): names the consequence in terms of the active voice and points at the one lever that fixes it |
+| ~~`audio_unit_today`~~ | ~~Today's readings~~ | **SUPERSEDED (P2 / PRD A1.1)** — that download cannot exist; the pack is a book |
+| `audio_unit_today` | The books today's readings need | **reworded**; subtitle `audio_unit_books_list` names them |
+| `audio_unit_next30` | The books your next 30 days need | **reworded**; subtitle `audio_unit_book_count` |
+| `audio_unit_books_list` | %1$s | e.g. "Genesis, Psalms, Matthew" |
+| `audio_unit_book_count` | %1$d books | |
 | `audio_unit_ot` | Old Testament | |
 | `audio_unit_nt` | New Testament | |
 | `audio_unit_all` | Everything | |
@@ -986,6 +996,11 @@ picks "Listen" or "Audio", the ids stay and only the values change.
 | `audio_state_failed` | %1$s, download didn't finish. Try again | |
 | `audio_state_evicted` | %1$s, removed by Google Play to free space. Download again | |
 | `audio_evicted_label` | Removed to free space | inline row label |
+| `audio_book_other_voice` | Also downloaded in %1$s | **new P2 — the hardest string in the feature** (§7.2). Descriptive inventory, never "wrong voice"/"unused"/"duplicate". **Unreachable in release one.** Alternatives considered and rejected: "You have this in %1$s" (second person, faintly accusing), "Downloaded in another voice" (hides which) |
+| `audio_other_voices_title` | Other voices | **new P2** — section header for holdings outside the active voice. Neutral, plural, no judgement |
+| `audio_voice_holdings_delete_description` | Delete all audio for %1$s, %2$s | **new P2** — the whole-voice Delete (FR-AUD-30 e) |
+| `audio_voice_delete_confirm_title` | Delete the %1$s audio? | **new P2** |
+| `audio_voice_delete_confirm_body` | This deletes %1$s of audio for %2$s. It doesn't change the voice you're listening in. | **new P2** — states the non-consequence explicitly, because that is the thing a user would fear |
 | `audio_delete_confirm_body` | Delete the audio for %1$s? That frees %2$s. | |
 | `audio_cellular_title` | You're on mobile data | |
 | `audio_cellular_body` | %1$s is about %2$s. | |
@@ -993,8 +1008,11 @@ picks "Listen" or "Audio", the ids stay and only the values change.
 | `audio_cellular_now` | Download now | per-download only; never edits the setting |
 
 **Deliberately absent, and must stay absent:** any synthetic-voice/AI disclosure (D-AUD-5); any
-human-narrator claim (D-AUD-5); any congratulation, streak, "minutes listened", or copy that
-distinguishes a heard reading from a read one (D-AUD-8, FR-AUD-16, M-AUD-7).
+human-narrator claim (D-AUD-5); the vendor's name (D-AUD-22 is an engineering fact, not a user-facing
+one); any congratulation, streak, "minutes listened", or copy that distinguishes a heard reading from
+a read one (D-AUD-8, FR-AUD-16, M-AUD-7); and **any string that describes the app choosing a voice
+for you** — "instead", "falling back to", "using X since Y isn't available" all describe behaviour
+D-AUD-26 forbids, and their absence is the copy-level proof that the rule holds.
 
 ---
 
@@ -1006,15 +1024,33 @@ distinguishes a heard reading from a read one (D-AUD-8, FR-AUD-16, M-AUD-7).
 2. **OQ-AUD-8 — whole-day playback in the first release.** §6. *Recommend shipping it*; it is the
    commuter's natural unit and costs 0 dp. If the top bar proves crowded at large font on device,
    dropping `listen-day` removes it cleanly with no other change.
-3. **The stats-cap swap (D-AUD-UI-3).** Confirm you're happy that starting playback shrinks the
-   "Year at a glance" panel's visible height (it scrolls; nothing is removed). It is what buys the
-   Listen bar for free at N = 4.
-4. **`ReaderAudioSlot` retirement (D-AUD-UI-2).** Confirms that the V3-reserved slot is honoured at
-   the root rather than in the reader — the intent is cashed in, the file goes away.
-5. **Tone sign-off on §11** — the whole table, and especially "Device voice" / "High-quality voice"
-   under D-AUD-5, and `audio_delete_all_confirm_body`.
-6. Standing string sign-offs from S12–S20 and the alt-schedules work are still open; these join that
+3. **The stats-cap swap (D-AUD-UI-3 = D-AUD-20 / OQ-AUD-11).** Confirm you're happy that starting
+   playback shrinks the "Year at a glance" panel's visible height (it scrolls; nothing is removed).
+   It is what buys the Listen bar for free at N = 4. *(Product has already adopted it; this is the
+   owner half.)*
+4. **`ReaderAudioSlot` retirement (D-AUD-UI-2 = D-AUD-19 / OQ-AUD-10).** The V3-reserved slot is
+   honoured at the root rather than in the reader — the intent is cashed in, the file goes away.
+5. **`D-AUD-UI-16` — auto-start after a download completes.** §7.4. *Recommend:* playback starts on
+   completion **only if the sheet is still open and the app is foregrounded**, otherwise it waits in
+   "Ready to play". This is a narrow, deliberate reading of NFR-AUD-C's "never auto-starts" — it
+   never speaks when you are not there, but it does not charge a dead tap to someone watching a
+   ten-second transfer. *Say no and it always waits for a tap; that is the safe, slightly duller
+   alternative.*
+6. **`D-AUD-UI-18` — switching voice mid-playback pauses and holds the verse.** §7.1. *Recommend* it
+   over "applies next play", which makes the setting feel broken (the speaker would contradict the
+   selection). Flagged because it is a visible interruption the user did not explicitly ask for.
+7. **Tone sign-off on §11** — the whole table, and in particular the four strings that carry the
+   D-AUD-26 model: **`audio_book_other_voice`** ("Also downloaded in Anna" — the hardest string in
+   the feature, §7.2), **`audio_downloads_scope`**, **`audio_delete_all_confirm_body`** (reworded —
+   the old one described a silent fallback D-AUD-26 forbids), and **`audio_source_device_now`**
+   ("Or listen now with the device voice" — phrased as your action, never the app's). Plus
+   "Device voice" / "High-quality voice" under D-AUD-5.
+8. Standing string sign-offs from S12–S20 and the alt-schedules work are still open; these join that
    queue rather than starting a new one.
+
+**Not asked, because they are settled:** the voice source (D-AUD-22 — no user-visible consequence),
+whether the app may ever play a voice you did not choose (D-AUD-26 — no), and whether release one
+shows a narration chooser (D-AUD-24 — two entries only, device + high-quality).
 
 ---
 
@@ -1055,9 +1091,33 @@ Everything below is invisible to Robolectric and belongs on the device pass, in 
 **Downloads**
 15. Cellular-consent dialog on a real metered connection.
 16. A Play-evicted pack: does the row show "Removed to free space" and re-download cleanly?
-17. Download progress smoothness and cancel responsiveness on a 700 MB unit.
-18. Storage figures matching the OS's own "app storage" number (NFR-AUD-E honesty).
+17. Download progress smoothness and cancel responsiveness on a 658 MB unit (Old Testament).
+18. Storage figures matching the OS's own "app storage" number (NFR-AUD-E honesty) — **and, once a
+    second voice exists, that the header total aggregates across voices rather than showing one
+    number twice** (§7.2).
 19. Sideloaded install: the single Settings sentence, device voice working, no dead controls.
+
+**Voice (added P2)**
+20. **The §7.4 moment end-to-end on a cold install:** tap ▶ on today's first reading → is the sheet's
+    ask legible and the size believable? How long does ~21 MB actually take on the owner's Wi-Fi, and
+    does the wait feel handled? *(This is the feature's first-impression moment now that it is the
+    primary download path.)*
+21. **`D-AUD-UI-16` auto-start on completion** — with the sheet open and foregrounded it plays; with
+    the phone pocketed it does **not**. Both halves must be checked, the second one deliberately.
+22. **Switching voice mid-playback** (`D-AUD-UI-18`): pauses, holds the verse, resumes in the new
+    voice from the same verse — and never emits a syllable of the old one after the switch.
+23. **Delete the active voice's packs and confirm the selection survives** — Settings still reads
+    "High-quality voice", every ▶ leads to the download sheet, nothing silently switched (§7.5).
+24. **Device voice as an app-wide selection**, not just a one-listen escape: select it in Settings,
+    then confirm the downloads screen shows `audio_device_voice_no_downloads` and the "Other voices"
+    block still exposes and can free the high-quality bytes. *(The one release-one-reachable path
+    through the voice-dimension design.)*
+25. **The one-listen device-voice choice does not stick:** take it once, then press ▶ on another
+    reading and confirm you are asked to download the high-quality pack again — i.e. the app-wide
+    selection was never rewritten (§7.4 rule 2).
+26. Second-narration surfaces (`audio_book_other_voice`, "Other voices", the 3+-entry selector) are
+    **unreachable in release one** and therefore cannot be device-passed. They are JVM-pinned only,
+    and go on the device list for the release that first ships a second narration.
 
 ---
 
@@ -1074,7 +1134,12 @@ Everything below is invisible to Robolectric and belongs on the device pass, in 
 | **D-AUD-UI-7** | Schedule card ▶ = trailing 48 dp `IconButton` left of the checkbox: **0 dp height**, distinct from the card tap, spoken with the reference. |
 | **D-AUD-UI-8** | Whole-day play = a Schedule top-bar action (0 dp, no button row); hidden on Feb 29 / load-failed days; the most severable piece if the owner drops OQ-AUD-8. |
 | **D-AUD-UI-9** | Reader play = a top-bar action; the play *unit* follows `ReaderContext` (Browse = chapter, continuing; Reading = the whole portion, stopping). |
-| **D-AUD-UI-10** | Settings → "Read aloud" section in the house `SectionTitle` + `SettingsDropdownRow` idiom; voice named by origin/quality only (D-AUD-5); undownloaded voice = visible-but-disabled (S14/S15 idiom). |
-| **D-AUD-UI-11** | Downloads are a pushed screen (`Routes.AUDIO_DOWNLOADS`) over `BookCatalog` (no second book table); one ≥48 dp state-button per row; sizes always stated; cellular consent is per-download and never edits the setting. |
-| **D-AUD-UI-12** | Play never dead-ends and never silently substitutes a worse voice: an unavailable source opens a two-choice sheet; mark-on-press still fires. |
+| **D-AUD-UI-10** | Settings → "Read aloud" section in the house `SectionTitle` + `SettingsDropdownRow` idiom; voice named by origin/quality only (D-AUD-5). ~~undownloaded voice = visible-but-disabled (S14/S15 idiom)~~ — **that clause is SUPERSEDED by D-AUD-UI-14 (P2):** an empty narration is *selectable*, because under D-AUD-26 it is a coherent state, and disabling it would hide the primary download path. |
+| **D-AUD-UI-11** | Downloads are a pushed screen (`Routes.AUDIO_DOWNLOADS`) over `BookCatalog` (no second book table); one ≥48 dp state-button per row; sizes always stated and always **Play's own figures for book packs** (A1.1 — no "today's readings" download exists); cellular consent is per-download and never edits the setting. |
+| **D-AUD-UI-12** | Play never dead-ends and never substitutes a different voice: an unavailable source opens a two-choice sheet; mark-on-press still fires. *(Refined by D-AUD-UI-16.)* |
 | **D-AUD-UI-13** | Never silence TalkBack; the **player ducks itself** around our controls when touch exploration is on; the highlight is **not** a live region; exactly one polite live region (the bar status). |
+| **D-AUD-UI-14** *(P2)* | **One voice row is the single home of voice selection**, at the top of the "Read aloud" section because everything below is scoped by it. Renders three ways: absent (Phase 1) → two entries, device + high-quality (release one, D-AUD-24) → every installed narration by its pack-declared name (only if a second exists). The third branch is **built, tagged, pinned and renders as nothing today** — the D-N-3 posture. Device voice is listed first and never framed as a fallback (D-AUD-27). |
+| **D-AUD-UI-15** *(P2)* | **Download state is (book × active voice)** (D-AUD-26). Resolution of the "have the book, wrong voice" problem: **scope the screen** (one `audio-downloads-scope` line), **footnote the inventory** ("Also downloaded in Anna" — descriptive, never "wrong"/"unused"/"duplicate"), **offer nothing** (no play-in-other-voice, no switch-voice control on a book row — that would smuggle substitution back through the UI). Other voices' bytes get an "Other voices" block with a whole-voice Delete; the header total aggregates across voices. |
+| **D-AUD-UI-16** *(P2)* | **The not-downloaded prompt is the primary download path.** Sheet opens at the decision; **one tap to bytes moving** (two on cellular). Download is the *filled* action, the device voice a *text* offer — hierarchy must not nudge users off their own choice. Nothing plays automatically while a book downloads; the device-voice line stays available; on completion playback starts **only if the sheet is open and the app is foregrounded**. A one-listen device-voice choice **never rewrites the app-wide selection** (the S15 MySword discipline). |
+| **D-AUD-UI-17** *(P2)* | **Deleting bytes never rewrites the choice** (D-AUD-28). Deleting the active voice's packs leaves it active and turns every ▶ into a download prompt; only the *voice itself* leaving the registry falls the selection back to Device voice. Delete-all copy names the consequence in terms of the active voice and points at the one lever that fixes it. |
+| **D-AUD-UI-18** *(P2)* | **Switching voice mid-playback pauses, holds the current verse, and shows the new voice's state** — never continues in the old voice, never auto-restarts. Verse-granular resume is free from the timing index. Recommended over "applies next play". |
