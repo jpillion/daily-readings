@@ -96,7 +96,7 @@ asset comes fifth.
 | Gate | Sprint | What it proves | Cost if it fails |
 |---|---|---|---|
 | **G-POSTURE** — the merged-manifest delta matches ESpec §12 exactly | **A** (`SA-T0` = Diego's `AUD-A-0`) | No `INTERNET`; exactly two new foreground-service permissions; three exported components accounted for. Diego **could not build this** (`platforms;android-37` unpublished) — it is an unverified claim until a build machine runs it. | Re-plan the delivery mechanism. Cheap now, catastrophic after F. |
-| **G-DELIVERY** — Play accepts 66 asset packs and an audio correction's real byte cost is measured | **A** (`SA-T6`/`SA-T7`, two internal-track cycles) | `requestFetch`/`assetsPath()` work; eviction and sideload behave; and **what a re-render actually pushes to existing users on an app update** (V12/§7.5 — the real price of D-AUD-3). | Re-group to 8 section packs (a one-function edit, D-AUD-E-5) — free *before* F, a re-render *after* it. |
+| **G-DELIVERY** — Play accepts our asset-pack layout (**[A1] at the multi-voice pack count**) and an audio correction's real byte cost is measured | **A** (`SA-T6`/`SA-T7`, two internal-track cycles) | `requestFetch`/`assetsPath()` work; eviction and sideload behave; and **what a re-render actually pushes to existing users on an app update** (V12/§7.5 — the real price of D-AUD-3). | Re-group to section packs (a one-function edit, D-AUD-E-5) — free *before* F, a re-render *after* it. |
 | **G-VOICE** — the pronunciation pilot is in the owner's ears and signed off | **E** (`SE-T3`, M-AUD-6) | The **ElevenLabs** voice is fit for scripture; the proper-noun lexicon is built from what the pilot exposed; the ASR thresholds are calibrated on real output. | R-AUD-3 realised: the whole corpus re-rendered. **This is the gate the money is on.** |
 | **[A1] G-PACKSHAPE** — a pack describes itself, and the app plugs it in without knowing which pack it is | **A** (`SA-T9`, on placeholder bytes) → *proven* **F** (`SF-T5`, synthetic second voice) | The pack manifest's shape survives a real Play cycle and a real `assetsPath()` resolve **before** a byte of audio is rendered against it. | Getting the manifest shape wrong after F means **re-packaging, possibly re-rendering, the corpus** — the shape is baked into ~850 MB of artifact. Free to validate now. |
 
@@ -238,7 +238,7 @@ Tickets are written against the **right-hand** column. Maya is applying these co
 | **Sam** | `android-feature-eng` | `StartReadAloudUseCase` + marking wiring, the session-scoped verse-tap mode, the reactive footer hint, speed + sleep timer plumbing, the download-consent dialogs. |
 | **Riley** | `android-qa-eng` | The **M-AUD-1 queue gate**, the **`AudioTimingVerificationTest`** corpus gate, the a11y-gate + guilt-copy ban-scan extensions, the M-AUD-5 zero-unconsented-bytes test, mutation verification, the consolidated device passes. |
 | **Jordan** | `devops-eng` | `SA-T0` on a real build machine, the CI gate split, the `audio-bundle` release job + timeout raise + dropping the AAB artifact upload, the corpus-asset fetch + SHA verification, the `ci/actions-node24-bump` PR, version bumps + rollouts. |
-| _Maya / Owner_ | `senior-pm` | The §16 amendments; `OQ-AUD-1/3/4/5/6/7/8/9`; `OQ-AUD-E-1/2/3`; M-AUD-6 voice sign-off; the §11 string tone sign-off; the Play Console cycles. |
+| _Maya / Owner_ | `senior-pm` | The §16 amendments; **[A1]** `OQ-AUD-3/4/5/6/7/8/9` (`OQ-AUD-1` resolved) + `OQ-AUD-E-1/2/3/7`; M-AUD-6 voice sign-off; the §11 string tone sign-off; the Play Console cycles; **[A1] the `D-M-AUD-9` flag call**. |
 | **⚠ UNASSIGNED** | — | **The render machine, the vendor account and the ~$250–800.** See §8. |
 
 ---
@@ -1035,10 +1035,144 @@ Diego flagged these and I am not going to quietly assume them into someone's spr
    irrelevant here: **the spike builds are never promoted** (D-M-AUD-2).
 6. **The pronunciation lexicon's editorial call.** When the pilot mispronounces Mahershalalhashbaz,
    somebody decides what right sounds like. That is the owner's ear, on the pilot, in Sprint E.
+7. **[A1] Keeping the integration branch green (§9.2).** Somebody has to run `main → feature/read-aloud`
+   at every sprint boundary and after every `main` release tag, and resolve conflicts in six files that
+   both sides are actively editing. **Proposed: Jordan owns the cadence, Morgan tracks it**, and it is
+   named here rather than assumed because on an 8-sprint epic it is a recurring job, not a one-off.
+
+---
+
+## 9. [A1] Branch, integration & release strategy
+
+> Added by Amendment 1 on the owner's decision: *"This is going to need to all be done in a separate
+> branch, because depending on how long it takes, I may not want to roll this out immediately."*
+> Recorded as **`D-M-AUD-8`**. This section changes **where** the work lands, not the sprint sequence.
+
+### 9.1 The branch layout
+
+The repo's conventions today: `main` is the release trunk (`release.yml` is **tag-triggered from
+`main`**), `claude/*` are agent working branches, `ci/*` is infra (`ci/actions-node24-bump`), and sprint
+work has used descriptive names (`sprint-00F-kjv-load-fix`).
+
+**Proposed: `feature/read-aloud`** — a long-lived integration branch, distinct from both existing
+prefixes so nobody mistakes it for a short-lived working branch. *(Alternative if the owner prefers the
+epic reading: `epic/read-aloud`. The name matters less than the rule; pick one and never branch audio
+work off `main` again until §9.4.)*
+
+```
+main ────●────●──────────●─────────────────●───────────────●──▶  (keeps shipping: owner tweaks, 1.5.x)
+          ╲    ╲          ╲                 ╲               ╲
+           ╲    ╲ merge    ╲ merge           ╲ merge         ╲ merge     ← main → branch, §9.2
+            ▼    ▼          ▼                 ▼               ▼
+feature/read-aloud ──●──────●──────●──────●───┬─────────────────────●──▶ (E…H continue after the ship)
+                     ▲      ▲      ▲      ▲   │ ONE merge + tag v1.6.0 = the Phase-1 go/no-go
+                     │      │      │      │   ▼
+              aud/sprint-A  B      C      D  main
+```
+
+- **Sprint branches:** `aud/sprint-<X>-<slug>` (e.g. `aud/sprint-A-posture-delivery`), branched **off
+  `feature/read-aloud`** and merged **back into it**. Never off or into `main`.
+- **The spike stays a spike:** `spike/aud-pack-probe` (D-M-AUD-2) branches off `feature/read-aloud`, is
+  built and uploaded to Play's `internal` track, and is **never merged anywhere**.
+- **Handoff docs** land on the integration branch with their sprints, per the house habit.
+
+### 9.2 Drift — the real cost of a long-lived branch, and the cadence that pays it
+
+Eight sprints against a `main` that has shipped an owner-feedback change most weeks all year is the
+biggest non-technical risk in this plan (**RM-13**). The rule:
+
+> **`main` → `feature/read-aloud` at every sprint boundary, and immediately after every `main` release
+> tag. Never the reverse. The branch is never more than one `main` release behind.** The merge's
+> acceptance test is the §1.3 parity suite: 735 tests and the five data gates, green, before the next
+> sprint's first ticket is dispatched.
+
+**Where the conflicts will actually land** — every one of these is a file the epic rewrites *and* that
+`main`'s owner-tweak sprints keep touching:
+
+| File | `main` keeps editing it because… | The epic edits it in… |
+|---|---|---|
+| `bible/ui/reader/ReaderScreen.kt` | verse tap, footer hint, version top bar (S-H, S-K, S-N) | C (`SC-T4/T5/T6/T7`) — highlight, autoscroll, session-scoped tap |
+| `bible/ui/reader/ReaderViewModel.kt` + `ReaderUiState.kt` | reader contexts, titles, hints | C (`SC-T4`) — the `activeVerseId` combine |
+| **`bible/ui/reader/ReaderAudioSlot.kt`** | rarely — **but we DELETE it** (D-AUD-UI-2) | C (`SC-T3`) — **a delete/modify conflict is the nastiest kind**; if `main` ever touches this file, merge that day |
+| `ui/day/DayContent.kt` | card layout, hints, provider captions (S-M, S-K, the N-stream fix) | C (`SC-T8`) — the trailing ▶ in the card row |
+| `ui/day/DayReadingsScreen.kt` / pager | titles, one-screen-fit tuning (S16/S18/S20) | C (`SC-T3/T8`) — the stats cap swap, the `listen-day` action |
+| `ui/navigation/AppNavHost.kt` → `RootScaffold` | nav, update snackbar (S-23) | C (`SC-T1`) — the Listen bar in `bottomBar` |
+| `ui/settings/SettingsScreen.kt` | every settings tweak lands here | C (`SC-T10`), G (`SG-T6`) |
+| `ui/AccessibilityGateTest.kt` | tags are **hardcoded**, so every `main` a11y change touches it | C (`SC-T13`), G |
+| `res/values/strings.xml`, the version catalog, `app/build.gradle.kts`, `settings.gradle.kts`, `AndroidManifest.xml`, `.github/workflows/*` | constantly | A, B, C, G |
+
+Most of these are **append-mostly** (strings, the a11y gate, the catalog) so conflicts are mechanical.
+The genuinely dangerous ones are `ReaderScreen.kt` and the `ReaderAudioSlot.kt` deletion. Practical
+mitigation beyond cadence: **when a `main` sprint is dispatched that touches any row above, flag it to
+Morgan and merge that day** rather than waiting for the sprint boundary.
+
+### 9.3 CI on the branch
+
+- **`ci.yml` must trigger on `feature/read-aloud` and `aud/**`** (push + PR). Jordan adds the branch
+  filters in `SA-T1`, alongside the Node-24 bump. A long-lived branch without CI is a long-lived branch
+  that is quietly red.
+- **The gate split works there unmodified — and this is precisely why `-PwithAudio` defaults to *off*
+  (D-AUD-E-7a).** On the branch, PR/push builds exclude the `audio-packs/*` modules entirely, so
+  `bundleRelease` is base-only and **`CEILING=12000000` applies verbatim, on the branch, from day one**.
+  The 12 MB guarantee is therefore protected throughout the epic, not just after the merge.
+- **Gap, stated because it will otherwise be discovered late:** the `audio-bundle` job is **tags-only**,
+  and tags are cut from `main` — so the release-only audio path would be **completely unexercised until
+  the first merge**. `SA-T3` subtask **3f** adds a `workflow_dispatch` trigger so Jordan can run it on
+  the integration branch on demand. Prove that path on placeholders in A, not on 850 MB in H.
+- `promote-production.yml` is `workflow_dispatch` and promotes by `versionCode`; branching does not
+  affect it.
+
+### 9.4 Shipping from a long-lived branch — exactly what Phase 1 consists of
+
+`release.yml` is tag-triggered and tags are cut from `main`, so a phase ships by **merging**, which is
+what makes the merge itself the decision:
+
+1. `main → feature/read-aloud` one final time; parity suite green (§9.2).
+2. **`SD-T3` — the owner's ship/hold call.** Because of step 3, **this merge is the go/no-go moment.**
+3. **One merge: `feature/read-aloud → main`.** Reviewed as a whole; this is the largest single merge the
+   repo will have seen, which is an argument for §9.2's cadence, not against the branch.
+4. On `main`: version bump to **1.6.0 / 10600** (D-M-AUD-4), tag `v1.6.0`.
+5. `release.yml` fires → upload-key-signed AAB → **alpha**.
+6. Device pass on the alpha build (`SD-T1`).
+7. `promote-production.yml` with `version_code=10600`, **staged rollout** — not 100 % on day one, because
+   this release changes a shipped gesture and adds a persistent bar to a live app.
+8. **Immediately merge `main` back into `feature/read-aloud`** (the merge commit + the version bump), or
+   the two fork again on day one.
+
+**The branch's job changes at step 8**, and this is the part worth reading twice: from Sprint E onward
+`feature/read-aloud` is no longer holding back *the feature* — it is holding back *Phase 2*, while Phase
+1's audio code is live on `main` and shipping. Two consequences: the §1.3 parity bar now extends over the
+audio surfaces themselves, and §9.5's flag becomes materially more useful than it was before D.
+
+Phase 2 repeats steps 1–8 at **1.7.0 / 10700**, after which the branch can be retired.
+
+### 9.5 A feature flag — recommended, not argued
+
+The owner asked for a branch; the branch is the decision and this plan is built on it. Raising this once,
+briefly, because the two are not exclusive and one of them gets *more* valuable as the epic proceeds:
+
+- A flag on `main` also satisfies *"I may not want to roll this out immediately"* — and it does it
+  without months of divergence (**RM-13**), without a single enormous merge (§9.4 step 3), and with a
+  kill switch that survives release (turn it off in a patch rather than reverting a merge).
+- **It is most valuable *after* Sprint D**, which is a situation the branch alone does not cover: from D
+  onward `main` ships 1.6.0 while Phase 2 is still in flight, so `main` will carry half-built Phase-2
+  code — the `asset-delivery` dependency, the downloads screen, the voice registry — **in released
+  builds**. A flag lets that land dark instead of forcing Phase 2 to stay on the branch until it is
+  wholly finished.
+- **Recommended scope: the smallest possible flag.** One boolean read at the composition root, gating
+  the **entry points only** (`listen-{n}`, `listen-day`, `listen-reader`, and the Settings section) —
+  not the service, not the controller, not the domain. Off ⇒ the app is byte-for-byte today, which is a
+  property §1.3 already requires and `SC-T1` already delivers (`Idle` composes nothing).
+- **Where:** Sprint C, ~a day. **Honest cost:** a dead code path and a state every UI test has to cover
+  on both sides — the repo's habit would pin the "off" side as an *absence* (the S16 idiom).
+- **Recommendation: add it in C, ship D with it on.** If the owner would rather not, nothing in this plan
+  changes except that Phase 2 must stay on the branch until H.
 
 ---
 
 *End of the audio execution plan. Sprints A and B are fully ticketed above (the immediate next work);
 Sprint C is ticketed at title level with its owner gates named; D–H are goal + ticket-title level and
-are decomposed at the start of their own sessions, once the blocking OQs in §7 are resolved. The one
-rule I will hold hardest: **Sprint F does not begin until every row of §4 is ticked.***
+are decomposed at the start of their own sessions, once the blocking OQs in §7 are resolved. Three rules
+I will hold hardest: **Sprint F does not begin until every row of §4 is ticked**; **`SA-T5`/`SA-T6` are
+dispatched before anything else, because Play's review queue is now the epic's longest pole**; and **no
+audio commit reaches `main` until a phase ships** (§9).*
