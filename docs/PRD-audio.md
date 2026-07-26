@@ -52,6 +52,18 @@ questions raised for the owner:
 | A2.2 | **New owner requirement — audio packs are plug-and-play**, like translations: downloading a different pack "just plugs in," with no app logic depending on which asset is in use. New **FR-AUD-28/29/30** and **D-AUD-23/24/25**: packs are self-describing content; **"voice" is not a user-visible concept in release one** (D-N-3 idiom); and a product position on **mixed/partial coverage**. | §6, §7, §8 |
 | A2.3 | **Release-mechanics check** — the epic ships on a long-lived branch. Two things in §9 assumed delivery from `main`; both are now stated as conditions, with **OQ-AUD-14** for Morgan. | §9, §11 |
 
+**A3 — 2026-07-25, owner ruling on mixed voices. This is a reversal of a product position, not a
+tidy-up**, and is marked as one throughout:
+
+| # | What changed | Where |
+|---|---|---|
+| A3.1 | **D-AUD-25 SUPERSEDED by D-AUD-26; FR-AUD-30 rewritten.** My A2 position — *preferred voice, with completeness-over-preference fallback and disclosure* — was **overruled by the owner**. The rule is now **one active voice, app-wide and exclusive**: coverage is evaluated only against it, a gap prompts a download of *that voice's* pack "regardless of whether there is an asset/pack for that chapter from a different voice pack," and the app **never substitutes**. My rule that a listen never switches voice mid-passage survives **by construction** rather than by rule. | §6 FR-AUD-30, §7 |
+| A3.2 | **The device voice becomes a first-class voice** (**D-AUD-27**), an entry in the same registry as any narration — not a fallback. It costs no storage, works offline immediately, and a user may legitimately prefer it. | §7, §6 FR-AUD-22 |
+| A3.3 | **FR-AUD-22 restated from a *ladder* to a *choice*.** The degradation-ladder wording described the app quietly stepping down a hierarchy on the user's behalf — precisely what D-AUD-26 forbids. Behaviour unchanged (Priya's `D-AUD-UI-12` already had it right); the framing is corrected so nobody implements the ladder the words described. D-AUD-12 reframed to match. | §6 FR-AUD-22, §7 D-AUD-12 |
+| A3.4 | **Active-voice selection is now its own product surface** (**D-AUD-28**), mirroring `selected_plan`/`ActivePlanRepository`: default = **device voice**; unknown id ⇒ default; **deleting audio never rewrites the user's selection**; reinstall starts fresh (no account, unchanged from V1). | §7 |
+| A3.5 | **Deleting a whole voice is a supported action**, and §8's surface is reshaped for voice-as-a-dimension: coverage shown for the *active* voice, space aggregated across voices, one-tap voice deletion. **D-AUD-17 (book = atomic unit) is unaffected.** | §8 |
+| A3.6 | **D-AUD-24 amended:** pack *identity* stays invisible, but a **two-entry chooser (device voice + the one narration) does appear in Phase 2's first release** — a consequence of A3.2, and a departure from D-N-3's hide-the-branch pattern for this one control. | §7, §6 FR-AUD-29 |
+
 ---
 
 ## 0. The framing shift — read this first
@@ -214,9 +226,11 @@ two facets that have always been present in the audience become servable for the
 - **G16 — Honest, consenting downloads.** No byte of audio arrives without the user asking for
   it, knowing its size, and (by default) being on Wi-Fi; and every downloaded byte is visible
   and deletable.
-- **G17 — Degrade, never dead-end.** If high-quality audio is not downloaded, not available, or
-  the install did not come from Play, read aloud still works — at lower quality, with an honest
-  explanation, never a broken button.
+- **G17 — Always a way to listen, never a dead end.** *(Reworded A3.3 — was "Degrade, never
+  dead-end.")* If the active voice has no audio for this passage, or the install did not come from
+  Play, read aloud still works: the **device voice** is always there, always named, and always the
+  user's to choose (D-AUD-27). Never a broken button — and never a swap made on the user's behalf
+  (D-AUD-26).
 
 ### Non-goals (explicit — do not build)
 
@@ -706,7 +720,7 @@ podcast feed · background pre-fetch of upcoming readings.
 - **D-AUD-12 — Missing audio never dead-ends; the device voice is always available** (FR-AUD-22).
   This is also *why* Phase 1 is worth shipping standalone: the device voice is permanent.
   > **Reframed A3 (D-AUD-27):** originally "degrades to the device voice… Phase 2's permanent
-  > **fallback**." The device voice is a **first-class选 choice**, not a rung below the good one —
+  > **fallback**." The device voice is a **first-class choice**, not a rung below the good one —
   > and under D-AUD-26 the app never steps to it on its own. It is offered; it is not applied.
 - **D-AUD-13 — One voice.** No voice picker, no multi-voice.
   > **Clarified A2.2 — not in tension with D-AUD-23/24.** D-AUD-13 governs what *ships*: release
@@ -800,13 +814,17 @@ podcast feed · background pre-fetch of upcoming readings.
   still ride an update. Cost: the artifact must be designed this way **before** the corpus is
   rendered; retrofitting a manifest onto ~853 MB means a re-render. That makes it P0 for Phase 2
   despite being invisible in release one.
-- **D-AUD-24 — "Voice" is not a user-visible concept in release one** *(A2.2; FR-AUD-29)*. One
-  narration ships, so the user chooses only between *Device voice* and *High-quality voice*. Pack
-  names, narration identity and any chooser stay invisible until a second narration exists —
-  precisely the D-N-3 pattern (build the branch, test it, don't surface it). **Rationale:** the
-  capability is for the owner's future flexibility, not for the user's decision-making, and
-  exposing a "voice pack" concept to someone with exactly one of them is chrome that teaches
-  nothing. It also keeps the zero-setup promise intact.
+- **D-AUD-24 — "Voice" is a selection, but pack *identity* stays invisible in release one**
+  *(A2.2, **amended A3**; FR-AUD-29)*. **What survives:** pack names, narration identity, encodings
+  and version chrome are not exposed — the capability is for the owner's future flexibility, not
+  the user's decision-making, and it keeps the zero-setup promise intact. **What changed:** the
+  original text said the user "never sees the concept of a voice pack" in release one and that the
+  chooser stays hidden. Under D-AUD-26 (an *active voice* is now a real, app-wide setting) and
+  D-AUD-27 (the device voice is a registry entry), **there are always at least two entries, so
+  Phase 2's first release does show a two-entry chooser** — *Device voice* and the one narration.
+  That is not premature chrome: it is the control that answers "why does this sound like my
+  phone?" and it is the same control the user will later use to switch narrations. Phase 1, with
+  one entry, still shows nothing.
 - ~~**D-AUD-25 — One listen, one voice**~~ **— SUPERSEDED by D-AUD-26 (A3, owner ruling).**
   > **Superseded text, retained for the trail:** *"Mixed holdings are normal and supported; mixed
   > within a single continuous passage is not. Resolution happens once, at press, for the whole
@@ -988,8 +1006,11 @@ Two further arguments that are easy to miss and are load-bearing:
    listening for utterance-start yields exact verse boundaries with **no timing index at all** —
    so highlight, seek and Psalm 119 windows are all provable in Phase 1. That makes Phase 1 the
    **executable specification** of what Phase 2's timing index (FR-AUD-10) must deliver.
-2. **Phase 1 is permanent, not throwaway.** It is Phase 2's fallback for undownloaded passages,
-   evicted packs and sideloaded installs (D-AUD-12), so none of it is discarded.
+2. **Phase 1 is permanent, not throwaway.** *(Strengthened A3.2.)* The device voice does not become
+   a fallback when Phase 2 lands — it becomes a **named entry in the voice registry** (D-AUD-27)
+   that some users will actively prefer, and the only voice available for undownloaded passages,
+   evicted packs and sideloaded installs. None of Phase 1 is discarded, and its status is higher
+   than "fallback" implied.
 
 **Honest limits of Phase 1**, to be stated to the owner rather than discovered: device TTS voice
 quality varies by manufacturer and installed engine; some devices ship a poor or no engine;
