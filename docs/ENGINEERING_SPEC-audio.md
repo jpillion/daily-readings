@@ -22,6 +22,17 @@
 > **D-AUD-E-5** (§7.3), the timing-path scoping in **D-AUD-E-3** (§6.2), the `audio_voice_source`
 > key in **§13.3**, and the single-voice reading of the §9.2 total ceiling. **Nothing in §4 (the
 > player) or §5 (the queue) is invalidated** — see §7A.8, which is the interesting part.
+>
+> ### Amendment A2 — owner ruling on mixed/partial coverage
+>
+> **Voice selection is app-wide and exclusive.** One active voice for the whole app; coverage is
+> evaluated only against it; a chapter it lacks prompts a download of **that voice's** pack, never a
+> cross-voice substitution. **This supersedes D-AUD-E-24** (my per-play-unit resolution rule with a
+> preferred-voice ordering), which is recorded-and-struck in **§7A.7** rather than deleted: I framed
+> "which voice plays?" as an availability optimisation when it is a *correctness* rule, and the
+> owner was right. New decisions **D-AUD-E-29 … D-AUD-E-33** (exclusive selection · the device voice
+> as a registry entry · switch behaviour · storage/deletion · `active_voice_id`). Knock-on: the
+> plug-and-play seam **moves into Phase 1** (§18) and gate assertions **17–20** are new (§7A.9).
 > **Companion docs:** [PRD-audio.md](PRD-audio.md) (Maya — owns *what/why*; every `FR-AUD-*` /
 > `NFR-AUD-*` / `D-AUD-n` / `M-AUD-n` / `R-AUD-n` / `OQ-AUD-n` id below is hers and is referenced,
 > not restated), [ENGINEERING_SPEC-v3.md](ENGINEERING_SPEC-v3.md) (the text spine this sits on —
@@ -1625,12 +1636,21 @@ without it; add it only if the device pass on a real API 26/27 device shows a ga
 | **RE-AUD-10** | One-screen-fit regression at N=4 from the per-card ▶ | Low-Med | the control sits in the existing ≥48dp `Row`; height-neutral by construction; M-AUD-10 device pass |
 | **RE-AUD-11** | `PlaybackService` is a new exported component | Low | required by the `MediaSessionService` contract; no custom actions accepted from external controllers beyond media3's standard set; security-review item |
 | **RE-AUD-12** | Corpus release assets are mutable by a maintainer | Low | SHA-256 pin in `audio_manifest.json`, verified in CI before packs are populated |
+| **RE-AUD-13** (A1) | Pack count is now **per voice** — 66 × voices against an unverified ceiling | High | `AUD-C-1` must establish the *ceiling*, not just that 66 works; the 8-section fallback is now expressible **as data** (`"packing": "sections"`), per voice, with no code change (§7A.5) |
+| **RE-AUD-14** (A2) | **A code path binds a voice other than the active one** — the exact failure the owner ruled out | High | Gate assertion 17 states it as a *negative* over a (voice × passage) matrix; the highest-value mutation in the suite is "fall through to another installed voice" |
+| **RE-AUD-15** (A1) | Owner elects `eleven_v3` at the pilot, adding chunk/splice/stitch machinery to AUD-D | Medium | Priced in §10.0.2 and put to him **with the price attached** at pilot time (OQ-AUD-E-6), not absorbed silently |
+| **RE-AUD-16** (A1) | A mispronunciation ships and costs a paid re-render + a MINOR wait + a silent patch to users | Medium | D-AUD-E-22: lexicon built, signed off and **committed before** the corpus render; candidate list extracted mechanically from `bible.db`, so lexicon *coverage* is reviewable |
+| **RE-AUD-17** (A2) | Two voices = paying for the same books twice (~853 MB each) | Medium | Exclusive selection makes a second voice pure duplication — so per-voice storage totals and one-action "delete this voice" are requirements, not polish (D-AUD-E-32) |
 
 ---
 
 ## 16. Where I disagree with the PRD, or think it is priced wrong
 
 Recorded rather than silently resolved, per Maya's own review note.
+
+> **A1/A2 status.** **OQ-AUD-1 is resolved (ElevenLabs, D-AUD-E-20)** — items below that assumed it
+> open are historical. **Item 9 is new in A2 and is a disagreement I lost, correctly** — recorded
+> because the reasoning is worth keeping.
 
 1. **§8's download-unit table is not deliverable as written, and the sizes are optimistic.** An asset
    pack is the *atomic* download unit, so "Today's readings ~2.4 MB" cannot exist — today's readings
@@ -1669,7 +1689,16 @@ Recorded rather than silently resolved, per Maya's own review note.
    `setPlaybackSpeed` are different mechanisms with different quality curves; several stock engines
    are unintelligible above ~1.5×. One persisted normalized factor, clamped, with the honest note
    that Phase 1's high end is worse than Phase 2's.
-8. **Agreement, recorded:** D-AUD-7 (two-phase) is right, and the reason is stronger than the PRD
+9. **A2 — a disagreement I lost, and why the loss is the right outcome.** I designed cross-voice
+   resolution (D-AUD-E-24) because it maximises the chance that a press of ▶ produces good audio.
+   The owner ruled it out: the user *chose* a voice, and handing them a different one — however
+   deterministically — is a substitution they did not ask for. He is right, and the tell is that my
+   version needed a priority-ordering field in a data file to be explainable at all, which is
+   usually the sign that a rule is doing something the user cannot predict. The exclusive rule is
+   also strictly simpler: it deletes an algorithm, a config field, a use case, and a whole class of
+   state (mixed coverage) from the design. Recorded because "the simpler rule was also the correct
+   one" is worth remembering the next time availability logic starts growing a preference order.
+10. **Agreement, recorded:** D-AUD-7 (two-phase) is right, and the reason is stronger than the PRD
    states — with `SimpleBasePlayer`, Phase 1 is not merely "the UX before the spend," it is the
    *same media3 player architecture*, so Phase 2 is one class. And D-AUD-8 (play marks read via the
    existing seam) is right: the alternative needs completion tracking, is ambiguous on partial
@@ -1701,6 +1730,23 @@ Recorded rather than silently resolved, per Maya's own review note.
 | D-AUD-E-17 | Marking reuses `MarkReadOnOpenUseCase` unchanged, on press, before destination resolution (the D-O-1/D-O-2 path); `DayUnit` marks each stream as its portion begins; Browse marks nothing. |
 | D-AUD-E-18 | `AudioReadingController` is `@Singleton` (playback outlives the Activity), not `@ActivityRetainedScoped`; `PlaybackService` is `@AndroidEntryPoint`. |
 | D-AUD-E-19 | **Audio content never changes in a PATCH release** — corrections batch into a MINOR, because an audio change rides the automatic app update and spends user bytes without a consent prompt (§7.5). |
+| **A1 — voice source (OQ-AUD-1 resolved)** | |
+| D-AUD-E-20 | The voice source is **ElevenLabs** (owner's call, on voice realism). Alternatives closed to a recorded-considered footnote (§10.0.4). |
+| D-AUD-E-21 | Pin **`model_id = "eleven_flash_v2"`** — phoneme tags exist only on `eleven_v3`/`eleven_flash_v2`, and flash_v2 is the only one of the two that renders **every** chapter in one request (0 of 1,189 over its 30,000-char cap vs 208 over v3's 5,000). One request per chapter ⇒ no splices, one unbroken alignment, a reproducible per-chapter re-render. Voice id + model + params recorded in the manifest. |
+| D-AUD-E-22 | The **pronunciation lexicon is committed and signed off BEFORE the corpus render** (`audio/lexicon/<voiceId>.json`); its SHA is recorded in the manifest and gate-asserted. A post-ship mispronunciation costs a paid re-render + a MINOR wait + a silent patch — so the only cheap moment is before the corpus exists. |
+| D-AUD-E-23 | Timing sources in order: `with-timestamps` character alignment from the same request → the **Forced Alignment API** → fail and re-render. Never estimate. The independent witness stays local Whisper (D-AUD-E-8) because vendor alignment cannot check itself. |
+| **A1 — plug-and-play packs** | |
+| D-AUD-E-24 | ⛔ **SUPERSEDED by D-AUD-E-29** (owner ruling, A2). *Was:* per-play-unit voice resolution with a preferred-voice priority order. Recorded, not deleted — §7A.7. |
+| D-AUD-E-25 | **Two artifacts, one authority each**: committed `assets/audio/catalog.json` = the download menu only; in-pack `voice.json` = the sole authority for playback. Triple anti-drift id check (`voiceId` == catalog id == pack-name segment == timings dir). |
+| D-AUD-E-26 | `manifestVersion`, `timing.format` and `audio.format` are **closed sets**; a pack outside them is unusable and says so (clean-fail). Additive-only within a `manifestVersion`; a newer pack on an older app is rejected, never optimistically parsed. |
+| D-AUD-E-27 | `AudioPackPlan` reads the **pack layout from the manifest/catalog**; the app contains no `66` and no per-book assumption — a voice shipped as 1, 8 or 66 packs is a data difference. (Supersedes the pack-count half of D-AUD-E-5.) |
+| D-AUD-E-28 | `AudioVoiceSelector` follows **D-N-3 exactly**: ≤1 usable voice ⇒ static text, >1 ⇒ a chooser. Branch built and tested from day one, invisible in production while there is one voice. |
+| **A2 — owner ruling: exclusive app-wide voice** | |
+| D-AUD-E-29 | **Voice selection is app-wide and exclusive.** One active voice for the whole app; coverage is evaluated **only** against it; a chapter it lacks ⇒ **prompt to download that voice's pack**, never a cross-voice substitution even when another installed voice covers it. *Substitution is forbidden; offering is required.* `ActiveVoiceRepository` mirrors `ActivePlanRepository`. |
+| D-AUD-E-30 | The **device voice is a registry entry** (`device_tts`), the default, always installed, always fully covering — a synthetic manifest inside the same contract. Collapses the degradation ladder into selection and **forces the plug-and-play seam into Phase 1**, where it is tested with zero bytes and no PAD dependency. |
+| D-AUD-E-31 | A voice switch **stops playback** and retains queue + `activeVerseId`, so the next press resumes the same passage from the current verse in the new voice — no half-state, no cross-voice moment, and no download prompt raised from the Settings screen. |
+| D-AUD-E-32 | Downloads are grouped **by voice**; "delete this voice" is one action; a **partially** deleted active voice stays active and prompts per missing chapter; a **fully** uninstalled active voice reverts to `device_tts` **with one notice** (never silently) and **without rewriting the stored id**, so re-downloading restores the user's choice. |
+| D-AUD-E-33 | **`active_voice_id`** string key in the existing DataStore. Absent ⇒ `device_tts`; unknown/uninstalled ⇒ `device_tts` **on read, not on write** — the `selected_plan` / `BibleProvider.fromStored` posture, field for field. Supersedes A1's `audio_preferred_voice_id` and §13.3's `audio_voice_source`. |
 
 ---
 
@@ -1715,6 +1761,15 @@ tickets.
 `TtsVersePlayer`; `AudioQueue` + `BuildAudioQueueUseCase` + `PlayUnit` stop rules;
 `ResolveAudioAvailabilityUseCase`. **Deliverable gate: the Psalm-119-window queue test (M-AUD-1) is
 green with zero audio bytes in the repo**, and the merged manifest matches §12 exactly.
+
+> **A2 — the plug-and-play seam moves INTO A/B, out of C.** Because `device_tts` is a registry entry
+> (D-AUD-E-30), the voice registry, the manifest contract, `ActiveVoiceRepository` + `active_voice_id`,
+> the D-N-3 selector, and gate assertions 17–20 with the **synthetic two-voice fixture** are all
+> buildable and testable in Phase 1 with **zero audio bytes and no PAD dependency**. Build them here
+> (A: registry/active-voice/manifest contract; B: selector UI + the missing-chapter prompt shape),
+> not in C. Phase 2 then genuinely is "a second entry appears," which is the property the owner
+> asked for and the only way to prove it before there is anything to plug in. **Morgan: this is a
+> re-scope of AUD-A/B upward and AUD-C downward, not net-new work.**
 
 **Sprint AUD-B — Follow-along, entry points, marking, Phase-1 polish.**
 `ReaderAudioSlot` filled; `activeVerseId` combine; yielding autoscroll; the session-scoped verse tap
@@ -1731,10 +1786,15 @@ release-only `audio-bundle` CI job; the corpus-asset fetch + checksum verificati
 **This sprint is the gate on commissioning the render.**
 
 **Sprint AUD-D — The render + the gate (the data project).**
-`tools/render_audio.py` (pilot first, per R-AUD-3, with owner sign-off M-AUD-6 and a pronunciation
-lexicon built from what the pilot exposes); `tools/verify_audio_asr.py`; the full corpus;
-`audio/timings/*` + `audio_manifest.json` committed; **`AudioTimingVerificationTest` green (§10.3)**;
-reconciliation log in `docs/data/README.md`; AR-AUD-1 recorded **before the spend**, not before ship.
+Ordered strictly, because the last step is the one-way door: **(1)** extract the out-of-lexicon
+token list from `bible.db`; **(2)** render the R-AUD-3 pilot on `eleven_flash_v2` (D-AUD-E-21);
+**(3)** owner voice sign-off (M-AUD-6) **and** the `eleven_v3`-vs-`flash_v2` election with its price
+attached (OQ-AUD-E-6); **(4)** build + commit + sign off the **lexicon** (D-AUD-E-22); **(5)** record
+AR-AUD-1 in `docs/data/README.md` — *before the spend, the spend is the commitment point*;
+**(6)** commission the corpus render; **(7)** `tools/verify_audio_asr.py` over all 1,189 chapters;
+**(8)** commit `audio/timings/<voiceId>/*` + `audio_manifest.json` (incl. the lexicon SHA + the
+pinned model/voice/params); **(9)** `AudioTimingVerificationTest` green (§10.3, assertions 1–20);
+reconciliation log for every over-threshold chapter.
 
 **Sprint AUD-E — Phase 2 playback + hardening + release.**
 `FileVersePlayer` + clipping + position→verse mapping; download UI wired to real packs; voice
@@ -1760,6 +1820,17 @@ version bump + rollout.
   commitment, given §7.5's silent-delta finding.
 - **OQ-AUD-E-3 — M-AUD-3's restatement** (§16.3): accept "no `INTERNET` + exactly two new
   foreground-service permissions" as the posture gate.
+- **OQ-AUD-E-6 (A1) — `eleven_flash_v2` (pinned) vs `eleven_v3`, decided at the pilot with the price
+  attached.** Not a free swap: v3's 5,000-char cap splits **208 of 1,189 chapters**, which buys
+  chunk/splice/stitch machinery, alignment re-basing, ~250+ new seams to check, and a longer render
+  (§10.0.2, RE-AUD-15). Recommend flash_v2 unless the pilot shows a difference the owner can hear.
+- **OQ-AUD-E-7 (A2) — the missing-chapter prompt's third option.** D-AUD-E-29 forbids substitution
+  but permits *offering*, so the prompt reads: "Download <size>" · "Read it with the device voice" ·
+  Cancel. Confirm the middle option is wanted — it is the one place the user can end a session in a
+  voice other than the one they selected, **by choosing it explicitly**. Removing it is a one-line
+  change and makes the rule absolute; keeping it satisfies U-AUD-7 more generously.
+- **OQ-AUD-9 (Maya's) — AR-AUD-1**, now with a concrete gate: it must be recorded in
+  `docs/data/README.md` at **step (5) of Sprint AUD-D**, before the render is commissioned.
 - **OQ-AUD-4 (Maya's)** — the verse-tap gesture change. Engineering position: implementable in one
   place, **but only with the custom accessibility action** (D-AUD-E-14).
 - **OQ-AUD-6 (Maya's)** — 24 vs 32 kbps. Engineering input: 24 kbps ⇒ ~853 MB total, largest pack
