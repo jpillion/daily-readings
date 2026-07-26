@@ -29,6 +29,16 @@ on:
         description: "versionCode to assign (must already exist in Play)"
         required: true
         default: "10701"
+      source_track:
+        description: "Track the build is on NOW (stays active — not deactivated)"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - alpha
+          - beta
+          - internal
       target_track:
         description: "Track to assign it TO"
         required: true
@@ -38,6 +48,14 @@ on:
           - internal
           - alpha
           - beta
+      validate_only:
+        description: "Dry run — validate with Play and commit NOTHING (run this first)"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 concurrency:
   group: assign-track
@@ -69,20 +87,32 @@ jobs:
 
       - name: Assign to track
         run: |
-          echo "Assigning versionCode ${{ github.event.inputs.version_code }} to ${{ github.event.inputs.target_track }}"
-          # NOTE 1: deliberately NO --track_promote_to. That flag would MOVE the release off its
-          # current track; this sets the target track's release in place, additively.
-          # NOTE 2: deliberately NO --rollout. Passing it sends supply down its update_rollout
-          # path, which UPDATES an existing release and fails with
-          # "Unable to find the requested release on track - '<track>'" when the track has none.
-          # Omitting it takes the update-track path, which sets the track's release outright.
-          # Testing tracks go to all their testers anyway, so a rollout fraction is meaningless here.
+          echo "Assigning versionCode ${{ github.event.inputs.version_code }} from ${{ github.event.inputs.source_track }} to ${{ github.event.inputs.target_track }} (validate_only=${{ github.event.inputs.validate_only }})"
+          # WHY THIS SHAPE — two dead ends were tried first and are recorded so they are not retried:
+          #
+          #   1. `--track <target> --version_code N` with every --skip_upload_* and NO promotion:
+          #      supply exits with "No local metadata, apks, aab, or track to promote were found".
+          #      With nothing to upload and nothing to promote it considers itself a no-op.
+          #   2. Adding `--rollout` to that: sends supply down its update_rollout path, which
+          #      UPDATES an existing release — "Unable to find the requested release on track"
+          #      when the target track has none.
+          #
+          # So `--track_promote_to` is the only working route. The danger is that supply's
+          # `deactivate_on_promote` defaults to TRUE, which would DEACTIVATE the source release —
+          # with production as the source that would pull a live release off production. It is
+          # therefore pinned FALSE below: the source track keeps its release and the build simply
+          # also appears on the target. Play allows one versionCode to be live on several tracks.
+          #
+          # --validate_only runs Play's validation and commits nothing; run that first.
           fastlane supply \
             --package_name com.jpillion.dailyreadingplanner \
             --json_key play-service-account.json \
-            --track "${{ github.event.inputs.target_track }}" \
+            --track "${{ github.event.inputs.source_track }}" \
+            --track_promote_to "${{ github.event.inputs.target_track }}" \
             --version_code "${{ github.event.inputs.version_code }}" \
             --release_status completed \
+            --deactivate_on_promote false \
+            --validate_only "${{ github.event.inputs.validate_only }}" \
             --skip_upload_apk true \
             --skip_upload_aab true \
             --skip_upload_metadata true \
