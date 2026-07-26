@@ -1353,11 +1353,26 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   `INTERNET` (verified from the AAR; delta is 6→8 permissions —
   `FOREGROUND_SERVICE_DATA_SYNC` + our `FOREGROUND_SERVICE_MEDIA_PLAYBACK` — exported
   components 1→4, pending the `AUD-A-0` merged-manifest confirmation). Phase 1 (device TTS,
-  $0, zero bytes) ships standalone and is Phase 2's permanent fallback; Sprint F (the ~$250–800
-  corpus render) is the one-way door, gated by a 12-row checklist. **Blocked on the owner:**
-  OQ-AUD-1 voice source (recommend ElevenLabs, on the 31,219-row timing-index argument, not
-  quality), OQ-AUD-13 who owns the render machine + spend, OQ-AUD-3 the two-phase cut,
-  OQ-AUD-9 AR-AUD-1, plus OQ-AUD-4/5/6/7/8/10/11/12. **Not approved — do not start.**
+  $0, zero bytes) ships standalone as 1.6.0; Sprint F (the ~$250–800 corpus render) is the
+  one-way door, gated by a 15-row checklist. **Owner decisions since (`2026-07-26`):**
+  **ElevenLabs** chosen on voice realism after the owner auditioned the field (OQ-AUD-1 closed;
+  model pinned `eleven_flash_v2` per D-AUD-E-21 — the only phoneme-capable model that renders
+  every chapter in one request, 0 of 1,189 over its 30k cap vs 208 over v3's 5k — with v3 vs
+  flash_v2 re-openable at the pilot, OQ-AUD-E-6). **Audio packs are plug-and-play like
+  translations** (owner): a thin committed catalog + a self-describing `voice.json` *inside*
+  each pack, mirroring `PlanRegistry` + `PlanDescriptor`; the app never branches on which pack
+  is installed, and pack count is data (D-AUD-E-25/26/27). **Voice selection is app-wide and
+  exclusive** (owner ruling, D-AUD-26/D-AUD-E-29): coverage is evaluated only against the
+  active voice and a gap prompts *that voice's* pack — substitution is forbidden, offering is
+  permitted; the device voice is a first-class registry entry (D-AUD-E-30), which moved the
+  whole plug-and-play proof into Sprint B, before the spend. **The epic ships on a separate
+  long-lived branch** `feature/read-aloud` (D-M-AUD-8), never to `main` until a phase ships.
+  **The owner owns the render machine, vendor account and spend** and drives the render himself
+  (OQ-AUD-E-5/OQ-AUD-13 closed) — possibly out-of-session, hence the Sprint E owner-runnable
+  runbook (`SE-T10`) and the Sprint F intake gate (`SF-T0`). **Still blocked on the owner:**
+  OQ-AUD-3 two-phase cut, OQ-AUD-5 spoken verse numbers/chapter announcement (blocks text
+  prep), OQ-AUD-E-6 model, OQ-AUD-E-7 the prompt's device-voice option, OQ-AUD-9 AR-AUD-1,
+  plus OQ-AUD-4/6/7/8/10/11/12. **Not approved — do not start.**
 - Next up: 1.5.1 is public — monitor early production **crash/ANR vitals + reviews** over the
   next days (Play Console → Monitor and improve; two minor edge-to-edge "recommended actions" are
   noted on the release dashboard, non-blocking). Store-title rename in review. Still pending
