@@ -1,0 +1,101 @@
+name: Assign build to a Play track
+
+# Puts an ALREADY-UPLOADED build (identified by versionCode) onto a Play track, without
+# rebuilding, re-signing, or moving it off any other track.
+#
+# ── How this differs from "Promote to Production" ─────────────────────────────────────────
+# promote-production.yml uses `supply --track_promote_to`, which PROMOTES a release: it moves
+# the release from the source track to the target. That is right for alpha → production, but
+# it is the wrong tool for "also put it on internal", because promoting FROM production could
+# take a live release OFF production.
+#
+# This workflow is ADDITIVE: it sets the target track's release to the given versionCode and
+# touches nothing else. Use it to seed a testing track with a build that already exists in
+# Play (e.g. putting the current production hotfix in front of internal testers).
+#
+# Note: a versionCode can only ever be uploaded ONCE, so re-running release.yml is not an
+# option for an existing build — assigning the existing bundle is the only route.
+#
+# ── PREREQUISITE ──────────────────────────────────────────────────────────────────────────
+# The Play Developer API cannot create the FIRST release on a track that has never had one
+# (see docs/RELEASING.md). If the target track is empty, this fails with a permission-shaped
+# error and the owner must make one release on that track manually in the Play Console first.
+# ──────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "versionCode to assign (must already exist in Play)"
+        required: true
+        default: "10701"
+      target_track:
+        description: "Track to assign it TO"
+        required: true
+        default: "internal"
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+      rollout:
+        description: "Rollout fraction (1 = full 100%)"
+        required: true
+        default: "1"
+
+concurrency:
+  group: assign-track
+  cancel-in-progress: false
+
+jobs:
+  assign:
+    name: Assign ${{ github.event.inputs.version_code }} → ${{ github.event.inputs.target_track }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Write service account key
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      # Pinned for the same reason as promote-production.yml: an unpinned `gem install fastlane`
+      # is a floating dependency in a workflow that holds the Play publishing credential.
+      - name: Install Fastlane
+        run: gem install fastlane --no-document --version 2.237.0
+
+      - name: Assign to track
+        run: |
+          STATUS=completed
+          case "${{ github.event.inputs.rollout }}" in
+            1|1.0) STATUS=completed ;;
+            *)     STATUS=inProgress ;;
+          esac
+          echo "Assigning versionCode ${{ github.event.inputs.version_code }} to ${{ github.event.inputs.target_track }} at rollout ${{ github.event.inputs.rollout }} (status $STATUS)"
+          # NOTE: deliberately NO --track_promote_to. That flag would MOVE the release off its
+          # current track; this sets the target track's release in place, additively.
+          fastlane supply \
+            --package_name com.jpillion.dailyreadingplanner \
+            --json_key play-service-account.json \
+            --track "${{ github.event.inputs.target_track }}" \
+            --version_code "${{ github.event.inputs.version_code }}" \
+            --release_status "$STATUS" \
+            --rollout "${{ github.event.inputs.rollout }}" \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_metadata true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true \
+            --skip_upload_changelogs true \
+            --verbose
+
+      - name: Clean up service account key
+        if: always()
+        run: rm -f play-service-account.json
