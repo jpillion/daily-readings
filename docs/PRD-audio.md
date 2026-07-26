@@ -64,6 +64,17 @@ tidy-up**, and is marked as one throughout:
 | A3.5 | **Deleting a whole voice is a supported action**, and §8's surface is reshaped for voice-as-a-dimension: coverage shown for the *active* voice, space aggregated across voices, one-tap voice deletion. **D-AUD-17 (book = atomic unit) is unaffected.** | §8 |
 | A3.6 | **D-AUD-24 amended:** pack *identity* stays invisible, but a **two-entry chooser (device voice + the one narration) does appear in Phase 2's first release** — a consequence of A3.2, and a departure from D-N-3's hide-the-branch pattern for this one control. | §7, §6 FR-AUD-29 |
 
+**A4 — 2026-07-25, owner ruling on spoken headings (closes OQ-AUD-5).**
+
+| # | What changed | Where |
+|---|---|---|
+| A4.1 | **OQ-AUD-5 CLOSED as recommended** (**D-AUD-29**): book + chapter announced once, short form thereafter, **verse numbers never spoken**. FR-AUD-9 updated to point at the new requirement rather than an open question. | §6 FR-AUD-9, §7, §11 |
+| A4.2 | **New FR-AUD-31 — the announcement rules**, all owner-approved and all product-visible: full form again **whenever the book changes** (the two-book portion; M'Cheyne's multi-ref portions), **Psalms singular** per the existing D-UI-2 rule, **single-chapter books get the book name only**, and **verse-windowed readings get a verse form** (Sprint J's four days + M'Cheyne's 38 windowed refs). | §6 |
+| A4.3 | **Heading copy (H1–H7) added as an owner sign-off table**, with the asymmetry stated where he will see it before signing: this is the most-heard copy in the feature **and** the only copy whose fix is a re-render that D-AUD-18 bars from a patch release. Recommendation: sign off **by ear, on the pilot**. | §7 D-AUD-29 |
+| A4.4 | **D-AUD-30 — headings are pre-rendered** (~1,401 clips / ~24,662 chars / ~$3–4). **Runtime synthesis recorded as considered-and-rejected**: an on-device key or a proxy reintroduces the hosting the owner declined, and `INTERNET` undoes the reason PAD was chosen. Recorded because the question will recur. | §7 |
+| A4.5 | **Recorded flexibility property:** the full form covers every canon chapter and the short form is book-agnostic, so **a future whole-chapter plan needs no new heading audio** — only novel verse windows would. A real dividend of the alt-schedules work; flagged to be echoed in the plan-authoring doc. | §7 D-AUD-30 |
+| A4.6 | **OQ-AUD-8 expanded** with the whole-day heading question, and a position taken: **a pause between streams, never a spoken stream title.** | §11 |
+
 ---
 
 ## 0. The framing shift — read this first
@@ -415,8 +426,8 @@ to priority; priority is the P0/P1 grouping below, as in the other PRDs.
 - **FR-AUD-8 (G12)** The **two-book portion** (Jun 19 / Dec 19 = 2 John + 3 John) plays both
   books in order as one portion. `[P1+P2]`
 - **FR-AUD-9 (U-AUD-2)** Spoken text is the **stripped plain text** (`MarkupStripper.strip`) —
-  never markup tags, never verse numbers spoken aloud as content. *(Whether the reference is
-  announced at the start of a chapter is a copy question, OQ-AUD-5.)* `[P1+P2]`
+  never markup tags, and **verse numbers are never spoken** *(settled A4 — D-AUD-29 closes
+  OQ-AUD-5)*. Spoken **headings** are specified separately in FR-AUD-31. `[P1+P2]`
 - **FR-AUD-10 `[P2]` (U-AUD-4, G14)** **Any downloadable audio artifact must carry a per-verse
   timing index** — **31,219 rows** (31,102 verses **plus** the 117 verse-0 superscriptions), each
   the offset at which that row begins in its chapter's audio. This is what makes FR-AUD-6 (verse
@@ -599,6 +610,33 @@ to priority; priority is the P0/P1 grouping below, as in the other PRDs.
   > without asking for it.** My rule (a) — one continuous listen is one voice, never switching
   > mid-passage — survives, subsumed: with an app-wide exclusive voice, mid-passage switching is
   > unreachable by construction rather than by rule.
+
+### P0 (added in A4) — spoken headings
+
+- **FR-AUD-31 (U-AUD-1, U-AUD-2)** **Each chapter is announced; verse numbers never are.** A
+  reading opens with the **full form** (book + chapter); subsequent chapters within the same
+  reading get the **short form** (chapter only). Owner's example — "Genesis 1–2" plays as
+  *"Genesis Chapter 1."* → chapter 1 → *"Chapter 2."* → chapter 2. The rules, all product-visible:
+
+  | Case | Spoken | Example |
+  |---|---|---|
+  | First chapter of a reading | **full form** | *"Genesis Chapter 1."* |
+  | Next chapter, same book | **short form** | *"Chapter 2."* |
+  | **The book changes mid-reading** | **full form again** | Jun 19 / Dec 19 = 2 John + 3 John → *"2 John."* then *"3 John."* |
+  | **Psalms, one chapter** | **singular** — never "Psalms Chapter N" | *"Psalm 23."* |
+  | **Single-chapter book** (Obadiah, Philemon, 2 John, 3 John, Jude) | **book name only**, no chapter | *"Philemon."* |
+  | **Verse-windowed reading** | **verse form** | *"Psalm 119, Verses 1 to 40."* |
+
+  The book-change rule is not an edge case: it is the only thing that keeps the two-book portion
+  intelligible, and M'Cheyne's multi-ref portions hit it routinely. The Psalms rule is the app's
+  existing **D-UI-2** singular/plural rule, which already governs the Schedule card, the widget,
+  the notifications and the reader title — **the spoken form must not become a second source of
+  truth for it.** The verse form covers Sprint J's four Psalm-119 days and M'Cheyne's 38 windowed
+  refs. `[P1+P2]`
+  > **Copy warning — read before signing off.** Unlike every other string in this app, heading
+  > wording is **expensive to change**: it is rendered audio, so a wording fix is a **re-render**,
+  > and under **D-AUD-18** it **cannot ship in a patch release**. See the sign-off table in §7
+  > (D-AUD-29).
 
 ### P2 — explicitly out (tracked, not committed)
 
@@ -881,6 +919,58 @@ podcast feed · background pre-fetch of upcoming readings.
     which is correct, because the downloads are gone too.
   - **Deleting the *active* voice entirely** is allowed, not blocked — with the consequence stated
     in the confirm dialog. We do not protect users from a reversible choice.
+
+**Added in amendment A4 (owner ruling on spoken headings).**
+
+- **D-AUD-29 — Book + chapter announced once; verse numbers never spoken** *(A4; closes
+  **OQ-AUD-5**, in line with the recommendation already on file; FR-AUD-31)*. Owner-approved.
+  Verse numbers every few seconds would turn scripture into a reference lookup; a heading at each
+  chapter boundary is orientation, which is what a listener with no screen actually needs.
+
+  **Heading copy — OWNER TONE SIGN-OFF REQUIRED.** This is the **most-heard copy in the entire
+  feature**: a daily listener hears these three or four times a day, every day, for years — far
+  more often than any on-screen string. And it is the **only copy in the app that cannot be fixed
+  cheaply**: a wording change is a re-render, and D-AUD-18 forbids shipping audio changes in a
+  patch. **Please read this table as if it were permanent, because it nearly is.**
+
+  | # | Form | Proposed wording | Alternative considered |
+  |---|---|---|---|
+  | H1 | Full | *"Genesis Chapter 1."* | *"Genesis, Chapter One."* (spelled-out numerals) |
+  | H2 | Short | *"Chapter 2."* | *"Chapter Two."* |
+  | H3 | Psalms, single chapter | *"Psalm 23."* | — (fixed by D-UI-2) |
+  | H4 | Single-chapter book | *"Philemon."* | *"Philemon, Chapter 1."* — rejected: says nothing |
+  | H5 | Verse window, range | *"Psalm 119, Verses 1 to 40."* | *"…Verses 1 **through** 40."* |
+  | H6 | Verse window, single verse | *"Psalm 119, Verse 7."* | *"…Verse 7 only."* |
+  | H7 | Delivery | **falling intonation**, then a short pause before the text | flat/level ending |
+
+  **My recommendations, with reasons:** **"to"** over "through" (H5) — shorter, unambiguous, and
+  natural in both British and American English, where "through" is American-idiomatic and reads
+  as ambiguous to some UK ears; this audience is heavily UK/Commonwealth. **"Verse 7"** plain
+  (H6) — "only" editorialises. **Falling intonation with a pause** (H7) — a heading is a
+  statement, not a question, and the pause is what tells a listener the reading has begun; it is
+  the one item here that can only be judged by ear, so it belongs in the **pronunciation pilot**
+  (R-AUD-3), not in a document. **I recommend the owner signs off on the heading set by
+  *listening to the pilot*, not by reading this table** — for copy this permanent and this
+  audible, reading it is not the same test as hearing it.
+- **D-AUD-30 — Heading audio is pre-rendered, not synthesised at runtime** *(A4)*. The heading set
+  is **closed and small** — ~1,401 clips / ~24,662 characters / **~$3–4** to render, i.e. under
+  1 % of the corpus cost — so it ships as content like everything else.
+  **Runtime synthesis was considered and rejected**, and the reasoning is recorded because this
+  question will recur every time someone notices how small the heading set is: a realtime path
+  needs either **an API key on the device** (extractable, and a key we would then be rotating for
+  the life of the app) or **a proxy we operate** — which is precisely the hosting the owner
+  declined in D-AUD-1 — and either way it needs **`INTERNET`**, which would undo the single
+  property that made Play Asset Delivery the right answer (NFR-AUD-A, §0). *A cheap component is
+  not a reason to reintroduce the expensive constraint.*
+  > **Recorded flexibility property (belongs with the alternate-schedules story too).** Because
+  > the **full form covers every chapter in the canon** and the **short form is book-agnostic**,
+  > **a future whole-chapter reading plan needs no new heading audio at all** — the existing set
+  > already covers it. Only a plan introducing **novel verse windows** would need anything
+  > rendered, and then only for those windows. This is a genuine dividend of the alt-schedules
+  > work (plans are data, D-ALT-2/3), and it means "add another plan" stays a data task even once
+  > audio exists. *It should be echoed where the plan-authoring story lives
+  > ([features/alternate-reading-schedules.md](features/alternate-reading-schedules.md)); I have
+  > not edited that file in this pass.*
 
 ## 8. Download management as a product surface
 
@@ -1189,10 +1279,10 @@ it saves the render bill and the re-render risk entirely. Otherwise: ElevenLabs.
 | **OQ-AUD-2** ✅ **mostly resolved (A1.1)** | Pack granularity. **Answered:** per-book is the design (D-AUD-17 / D-AUD-E-5); no sub-book unit is a product requirement. **Residual:** Play's max pack *count* is unverified, so 66 packs is proven by `AUD-C-1`, with ~8 section packs as a config-only fallback. | Diego / `AUD-C-1` | The "never force ~853 MB" constraint is fixed; the pack layout is negotiable. |
 | **OQ-AUD-3** | Confirm the **two-phase cut** (§9, D-AUD-7) — ship the player on device TTS first, then the rendered voice? | Owner | Strongly recommended. The alternative (wait and ship Phase 2 whole) spends the render budget before the UX is judged. |
 | **OQ-AUD-4** *(still owner's call; a11y cost now designed to zero)* | Verse tap during playback **seeks**, and the shipped Sprint-H external tap-out moves to **long-press** (FR-AUD-14). This changes a shipped gesture. | Owner | Recommended as stated. Both Diego and Priya independently made it conditional on **named custom accessibility actions** ("Play from here" / "Open on <app>"), which is now a hard condition of FR-AUD-14 (A1.12). With those, TalkBack users gain an affordance rather than lose one; the residual cost is a ~500 ms hold for sighted users, taught by the existing footer hint at 0 dp. |
-| **OQ-AUD-5** | Should the reader **announce the reference** aloud at the start of a chapter ("Genesis, chapter 1") and/or **speak verse numbers**? | Owner (tone) | Recommend announcing the chapter reference once, and **not** speaking verse numbers — numbers every few seconds break the reading. Both are copy/tone calls. |
+| **OQ-AUD-5** ✅ **RESOLVED (A4)** | Announce the reference? Speak verse numbers? | Owner | **Closed as recommended:** book + chapter announced once, short form for subsequent chapters, **verse numbers never spoken** (D-AUD-29, FR-AUD-31). **A narrower question replaces it and is still open: the exact heading wording** (H1–H7 in D-AUD-29) — most-heard copy in the feature, and the only copy a fix cannot ship cheaply (re-render, and D-AUD-18 blocks patch releases). Recommend signing off **by listening to the pilot**, not by reading the table. |
 | **OQ-AUD-6** | Is **Opus ~24 kbps mono** acceptable for spoken word on phone speakers and cheap earbuds (assumption A-AUD-2), or should we pay ~1.14 GB for 32 kbps? | Owner (listening check) | Recommend 24 kbps after a listening check on a phone speaker; the ~290 MB delta is real. Diego: not an architectural constraint either way — every pack stays under Play's thresholds at both rates. |
 | **OQ-AUD-7** | User-facing naming: **"Read aloud"** (recommended) vs "Listen" vs "Audio". And the voice labels under D-AUD-5. | Owner (tone) | "Read aloud" describes the act without implying a produced audiobook or a narrator. |
-| **OQ-AUD-8** | Does **whole-day playback** (FR-AUD-5 row 2, FR-AUD-18) belong in the first release, or is per-reading playback enough to start? | Owner / Morgan | It is the natural commuter unit; but it is the one entry point that needs new chrome. Droppable. |
+| **OQ-AUD-8** *(expanded A4)* | Does **whole-day playback** (FR-AUD-5 row 2, FR-AUD-18) belong in the first release? **And if it ships: what separates the streams**, since a whole day is 3–4 headings back-to-back across streams? | Owner / Morgan | Still the natural commuter unit and still the cleanly droppable entry point. **On the separator, my position: a short pause and nothing else — do NOT speak the stream title.** Reasons: (i) stream titles are *display* strings owned by the active plan's descriptor, and they change — the owner renamed M'Cheyne's "Secret" streams to "Personal" on 2026-06-16, which under pre-rendered audio would have been a **re-render**; (ii) N=1 plans (Chronological) have **no** stream title at all (`titleFor` returns null at N≤1), so speaking one is not even always defined; (iii) the book heading (FR-AUD-31) already announces the change of place, which is the orientation a listener needs. **A pause costs nothing, breaks nothing, and never needs re-rendering.** |
 | **OQ-AUD-9** | AR-AUD-1 (below): confirm the accepted-risk posture extends to **recordings**, and confirm attribution obligations under whichever voice source wins. | Owner | Recommend recording the acceptance explicitly before any render is commissioned. |
 | **OQ-AUD-10** *(new, A1.8)* | **Retire `ReaderAudioSlot` and put the transport at the app root** (D-AUD-19) — superseding the *placement* half of V3's D-V3-14, which reserved the slot inside the reader. | Owner | **Recommend adopting.** Playback is an app-level session: a listener who taps Schedule must not lose the pause button. D-V3-14's *intent* (an additive drop-in) is honoured exactly; only its location moves. Idle costs 0 dp, so no resting layout changes. |
 | **OQ-AUD-11** *(new, A1.8)* | **While a session is live, the Schedule's stats panel cap drops 45 % → 30 %** (D-AUD-20) — the Listen bar is paid for by "Year at a glance", not by the readings. | Owner | **Recommend adopting.** Nothing is removed (the panel already scrolls); the readings column ends up with *more* slack while playing than while idle, so the N=4 M'Cheyne case improves. Flagged because it makes a shipped layout conditional on playback. |
