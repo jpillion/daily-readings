@@ -1843,8 +1843,18 @@ version bump + rollout.
 - **OQ-AUD-E-4** — is `AUD-C-1` (the placeholder internal-track upload) budgeted as a real ticket
   with a real Play release cycle? It is the cheapest de-risking in the whole plan and it has a
   calendar cost (review turnaround) that must be sequenced, not assumed.
-- **OQ-AUD-E-5** — who owns the render machine, and where does the ~$250–800 spend sit in the
-  process? D-AUD-E-6 assumes a human uploads corpus assets once per render.
+- ~~**OQ-AUD-E-5** — who owns the render machine, and where does the ~$250–800 spend sit in the
+  process? D-AUD-E-6 assumes a human uploads corpus assets once per render.~~
+  **RESOLVED (owner, 2026-07-26): the owner owns the render machine, the vendor account and the
+  spend, and will drive the render himself — possibly from a separate working session.** That
+  last clause carries a requirement: the render must be runnable by someone who does not have
+  this document's context loaded. The pieces already exist but are scattered across
+  D-AUD-E-21 (the `eleven_flash_v2` pin and why), D-AUD-E-22 (lexicon committed and signed off
+  *before* the corpus render), D-AUD-E-23 (`with-timestamps`, Forced Alignment fallback, never
+  estimated) and Sprint AUD-D's 9-step order. **They must be assembled into one self-contained,
+  owner-runnable render runbook** — inputs, exact request parameters, the step order, what to
+  check between steps, and what "done" looks like — rather than left as decisions to be
+  reassembled. Tracked as a deliverable, not a question.
 - **OQ-AUD-8 (Maya's)** — whole-day playback in the first release. Engineering view: it is ~a day of
   work (a `PlayUnit` arm + a top-bar action) and is the cleanly droppable one.
 
