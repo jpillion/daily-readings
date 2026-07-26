@@ -1554,6 +1554,40 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   whatsnew rewritten. Second consecutive fully-automated `tag → alpha → promote` release, and the
   first to exercise the **`tracks: alpha`** migration and the **pinned Fastlane 2.237.0** — both
   previously unexercised (see the CI entry above).
+- 🚨 **P0 HOTFIX — Release 1.7.1 / 10701 (`2026-07-25`): 1.7.0 crashed on EVERY reading tap.**
+  Owner-reported within the hour: "clicking the card to open the reading crashes the app… all days,
+  every plan." Confirmed and reproduced on an emulator.
+  **THE BUG — Kotlin initialization order, exposed only by R8.** `ReaderViewModel.init` collects
+  `ReaderHandoff.pending`; a Schedule reading tap populates that handoff **BEFORE** the reader
+  ViewModel is constructed, so the collect fires **during construction** → `enterReading` →
+  `switchContext`, which writes `_selection.value`. Sprint 00Q declared `_selection` **BELOW** the
+  init block, and Kotlin initializes in declaration order — so the field was still null:
+  `NullPointerException: Attempt to invoke virtual method 'void StateFlowImpl.setValue(Object)' on a
+  null object reference`. **Fix: `_selection`/`selection` moved ABOVE `init`** (one declaration move,
+  no behaviour change) with a load-bearing comment explaining why the position matters.
+  **WHY EVERYTHING MISSED IT — the important lesson.** (1) It reproduced **ONLY in the R8-minified
+  RELEASE build**; the debug build dispatched the init collect late enough to miss the window, so the
+  emulator repro on `assembleDebug` opened the reading FINE and only `assembleRelease` crashed.
+  (2) The owner's device pass was on a locally-built (debug) 00Q — genuinely testing the feature, but
+  never the minified artifact. (3) All 879 JVM tests passed because **every existing test constructed
+  the ViewModel FIRST and only then set the handoff** — the safe order, which never touches the
+  uninitialized field. The bug lived entirely in the order *production* uses.
+  **Diagnosis method (repeatable):** `assembleRelease` → install on emulator → tap card → crash;
+  `adb logcat -b crash`; the stack is R8-obfuscated, so retrace via
+  `app/build/outputs/mapping/release/mapping.txt` — **verify `pg_map_id` matches the `r8-map-id` in
+  the stack first** (it did: `02eb5f59…`), then translate frames by grepping `^<orig> -> <obf>:`.
+  That named `q42`=`ReaderViewModel`, `m42`=`ReaderViewModel$1$1` (the init collect lambda),
+  `np2`=`kotlinx.coroutines.flow.StateFlowImpl`.
+  **NEW REGRESSION GATE `ReaderViewModelHandoffInitTest` (3 tests)** pins the ORDER, not the outcome:
+  the handoff is populated **before** `ReaderViewModel(...)` is constructed (portion, multi-chapter
+  portion, and the `requestBrowse` path). Proven to go RED with `_selection` moved back below `init`
+  and GREEN after — the reverted-fix run failed exactly the two portion tests.
+  **Verified on a real R8 release APK on-device before shipping** (tap → 2 Samuel 11 renders, 0
+  FATALs), not just in JVM tests. **Audited every other ViewModel** for the same hazard (a
+  `MutableStateFlow` declared below its `init`): none. 879 → **882 tests**, full pipeline green from
+  clean, five data/Room gates UNCHANGED (11/10/8/18/5).
+  **Standing lesson for this repo: a debug-build device pass does NOT cover R8. Any release carrying
+  ViewModel/DI/coroutine changes should be smoke-tested from `assembleRelease`, not `assembleDebug`.**
 - Next up (non-blocking): monitor 1.6.0 **crash/ANR vitals + reviews** (Play Console → Monitor and
   improve; the two minor edge-to-edge "recommended actions" remain noted, non-blocking). Store-title
   rename in review. Still pending: the owner **device pass** on 1.6.0 — especially the sprint-00P

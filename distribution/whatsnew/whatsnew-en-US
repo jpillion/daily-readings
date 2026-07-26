@@ -1,3 +1,2 @@
-• Copy scripture: press and hold a verse to select it, tap more verses to add, then Copy
-• Tapping a verse now opens a small menu — open it in your Bible app, copy it, or start selecting
-• Copied verses paste as a ready citation, e.g. "In the beginning… — Genesis 1:1–2 (KJV)"
+• Fixed a crash in 1.7.0: tapping a reading to open it closed the app. Sorry about that — thank you for reporting it
+• Everything from 1.7.0 is here: press and hold a verse to select and copy, and tap a verse for the open/copy menu

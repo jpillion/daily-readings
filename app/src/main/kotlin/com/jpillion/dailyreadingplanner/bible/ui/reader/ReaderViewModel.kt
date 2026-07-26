@@ -102,6 +102,27 @@ class ReaderViewModel
         private val _versionState = MutableStateFlow(ReaderVersionState())
         val versionState: StateFlow<ReaderVersionState> = _versionState.asStateFlow()
 
+        /**
+         * The reader's multi-select state (Q2 Ticket 1). Hoisted here (unlike the ephemeral verse
+         * menu, D-Q-2) because it must survive recomposition, drive the contextual action bar, and
+         * feed the copy action. The reducer itself is the pure [VerseSelection] (Q1).
+         *
+         * **MUST be declared ABOVE [init] — this ordering is load-bearing, not cosmetic.** Kotlin
+         * initializes properties and init blocks in declaration order. [init] collects
+         * `readerHandoff.pending`, and a Schedule reading tap populates that handoff BEFORE this
+         * ViewModel is constructed, so the collect fires *during* construction → [enterReading] →
+         * [switchContext], which writes `_selection.value`. Declared below [init] (where Q2
+         * originally put it) the field is still null at that moment and every reading tap dies with
+         * `NullPointerException: … StateFlowImpl.setValue(Object) on a null object reference`.
+         *
+         * That was the 1.7.0 production P0. It reproduced ONLY in the R8-minified release build —
+         * debug dispatched the collect late enough to miss the window — so the JVM suite and a debug
+         * device pass both showed green. Pinned by `ReaderViewModelHandoffInitTest`; if another field
+         * is ever written from [init] or [switchContext], it belongs above [init] too.
+         */
+        private val _selection = MutableStateFlow(VerseSelection.NONE)
+        val selection: StateFlow<VerseSelection> = _selection.asStateFlow()
+
         init {
             // VD-T5 (D-D-1) / I2 (D-I-1): a Schedule reading tap hands off a portion to read in-app —
             // enter the Reading context anchored on that portion and open on the combined portion
@@ -242,14 +263,6 @@ class ReaderViewModel
         }
 
         // --- Q2: verse selection (Ticket 1) and copy (Ticket 2 / D-Q-4). ---
-
-        /**
-         * The reader's multi-select state. Hoisted here (unlike the ephemeral verse menu, D-Q-2)
-         * because it must survive recomposition, drive the contextual action bar, and feed the copy
-         * action. The reducer itself is the pure [VerseSelection] (Q1).
-         */
-        private val _selection = MutableStateFlow(VerseSelection.NONE)
-        val selection: StateFlow<VerseSelection> = _selection.asStateFlow()
 
         /** Long-press (or the menu's "Select verses"): enter selection with exactly this verse. */
         fun onVerseLongPressed(
