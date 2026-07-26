@@ -38,10 +38,6 @@ on:
           - internal
           - alpha
           - beta
-      rollout:
-        description: "Rollout fraction (1 = full 100%)"
-        required: true
-        default: "1"
 
 concurrency:
   group: assign-track
@@ -73,21 +69,20 @@ jobs:
 
       - name: Assign to track
         run: |
-          STATUS=completed
-          case "${{ github.event.inputs.rollout }}" in
-            1|1.0) STATUS=completed ;;
-            *)     STATUS=inProgress ;;
-          esac
-          echo "Assigning versionCode ${{ github.event.inputs.version_code }} to ${{ github.event.inputs.target_track }} at rollout ${{ github.event.inputs.rollout }} (status $STATUS)"
-          # NOTE: deliberately NO --track_promote_to. That flag would MOVE the release off its
+          echo "Assigning versionCode ${{ github.event.inputs.version_code }} to ${{ github.event.inputs.target_track }}"
+          # NOTE 1: deliberately NO --track_promote_to. That flag would MOVE the release off its
           # current track; this sets the target track's release in place, additively.
+          # NOTE 2: deliberately NO --rollout. Passing it sends supply down its update_rollout
+          # path, which UPDATES an existing release and fails with
+          # "Unable to find the requested release on track - '<track>'" when the track has none.
+          # Omitting it takes the update-track path, which sets the track's release outright.
+          # Testing tracks go to all their testers anyway, so a rollout fraction is meaningless here.
           fastlane supply \
             --package_name com.jpillion.dailyreadingplanner \
             --json_key play-service-account.json \
             --track "${{ github.event.inputs.target_track }}" \
             --version_code "${{ github.event.inputs.version_code }}" \
-            --release_status "$STATUS" \
-            --rollout "${{ github.event.inputs.rollout }}" \
+            --release_status completed \
             --skip_upload_apk true \
             --skip_upload_aab true \
             --skip_upload_metadata true \
