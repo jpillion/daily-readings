@@ -75,8 +75,9 @@ Ordered fallback when a non-KJV version is selected:
 
 1. Network → render, write to cache.
 2. No network, **cache hit** → render from cache, silently. No banner.
-3. No network, **cache miss** → render **bundled KJV**, with a persistent banner:
-   > **Unable to download content, displaying KJV**
+3. No network, **cache miss** → render **bundled KJV**, with a persistent banner naming the version
+   that failed, so the notice explains *why* KJV is on screen (owner, 2026-08-06):
+   > **Unable to download NKJV, displaying KJV**
 
 The banner is mandatory in case 3. A silent translation swap in a Bible app is unacceptable — the
 user must always know which text they are reading.
@@ -205,8 +206,18 @@ synthetic USX, so no licensed NKJV/NASB text enters the repository.
 Cache is required by D-OT-2 and is the only place caching happens (the proxy deliberately stores
 nothing — see "Why not cache here" in the backend README).
 
-Keyed by `(versionId, VerseRange)`. Eviction and size cap TBD at implementation. **Blocked on the
-licensing question below.**
+Keyed by `(versionId, VerseRange)`. **Owner confirmed caching is permitted (2026-08-06)**, so
+`FileBibleTextCache` is the live binding.
+
+Implemented limits, taken from API.Bible's published FAQ
+(https://docs.api.bible/common-questions/) rather than assumed:
+
+- *"refresh cached content every 14 days or less"* → entries expire at 14 days and read as a miss.
+  **The LRU touch on read was removed** — it pushed the deadline out on every read, so the passages
+  someone reads most would never have refreshed. Eviction is now oldest-fetched-first.
+- *"fewer than 500 consecutive verses"* → holds by construction: one entry is one `VerseRange`
+  (a chapter or verse window), and the longest chapter is Psalm 119 at 176 verses.
+- 12 MB total size cap.
 
 ### D-OT-9 — FUMS and copyright
 
@@ -215,27 +226,37 @@ Both are licence obligations and neither exists in the app today.
 - The `fumsToken` from each response must be reported.
 - The `copyright` string must be displayed wherever non-KJV text is shown.
 
-Neither is optional; they ship with the feature, not after it.
+Neither is optional; they ship with the feature, not after it. **Both are now implemented.**
+
+The mechanism, from https://docs.api.bible/guides/fair-use/ — the documented **manual
+(non-JavaScript)** form, which is the one a native app needs:
+
+```
+GET https://fums.api.bible/f3?t=<fumsToken>&dId=<deviceId>&sId=<sessionId>
+```
+
+`dId` persists across launches; `sId` is regenerated per session; `uId` is optional and omitted
+(no accounts). Both ids are random UUIDs — **no PII**, no ANDROID_ID, no advertising id. This is a
+licence obligation, NOT analytics: the app's no-telemetry decision is unchanged.
+
+Reports go direct rather than through the proxy (FUMS needs no API key), and every failure is
+swallowed — a dropped report must never withhold someone's scripture.
 
 ---
 
 ## Licensing confirmation — owner-owned, NOT blocking implementation
 
-**On-device caching of NKJV/NASB text is not yet confirmed as permitted.** The owner is sending the
-confirmation and has explicitly directed implementation to proceed ahead of the reply, accepting
-that a "no" is handled by turning caching off and degrading via D-OT-2 (every offline read falls to
-the KJV banner). **This is why the cache sits behind an interface — a "no" must be a config change,
-never a rewrite.**
+**Caching: owner confirmed YES (2026-08-06).** `FileBibleTextCache` stays bound and D-OT-2 case 2
+is live. The interface remains the right shape regardless — if the answer is ever revoked, binding
+`NoOpBibleTextCache` is a one-function change and every offline read simply falls to the KJV banner.
 
-The owner is asking support@api.bible:
+Still outstanding with support@api.bible:
 
 1. Is a server-side proxy holding the key acceptable? *(outstanding since the backend was built)*
-2. Is on-device caching of returned text permitted, and is there a retention limit?
-3. Is prefetching adjacent chapters acceptable? *(scopes the next iteration)*
-
-If caching is **not** permitted, D-OT-2 case 2 disappears and every offline read falls to the KJV
-banner. The feature still ships; it just degrades harder. **Design the cache behind an interface so
-this answer cannot force a rewrite.**
+2. ~~Is on-device caching permitted, and is there a retention limit?~~ — **permitted**; the
+   published FAQ's 14-day refresh is implemented. Whether the reply named a *different* retention
+   limit is unconfirmed.
+3. Is prefetching adjacent chapters acceptable? *(gates the deferred prefetch iteration)*
 
 ---
 
