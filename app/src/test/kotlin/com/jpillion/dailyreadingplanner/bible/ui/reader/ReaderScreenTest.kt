@@ -66,6 +66,33 @@ class ReaderScreenTest {
 
     private val kjv = BibleTranslation("KJV", "King James Version")
 
+    // --- Sprint 00R step 5: the D-OT-2 degraded banner. ---
+
+    /**
+     * The banner must NOT appear on a normal read. This is the pin that matters most: every KJV
+     * reader would otherwise see a permanent error strip above their scripture.
+     */
+    @Test
+    fun `no banner on a normal page`() {
+        setContent()
+        composeRule.onNodeWithTag("reader-degraded-banner").assertDoesNotExist()
+    }
+
+    /**
+     * D-OT-2 case 3 — the substituted text is announced. Pinned as the LITERAL owner wording, and
+     * pinned as text rather than colour: the banner must never rely on colour alone.
+     */
+    @Test
+    fun `a degraded page shows the banner and still renders the verses`() {
+        setContent(stateProvider = { content().copy(degraded = true) })
+
+        composeRule.onNodeWithTag("reader-degraded-banner").assertIsDisplayed()
+        composeRule.onNodeWithText("Unable to download content, display KJV").assertIsDisplayed()
+        // The warning sits ABOVE the text; it must never replace or occlude scripture.
+        composeRule.onNodeWithTag("reader-list").assertIsDisplayed()
+        composeRule.onNodeWithText("The LORD is my shepherd", substring = true).assertIsDisplayed()
+    }
+
     @Suppress("LongParameterList")
     private fun setContent(
         stateProvider: @Composable () -> ReaderUiState = { content() },

@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpillion.dailyreadingplanner.bible.domain.GetChapterUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
-import com.jpillion.dailyreadingplanner.bible.domain.GetTranslationsUseCase
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
@@ -64,11 +64,10 @@ class ReaderViewModel
     constructor(
         private val getChapter: GetChapterUseCase,
         private val getPortionText: GetPortionTextUseCase,
-        private val getTranslations: GetTranslationsUseCase,
         private val openVerse: OpenVerseUseCase,
         private val savedStateHandle: SavedStateHandle,
         private val readerHandoff: ReaderHandoff,
-        settingsRepository: SettingsRepository,
+        private val settingsRepository: SettingsRepository,
     ) : ViewModel() {
         private var pageStates = mutableMapOf<Int, MutableStateFlow<ReaderUiState>>()
 
@@ -93,11 +92,18 @@ class ReaderViewModel
         val initialPage: StateFlow<Int> = _initialPage.asStateFlow()
 
         /**
-         * D-N-1 / D-N-3 — the bundled text versions and the selected one, for the reader top-bar
-         * version control. Sourced from the asset's `translation` table via the seam (never a
-         * hardcoded literal); today exactly one row (KJV), so [ReaderVersionSelector] renders it as a
-         * static title. Loaded once in [init]; [selectVersion] is a no-op placeholder until a second
-         * version is bundled (V4 multi-translation work — NOT built here).
+         * D-N-3 — the text versions on offer and the selected one, for the reader top-bar version
+         * control. With three versions ([BibleVersion]) this now takes D-N-3's **dropdown** branch,
+         * built in Sprint 00N and unexercised until now.
+         *
+         * **Sprint 00R supersedes D-N-1's "sourced from the asset's `translation` table"** for this
+         * control: NKJV and NASB are served from the proxy and are not in the bundled artifact, so
+         * the app's version catalog is necessarily code. `BibleTextSource.translations()` remains
+         * the asset-integrity seam (pinned by `RoomBibleTextSourceTranslationsTest`); it is simply
+         * no longer what populates the selector.
+         *
+         * Written ONLY by the settings collector in [init], so the label can never show a version
+         * that is not actually stored.
          */
         private val _versionState = MutableStateFlow(ReaderVersionState())
         val versionState: StateFlow<ReaderVersionState> = _versionState.asStateFlow()
@@ -141,10 +147,22 @@ class ReaderViewModel
                     resetToBrowse()
                 }
             }
-            // D-N-1: load the bundled versions once for the top-bar version control.
+            // Sprint 00R step 4 — the version control now offers every version the app can show
+            // (bundled KJV + the online ones), driven by the stored selection so the top bar and the
+            // text can never disagree. Collected rather than read once: [selectVersion] persists and
+            // lets this collector be the single writer of _versionState.
             viewModelScope.launch {
-                val versions = runCatching { getTranslations() }.getOrDefault(emptyList())
-                _versionState.value = ReaderVersionState(available = versions, selected = versions.firstOrNull())
+                settingsRepository.selectedBibleVersion.collect { version ->
+                    val previous = _versionState.value.selected
+                    _versionState.value =
+                        ReaderVersionState(
+                            available = BibleVersion.entries.map { it.toTranslation() },
+                            selected = version.toTranslation(),
+                        )
+                    // Only reload on an actual change — the first emission is the initial load,
+                    // which uiStateForPage is already performing.
+                    if (previous != null && previous.code != version.code) reloadCachedPages()
+                }
             }
         }
 
@@ -176,6 +194,9 @@ class ReaderViewModel
                             ReaderUiState.Content(
                                 blocks = portionContent.blocks,
                                 title = portionTitle(portionContent.blocks),
+                                // D-OT-2: any block that fell back to KJV banners the whole page —
+                                // the user must never be shown a mixed page with no warning.
+                                degraded = portionContent.blocks.any { it.degraded },
                             )
                         } else {
                             val (book, chapter) = chapterForPage(ctx, page)
@@ -186,6 +207,7 @@ class ReaderViewModel
                                     book.canonicalName,
                                     singleChapter = true,
                                 )} $chapter",
+                                degraded = content.degraded,
                             )
                         }
                     } catch (e: Exception) {
@@ -237,12 +259,26 @@ class ReaderViewModel
         }
 
         /**
-         * D-N-3 — select a version. A no-op placeholder: today exactly one version is bundled, so
-         * the selector renders a static title and never calls this. When a second translation is
-         * bundled (V4), this becomes the switch point; version-switching machinery is NOT built here.
+         * Sprint 00R step 4 (supersedes the D-N-3 no-op placeholder) — switch the reader's text
+         * version and persist it, so the choice survives leaving the screen.
+         *
+         * Deliberately does NOT write `_versionState` itself: the settings collector in [init] is
+         * the single writer, so the visible label can only ever show a version that is actually
+         * stored. That also means the reload happens in exactly one place.
          */
         fun selectVersion(translation: com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation) {
-            _versionState.value = _versionState.value.copy(selected = translation)
+            viewModelScope.launch {
+                settingsRepository.setSelectedBibleVersion(BibleVersion.fromCode(translation.code))
+            }
+        }
+
+        /**
+         * Re-runs every page the user has already visited so a version switch is visible immediately
+         * rather than only on the next swipe. The page *flows* are kept (the pager holds them), only
+         * their content is reloaded — replacing the map would detach the pager's live subscriptions.
+         */
+        private fun reloadCachedPages() {
+            pageStates.forEach { (page, flow) -> loadPage(page, flow) }
         }
 
         /** Retry a failed page load in the current context. */
@@ -329,7 +365,7 @@ class ReaderViewModel
             page: Int,
             verseIds: Set<Long>,
         ) {
-            val text = VerseClipboardFormatter.format(versesOn(page, verseIds), translationCode())
+            val text = VerseClipboardFormatter.format(versesOn(page, verseIds), servedCodeOn(page, verseIds))
             if (text.isEmpty()) return
             viewModelScope.launch { copyChannel.send(text) }
         }
@@ -349,8 +385,24 @@ class ReaderViewModel
                 ?.filter { it.canonicalId in verseIds }
                 .orEmpty()
 
-        /** The bundled translation code for the citation ("KJV"), from the D-N-1 seam — never hardcoded. */
-        private fun translationCode(): String? = _versionState.value.selected?.code
+        /**
+         * The translation code for the citation ("KJV"), read from the version the copied verses
+         * were **actually served in** — NOT the user's selection.
+         *
+         * Sprint 00R: those two can differ. If the user picked NKJV and the fetch degraded to
+         * bundled KJV (D-OT-2 case 3), citing "(NKJV)" over KJV text would put a false attribution
+         * on someone's clipboard, which is exactly the silent-swap failure the banner exists to
+         * prevent. Reads per block, so a mixed page cites each copy correctly.
+         */
+        private fun servedCodeOn(
+            page: Int,
+            verseIds: Set<Long>,
+        ): String? =
+            (pageStates[page]?.value as? ReaderUiState.Content)
+                ?.blocks
+                ?.firstOrNull { block -> block.verses.any { it.canonicalId in verseIds } }
+                ?.servedVersion
+                ?.code
 
         /**
          * D-I-2 (OQ-A) — entering the Bible tab (or a picker jump) forces the Browse context at the

@@ -142,6 +142,15 @@
     <string name="reader_prev_chapter">Previous chapter</string>
     <string name="reader_next_chapter">Next chapter</string>
     <string name="reader_load_failed">Couldn\'t load this chapter</string>
+    <!--
+      Sprint 00R / D-OT-2 case 3 — shown when an online version could not be fetched and the reader
+      fell back to the bundled KJV. Mandatory: a silent translation swap in a Bible app is
+      unacceptable, so the user must always know which text they are reading.
+      Wording is the owner's, recorded verbatim in docs/sprints/sprint-00R-online-translations.md §2
+      step 5. NOTE: docs/features/online-translations.md D-OT-2 quotes it as "…, displaying KJV" —
+      the two docs disagree by one word; awaiting owner tone sign-off.
+    -->
+    <string name="reader_version_degraded">Unable to download content, display KJV</string>
     <string name="reader_retry">Retry</string>
     <!-- Owner reader top-bar redesign: the version control on the right of the reader top bar.
          When more than one version is bundled it becomes a dropdown; %1$s = the selected

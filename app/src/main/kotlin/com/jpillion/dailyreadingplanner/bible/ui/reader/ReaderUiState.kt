@@ -21,6 +21,12 @@ sealed interface ReaderUiState {
         val title: String,
         // D-V3-14: reserved audio seam, always null in V3.0.
         val activeVerseId: Long? = null,
+        /**
+         * D-OT-2 case 3 — this page asked for an online version and got bundled KJV instead, so the
+         * banner must be shown. Carried on the page's own state, never as shared ViewModel state:
+         * with a pager rendering several pages a single flag would race and banner the wrong page.
+         */
+        val degraded: Boolean = false,
     ) : ReaderUiState
 
     data class Error(

@@ -2,12 +2,17 @@ package com.jpillion.dailyreadingplanner.bible.ui.reader
 
 import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.bible.data.remote.BibleApiClient
+import com.jpillion.dailyreadingplanner.bible.data.remote.BibleTextResolver
+import com.jpillion.dailyreadingplanner.bible.data.remote.NoOpBibleTextCache
+import com.jpillion.dailyreadingplanner.bible.data.remote.NoOpFumsReporter
+import com.jpillion.dailyreadingplanner.bible.data.remote.PassageResult
 import com.jpillion.dailyreadingplanner.bible.domain.FakeBibleTextSource
 import com.jpillion.dailyreadingplanner.bible.domain.GetChapterUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
-import com.jpillion.dailyreadingplanner.bible.domain.GetTranslationsUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.PortionVerseBridge
 import com.jpillion.dailyreadingplanner.bible.domain.bundledResolver
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
@@ -42,7 +47,6 @@ class ReaderViewModelTest {
     private val resolver = bundledResolver(source)
     private val getChapter = GetChapterUseCase(resolver, settings)
     private val getPortionText = GetPortionTextUseCase(PortionVerseBridge(), resolver, settings)
-    private val getTranslations = GetTranslationsUseCase(source)
     private val openVerse = OpenVerseUseCase(settings, ProviderUrlBuilder())
     private val handoff = ReaderHandoff()
 
@@ -55,7 +59,36 @@ class ReaderViewModelTest {
     private val psalms23Page = GlobalChapterIndex.indexOf(psalms, 23)
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
-        ReaderViewModel(getChapter, getPortionText, getTranslations, openVerse, handle, handoff, settings)
+        ReaderViewModel(getChapter, getPortionText, openVerse, handle, handoff, settings)
+
+    /**
+     * A ViewModel whose remote fetches always fail, so selecting NKJV/NASB degrades to bundled KJV
+     * (D-OT-2 case 3). The shared [bundledResolver] deliberately THROWS on contact — correct for
+     * KJV-only tests, but these two must actually walk the remote path.
+     */
+    private fun offlineVm(): ReaderViewModel {
+        val offline =
+            BibleTextResolver(
+                bundled = source,
+                api =
+                    object : BibleApiClient {
+                        override suspend fun fetchPassage(
+                            versionCode: String,
+                            ref: String,
+                        ): PassageResult = PassageResult.Unavailable
+                    },
+                cache = NoOpBibleTextCache(),
+                fums = NoOpFumsReporter(),
+            )
+        return ReaderViewModel(
+            GetChapterUseCase(offline, settings),
+            GetPortionTextUseCase(PortionVerseBridge(), offline, settings),
+            openVerse,
+            SavedStateHandle(),
+            handoff,
+            settings,
+        )
+    }
 
     private fun nt(vararg refs: Reference) = Portion(3, refs.toList())
 
@@ -367,6 +400,33 @@ class ReaderViewModelTest {
             assertThat(model.selection.value).isEqualTo(VerseSelection.NONE)
         }
 
+    /**
+     * Sprint 00R — the citation names the version the verses were **actually served in**, not the
+     * one the user picked. With NKJV selected and the fetch failing, the text on screen is bundled
+     * KJV, so citing "(NKJV)" would put a false attribution on someone's clipboard — the same
+     * silent-swap failure the D-OT-2 banner exists to prevent, but pasted into their notes where
+     * the banner cannot follow it.
+     */
+    @Test
+    fun `a degraded page cites the served version, not the selected one`() =
+        runTest {
+            settings.storedBibleVersion.value = BibleVersion.NKJV
+            val model = offlineVm()
+            advanceUntilIdle()
+            model.uiStateForPage(genesis1Page)
+            advanceUntilIdle()
+            val copied = mutableListOf<String>()
+            val job = launch { model.copyEvents.collect { copied += it } }
+
+            model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
+            model.copySelection()
+            advanceUntilIdle()
+
+            assertThat(copied.single()).endsWith("(KJV)")
+            assertThat(copied.single()).doesNotContain("NKJV")
+            job.cancel()
+        }
+
     @Test
     fun `copySelection emits the D-Q-1 clipboard string for the selected verses`() =
         runTest {
@@ -492,16 +552,18 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `versionState exposes the bundled versions from the seam (D-N-1)`() =
+    fun `versionState offers every version the app can show, selected from the setting`() =
         runTest {
-            // The fake seam returns the single KJV row; the VM surfaces it as the available versions
-            // and the selected one, so the top-bar version control sources its label from the data.
+            // Sprint 00R step 4 supersedes D-N-1's asset-table lookup for this control: NKJV and
+            // NASB are served from the proxy and are not in the bundled artifact, so the catalog is
+            // necessarily code. Three versions also means the D-N-3 DROPDOWN branch is finally the
+            // one that renders.
             val model = vm()
             advanceUntilIdle()
             assertThat(
                 model.versionState.value.available
                     .map { it.code },
-            ).containsExactly("KJV")
+            ).containsExactly("KJV", "NKJV", "NASB").inOrder()
             assertThat(
                 model.versionState.value.selected
                     ?.code,
@@ -510,5 +572,94 @@ class ReaderViewModelTest {
                 model.versionState.value.selected
                     ?.name,
             ).isEqualTo("King James Version")
+        }
+
+    @Test
+    fun `a stored non-default version is what the selector shows`() =
+        runTest {
+            settings.storedBibleVersion.value = BibleVersion.NASB
+            val model = vm()
+            advanceUntilIdle()
+
+            assertThat(
+                model.versionState.value.selected
+                    ?.code,
+            ).isEqualTo("NASB")
+        }
+
+    /**
+     * Step 4 — selecting persists. The ViewModel deliberately does NOT write `_versionState`
+     * itself; the settings collector is the single writer, so the visible label can only ever show
+     * a version that is actually stored.
+     */
+    @Test
+    fun `selectVersion persists the choice and the label follows the store`() =
+        runTest {
+            val model = vm()
+            advanceUntilIdle()
+
+            model.selectVersion(BibleVersion.NKJV.toTranslation())
+            advanceUntilIdle()
+
+            assertThat(settings.bibleVersionCalls).containsExactly(BibleVersion.NKJV)
+            assertThat(settings.storedBibleVersion.value).isEqualTo(BibleVersion.NKJV)
+            assertThat(
+                model.versionState.value.selected
+                    ?.code,
+            ).isEqualTo("NKJV")
+        }
+
+    /** A switch must refresh pages the user has already opened, not only the next one swiped to. */
+    @Test
+    fun `switching version reloads pages already loaded`() =
+        runTest {
+            val model = offlineVm()
+            advanceUntilIdle()
+            model.uiStateForPage(0)
+            advanceUntilIdle()
+            val loadsBefore = source.rangesRequested.size
+            assertThat(loadsBefore).isAtLeast(1)
+
+            model.selectVersion(BibleVersion.NKJV.toTranslation())
+            advanceUntilIdle()
+
+            assertThat(source.rangesRequested.size).isGreaterThan(loadsBefore)
+        }
+
+    /**
+     * D-OT-2 case 3, end to end at the ViewModel: NKJV selected, the fetch fails, so the page still
+     * renders (bundled KJV) AND reports `degraded` so the banner fires. A silent swap would be the
+     * real defect.
+     */
+    @Test
+    fun `a failed remote fetch degrades the page and still renders text`() =
+        runTest {
+            settings.storedBibleVersion.value = BibleVersion.NKJV
+            val model = offlineVm()
+            advanceUntilIdle()
+
+            val state = model.uiStateForPage(0)
+            advanceUntilIdle()
+            val content = state.value as ReaderUiState.Content
+
+            assertThat(content.degraded).isTrue()
+            assertThat(content.blocks.single().verses).isNotEmpty()
+            assertThat(content.blocks.single().servedVersion).isEqualTo(BibleVersion.KJV)
+        }
+
+    /**
+     * D-OT-2 case 3 — the page state carries `degraded` so the banner can be derived per page.
+     * With only the bundled source in play nothing degrades, which is the pin that matters most:
+     * a KJV reader must never see the banner.
+     */
+    @Test
+    fun `a bundled KJV page is never degraded`() =
+        runTest {
+            val model = vm()
+            advanceUntilIdle()
+            val state = model.uiStateForPage(0)
+            advanceUntilIdle()
+
+            assertThat((state.value as ReaderUiState.Content).degraded).isFalse()
         }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -218,34 +220,87 @@ private fun ReaderPage(
             }
 
         is ReaderUiState.Content -> {
-            val listState = rememberLazyListState()
-            // A freshly-swiped page must open at the top (it is a new composition, but be explicit
-            // so a recomposed/retained page still resets to verse 1 of its chapter).
-            val chapterKey = state.blocks.firstOrNull()?.let { "${it.bookNo}-${it.chapter}" }
-            LaunchedEffect(chapterKey) { if (chapterKey != null) listState.scrollToItem(0) }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().testTag("reader-list"),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                state.blocks.forEach { block ->
-                    item(key = "hdr-${block.bookNo}-${block.chapter}") { ChapterHeader(block) }
-                    items(block.verses, key = { it.canonicalId }) { verse ->
-                        VerseItem(
-                            verse = verse,
-                            isActive = verse.canonicalId == state.activeVerseId,
-                            selection = selection,
-                            externalApp = externalApp,
-                            menuOpen = menuVerseId == verse.canonicalId,
-                            onMenuRequested = { menuVerseId = verse.canonicalId },
-                            onMenuDismissed = { menuVerseId = null },
-                            onVerseLongPressed = onVerseLongPressed,
-                            onVerseSelectionToggled = onVerseSelectionToggled,
-                            onOpenVerseExternally = onOpenVerseExternally,
-                            onCopyVerse = onCopyVerse,
-                        )
-                    }
-                }
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (state.degraded) DegradedVersionBanner()
+                ReaderVerseList(
+                    state = state,
+                    selection = selection,
+                    externalApp = externalApp,
+                    menuVerseId = menuVerseId,
+                    onMenuVerseIdChanged = { menuVerseId = it },
+                    onVerseLongPressed = onVerseLongPressed,
+                    onVerseSelectionToggled = onVerseSelectionToggled,
+                    onOpenVerseExternally = onOpenVerseExternally,
+                    onCopyVerse = onCopyVerse,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * D-OT-2 case 3 — the mandatory notice that the reader is showing bundled KJV because the selected
+ * online version could not be fetched.
+ *
+ * Persistent, not a snackbar: it must stay visible for as long as the substituted text is on screen.
+ * It sits ABOVE the verse list rather than over it, so it can never occlude scripture. Colour is
+ * `errorContainer`, but the text carries the whole message — the banner never relies on colour alone.
+ */
+@Composable
+private fun DegradedVersionBanner() {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = Modifier.fillMaxWidth().testTag("reader-degraded-banner"),
+    ) {
+        Text(
+            text = stringResource(R.string.reader_version_degraded),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.ReaderVerseList(
+    state: ReaderUiState.Content,
+    selection: VerseSelection,
+    externalApp: ExternalBibleApp,
+    menuVerseId: Long?,
+    onMenuVerseIdChanged: (Long?) -> Unit,
+    onVerseLongPressed: (Long) -> Unit,
+    onVerseSelectionToggled: (Long) -> Unit,
+    onOpenVerseExternally: (Long) -> Unit,
+    onCopyVerse: (Long) -> Unit,
+) {
+    val listState = rememberLazyListState()
+    // A freshly-swiped page must open at the top (it is a new composition, but be explicit
+    // so a recomposed/retained page still resets to verse 1 of its chapter).
+    val chapterKey = state.blocks.firstOrNull()?.let { "${it.bookNo}-${it.chapter}" }
+    LaunchedEffect(chapterKey) { if (chapterKey != null) listState.scrollToItem(0) }
+    LazyColumn(
+        state = listState,
+        // weight(): the banner takes the height it needs and the verses take the rest, so a
+        // degraded page scrolls its scripture rather than pushing it off the bottom.
+        modifier = Modifier.fillMaxWidth().weight(1f).testTag("reader-list"),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+    ) {
+        state.blocks.forEach { block ->
+            item(key = "hdr-${block.bookNo}-${block.chapter}") { ChapterHeader(block) }
+            items(block.verses, key = { it.canonicalId }) { verse ->
+                VerseItem(
+                    verse = verse,
+                    isActive = verse.canonicalId == state.activeVerseId,
+                    selection = selection,
+                    externalApp = externalApp,
+                    menuOpen = menuVerseId == verse.canonicalId,
+                    onMenuRequested = { onMenuVerseIdChanged(verse.canonicalId) },
+                    onMenuDismissed = { onMenuVerseIdChanged(null) },
+                    onVerseLongPressed = onVerseLongPressed,
+                    onVerseSelectionToggled = onVerseSelectionToggled,
+                    onOpenVerseExternally = onOpenVerseExternally,
+                    onCopyVerse = onCopyVerse,
+                )
             }
         }
     }
