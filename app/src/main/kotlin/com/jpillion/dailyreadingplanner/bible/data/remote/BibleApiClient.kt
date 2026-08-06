@@ -22,7 +22,9 @@ data class PassageResponse(
 
 /** Why a fetch failed. The caller only needs "can I retry/degrade", not an HTTP code. */
 sealed interface PassageResult {
-    data class Success(val passage: PassageResponse) : PassageResult
+    data class Success(
+        val passage: PassageResponse,
+    ) : PassageResult
 
     /** Offline, timeout, 5xx, budget exhausted — degrade per D-OT-2 and try again later. */
     data object Unavailable : PassageResult
@@ -49,70 +51,70 @@ interface BibleApiClient {
  * this and a working fetch once the proxy's attestation policy allows it.
  */
 class HttpBibleApiClient(
-        private val baseUrl: String,
-        private val appCheckTokenProvider: suspend () -> String?,
-    ) : BibleApiClient {
-        override suspend fun fetchPassage(
-            versionCode: String,
-            ref: String,
-        ): PassageResult =
-            withContext(Dispatchers.IO) {
-                val token = runCatching { appCheckTokenProvider() }.getOrNull()
-                val url = URL("$baseUrl/v1/passage?bible=$versionCode&ref=$ref")
-                var conn: HttpURLConnection? = null
-                try {
-                    conn =
-                        (url.openConnection() as HttpURLConnection).apply {
-                            requestMethod = "GET"
-                            connectTimeout = CONNECT_TIMEOUT_MS
-                            readTimeout = READ_TIMEOUT_MS
-                            setRequestProperty("Accept", "application/json")
-                            if (token != null) setRequestProperty("X-Firebase-AppCheck", token)
-                        }
-                    when (val status = conn.responseCode) {
-                        HttpURLConnection.HTTP_OK -> parse(conn.inputStream.readAllText())
-                        HttpURLConnection.HTTP_NOT_FOUND -> PassageResult.NotFound
-                        // 401/403 (attestation), 503 (budget), 5xx, anything else: degrade, do not
-                        // surface an error the reader cannot act on.
-                        else -> PassageResult.Unavailable.also { logUnexpected(status) }
+    private val baseUrl: String,
+    private val appCheckTokenProvider: suspend () -> String?,
+) : BibleApiClient {
+    override suspend fun fetchPassage(
+        versionCode: String,
+        ref: String,
+    ): PassageResult =
+        withContext(Dispatchers.IO) {
+            val token = runCatching { appCheckTokenProvider() }.getOrNull()
+            val url = URL("$baseUrl/v1/passage?bible=$versionCode&ref=$ref")
+            var conn: HttpURLConnection? = null
+            try {
+                conn =
+                    (url.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = CONNECT_TIMEOUT_MS
+                        readTimeout = READ_TIMEOUT_MS
+                        setRequestProperty("Accept", "application/json")
+                        if (token != null) setRequestProperty("X-Firebase-AppCheck", token)
                     }
-                } catch (e: Exception) {
-                    PassageResult.Unavailable
-                } finally {
-                    conn?.disconnect()
+                when (val status = conn.responseCode) {
+                    HttpURLConnection.HTTP_OK -> parse(conn.inputStream.readAllText())
+                    HttpURLConnection.HTTP_NOT_FOUND -> PassageResult.NotFound
+                    // 401/403 (attestation), 503 (budget), 5xx, anything else: degrade, do not
+                    // surface an error the reader cannot act on.
+                    else -> PassageResult.Unavailable.also { logUnexpected(status) }
                 }
+            } catch (e: Exception) {
+                PassageResult.Unavailable
+            } finally {
+                conn?.disconnect()
             }
+        }
 
-        private fun parse(body: String): PassageResult =
-            runCatching {
-                val root = JSON.parseToJsonElement(body).jsonObject
-                PassageResult.Success(
-                    PassageResponse(
-                        reference = root.str("reference"),
-                        content = root["content"]?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonArray
+    private fun parse(body: String): PassageResult =
+        runCatching {
+            val root = JSON.parseToJsonElement(body).jsonObject
+            PassageResult.Success(
+                PassageResponse(
+                    reference = root.str("reference"),
+                    content =
+                        root["content"]?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonArray
                             ?: JsonArray(emptyList()),
-                        copyright = root.str("copyright"),
-                        fumsToken = root.str("fumsToken"),
-                    ),
-                )
-            }.getOrElse { PassageResult.Unavailable }
+                    copyright = root.str("copyright"),
+                    fumsToken = root.str("fumsToken"),
+                ),
+            )
+        }.getOrElse { PassageResult.Unavailable }
 
-        private fun JsonObject.str(name: String): String? =
-            runCatching { this[name]?.jsonPrimitive?.contentOrNullSafe() }.getOrNull()
+    private fun JsonObject.str(name: String): String? =
+        runCatching { this[name]?.jsonPrimitive?.contentOrNullSafe() }.getOrNull()
 
-        private fun kotlinx.serialization.json.JsonPrimitive.contentOrNullSafe(): String? =
-            if (this is kotlinx.serialization.json.JsonNull) null else content
+    private fun kotlinx.serialization.json.JsonPrimitive.contentOrNullSafe(): String? =
+        if (this is kotlinx.serialization.json.JsonNull) null else content
 
-        private fun logUnexpected(status: Int) {
-            android.util.Log.w("BibleApiClient", "passage fetch degraded status=$status")
-        }
-
-        private fun java.io.InputStream.readAllText(): String =
-            bufferedReader().use(BufferedReader::readText)
-
-        private companion object {
-            const val CONNECT_TIMEOUT_MS = 10_000
-            const val READ_TIMEOUT_MS = 15_000
-            val JSON = Json { ignoreUnknownKeys = true }
-        }
+    private fun logUnexpected(status: Int) {
+        android.util.Log.w("BibleApiClient", "passage fetch degraded status=$status")
     }
+
+    private fun java.io.InputStream.readAllText(): String = bufferedReader().use(BufferedReader::readText)
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MS = 10_000
+        const val READ_TIMEOUT_MS = 15_000
+        val JSON = Json { ignoreUnknownKeys = true }
+    }
+}

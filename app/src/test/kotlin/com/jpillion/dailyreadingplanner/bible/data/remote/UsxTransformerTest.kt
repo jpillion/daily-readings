@@ -175,7 +175,7 @@ class UsxTransformerTest {
             transform(
                 "[${para(
                     "p",
-                    verse("JHN 11:35", "35", ),
+                    verse("JHN 11:35", "35"),
                     """{"name":"char","type":"tag","attrs":{"style":"wj"},"items":[${text("Come forth.")}]}""",
                 )}]",
             )
@@ -200,7 +200,7 @@ class UsxTransformerTest {
             transform(
                 "[${para(
                     "p",
-                    verse("PSA 3:2", "2", ),
+                    verse("PSA 3:2", "2"),
                     """{"name":"char","type":"tag","attrs":{"style":"sc"},"items":[${text("Lord")}]}""",
                     text(". "),
                     """{"name":"char","type":"tag","attrs":{"style":"qs"},"items":[${text("Selah")}]}""",
@@ -234,7 +234,7 @@ class UsxTransformerTest {
             transform(
                 "[${para(
                     "p",
-                    verse("GEN 1:1", "1", ),
+                    verse("GEN 1:1", "1"),
                     """{"name":"char","type":"tag","attrs":{"style":"zz9"},"items":[${text("Still here.")}]}""",
                 )}]",
             )

@@ -7,7 +7,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
@@ -199,7 +198,11 @@ object UsxTransformer {
             return if (existing.isNullOrEmpty()) clean else "$existing\n$clean"
         }
 
-        private data class Sid(val bookNo: Int, val chapter: Int, val verse: Int)
+        private data class Sid(
+            val bookNo: Int,
+            val chapter: Int,
+            val verse: Int,
+        )
 
         /** "PSA 3:1" → (19, 3, 1). Returns null for anything malformed — never a wrong guess. */
         private fun parseSid(sid: String): Sid? {
@@ -266,8 +269,7 @@ object UsxTransformer {
 
     private fun JsonObject.items(): List<JsonElement> = this["items"]?.jsonArray ?: emptyList()
 
-    private fun JsonObject.attr(name: String): String? =
-        (this["attrs"] as? JsonObject)?.stringOrNull(name)
+    private fun JsonObject.attr(name: String): String? = (this["attrs"] as? JsonObject)?.stringOrNull(name)
 
     private fun JsonObject.stringOrNull(name: String): String? =
         runCatching { this[name]?.jsonPrimitive?.content }.getOrNull()

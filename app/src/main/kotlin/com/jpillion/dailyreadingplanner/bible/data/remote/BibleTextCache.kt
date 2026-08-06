@@ -72,67 +72,67 @@ private data class CachedVerse(
  * Eviction is size-capped LRU by last-modified time, run after writes.
  */
 class FileBibleTextCache(
-        private val cacheDir: File,
-    ) : BibleTextCache {
-        override suspend fun get(
-            versionCode: String,
-            range: VerseRange,
-        ): List<VerseText>? =
-            withContext(Dispatchers.IO) {
-                val f = fileFor(versionCode, range)
-                if (!f.exists()) return@withContext null
-                runCatching {
-                    JSON.decodeFromString<List<CachedVerse>>(f.readText()).map {
-                        VerseText(it.id, it.label, it.title, it.markup, it.heading)
-                    }
-                }.onSuccess {
-                    f.setLastModified(System.currentTimeMillis()) // LRU touch
-                }.getOrElse {
-                    f.delete() // corrupt entry self-heals into a miss
-                    null
+    private val cacheDir: File,
+) : BibleTextCache {
+    override suspend fun get(
+        versionCode: String,
+        range: VerseRange,
+    ): List<VerseText>? =
+        withContext(Dispatchers.IO) {
+            val f = fileFor(versionCode, range)
+            if (!f.exists()) return@withContext null
+            runCatching {
+                JSON.decodeFromString<List<CachedVerse>>(f.readText()).map {
+                    VerseText(it.id, it.label, it.title, it.markup, it.heading)
                 }
-            }
-
-        override suspend fun put(
-            versionCode: String,
-            range: VerseRange,
-            verses: List<VerseText>,
-        ) {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    root().mkdirs()
-                    val payload =
-                        verses.map { CachedVerse(it.canonicalId, it.nativeLabel, it.isTitle, it.markup, it.heading) }
-                    fileFor(versionCode, range).writeText(JSON.encodeToString(payload))
-                    evictIfOversized()
-                }
+            }.onSuccess {
+                f.setLastModified(System.currentTimeMillis()) // LRU touch
+            }.getOrElse {
+                f.delete() // corrupt entry self-heals into a miss
+                null
             }
         }
 
-        override suspend fun clear() {
-            withContext(Dispatchers.IO) { root().deleteRecursively() }
-        }
-
-        private fun root() = File(cacheDir, DIR)
-
-        private fun fileFor(
-            versionCode: String,
-            range: VerseRange,
-        ) = File(root(), "${versionCode.lowercase()}-${range.startVerseId}-${range.endVerseId}.json")
-
-        private fun evictIfOversized() {
-            val files = root().listFiles()?.sortedBy { it.lastModified() } ?: return
-            var total = files.sumOf { it.length() }
-            for (f in files) {
-                if (total <= MAX_BYTES) break
-                total -= f.length()
-                f.delete()
+    override suspend fun put(
+        versionCode: String,
+        range: VerseRange,
+        verses: List<VerseText>,
+    ) {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                root().mkdirs()
+                val payload =
+                    verses.map { CachedVerse(it.canonicalId, it.nativeLabel, it.isTitle, it.markup, it.heading) }
+                fileFor(versionCode, range).writeText(JSON.encodeToString(payload))
+                evictIfOversized()
             }
-        }
-
-        private companion object {
-            const val DIR = "bibletext"
-            const val MAX_BYTES = 12L * 1024 * 1024
-            val JSON = Json { ignoreUnknownKeys = true }
         }
     }
+
+    override suspend fun clear() {
+        withContext(Dispatchers.IO) { root().deleteRecursively() }
+    }
+
+    private fun root() = File(cacheDir, DIR)
+
+    private fun fileFor(
+        versionCode: String,
+        range: VerseRange,
+    ) = File(root(), "${versionCode.lowercase()}-${range.startVerseId}-${range.endVerseId}.json")
+
+    private fun evictIfOversized() {
+        val files = root().listFiles()?.sortedBy { it.lastModified() } ?: return
+        var total = files.sumOf { it.length() }
+        for (f in files) {
+            if (total <= MAX_BYTES) break
+            total -= f.length()
+            f.delete()
+        }
+    }
+
+    private companion object {
+        const val DIR = "bibletext"
+        const val MAX_BYTES = 12L * 1024 * 1024
+        val JSON = Json { ignoreUnknownKeys = true }
+    }
+}

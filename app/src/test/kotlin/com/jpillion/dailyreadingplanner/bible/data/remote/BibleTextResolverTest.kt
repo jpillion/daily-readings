@@ -21,13 +21,17 @@ class BibleTextResolverTest {
     private val kjvVerse = VerseText(VerseId.encode(1, 1, 1), "1", false, "KJV text.")
     private val cachedVerse = VerseText(VerseId.encode(1, 1, 1), "1", false, "Cached NKJV.")
 
-    private class FakeBundled(private val verses: List<VerseText>) : BibleTextSource {
+    private class FakeBundled(
+        private val verses: List<VerseText>,
+    ) : BibleTextSource {
         override suspend fun getVerses(range: VerseRange) = verses
 
         override suspend fun translations() = listOf(BibleTranslation("KJV", "King James Version"))
     }
 
-    private class FakeApi(private val result: PassageResult) : BibleApiClient {
+    private class FakeApi(
+        private val result: PassageResult,
+    ) : BibleApiClient {
         var lastRef: String? = null
         var calls = 0
 
@@ -41,7 +45,9 @@ class BibleTextResolverTest {
         }
     }
 
-    private class FakeCache(private var stored: List<VerseText>? = null) : BibleTextCache {
+    private class FakeCache(
+        private var stored: List<VerseText>? = null,
+    ) : BibleTextCache {
         var puts = 0
 
         override suspend fun get(
