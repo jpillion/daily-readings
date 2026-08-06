@@ -1606,6 +1606,41 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   ("Successfully finished the upload to Google Play"), and **production was re-verified afterwards**
   by a second dry run that still finds 10701 on production. Use `validate_only=true` first for every
   future track operation.
+- ✅ **Release 1.8.0 / 10800 SHIPPED TO PRODUCTION at 100% — `2026-08-06`** (tag `v1.8.0` → commit
+  `ef35797`). MINOR bump per D-S9-3. **Ships sprint 00R — online translations:** the in-app reader
+  can now show **NKJV** and **NASB 2020** alongside the bundled KJV, fetched from API.Bible through
+  the Cloud Run proxy (`backend/`), with the D-OT-2 offline fallback and the API.Bible licence
+  obligations (FUMS usage reporting, publisher copyright, 14-day cache freshness).
+  **This retires NFR-V3-A** — the app's no-network identity — via D-OT-4: `INTERNET` is now in the
+  manifest. The planner, all progress data and the bundled KJV reader still work fully offline; only
+  NKJV/NASB need the network. No analytics were added.
+  **Verified on an R8 RELEASE build on an emulator BEFORE tagging**, per the standing 1.7.0 lesson —
+  this sprint carried exactly the DI/ViewModel/coroutine profile that only R8 exposed then: launch
+  clean, the Schedule-reading-tap path (the 1.7.0 crash), the version dropdown, a live NKJV fetch
+  rendering real NKJV text, the Thomas Nelson copyright, and — network off — the banner "Unable to
+  download NKJV, displaying KJV" above KJV text.
+  **⚠️ GitHub Actions was in a major outage that day** (webhook triggers throttled to ~15%): the
+  first tag push landed on the remote but **no workflow run was ever created**. The fix was to delete
+  and re-push the tag. That produced a **duplicate `Release to Play` run** ~10 min later when the
+  original webhook arrived from GitHub's backlog — it was cancelled (a versionCode can only be
+  uploaded once, so it would have failed). The successful run also carries a cosmetic
+  `couldn't find remote ref refs/tags/v1.8.0` annotation from the delete/re-push race. **If Actions
+  is degraded, check that a tag push actually created a run.**
+  Third consecutive fully-automated `tag → alpha → promote` release (alpha run 31130502682, AAB
+  **7.86 MB**; promote run 31131632354). CI green on `main` (all 5 jobs incl. the three asset
+  byte-diff gates). 936 tests.
+  Handoff: [docs/sprints/sprint-00R-online-translations.md](docs/sprints/sprint-00R-online-translations.md);
+  spec: [docs/features/online-translations.md](docs/features/online-translations.md).
+- 🔓 **OPEN SECURITY ITEM (owner-accepted, sprint 00R step 7):** the Bible proxy runs with
+  `POLICY_ON_ATTESTATION_FAIL=allow`, i.e. **the endpoint is publicly reachable**, because App Check
+  is not configured and the client sends no token. The owner chose to ship first and secure after.
+  Now that 1.8.0 is in production this is live exposure: worst case is a third party burning the
+  140K-calls/month Firestore budget guard. No API key is exposed (it stays in the proxy) and no user
+  data flows through it. The client side is ready — the App Check token supplier is a single lambda
+  in `di/BibleRemoteModule`, so the fix is that one provider plus
+  `gcloud run services update drp-bible-proxy --update-env-vars POLICY_ON_ATTESTATION_FAIL=deny`.
+- 🧹 **Repo debt:** `.github/workflows/zz-sqlite-probe.yml` ("zz probe (TEMPORARY - delete before
+  merge)") is on `main` and registered as an ACTIVE workflow. Delete it.
 - Next up (non-blocking): monitor 1.6.0 **crash/ANR vitals + reviews** (Play Console → Monitor and
   improve; the two minor edge-to-edge "recommended actions" remain noted, non-blocking). Store-title
   rename in review. Still pending: the owner **device pass** on 1.6.0 — especially the sprint-00P
