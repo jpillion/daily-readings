@@ -5,13 +5,16 @@
 **Status:** backend **done and deployed**; app-side engine **done and tested**; **UI wiring NOT done**.
 **Version:** untouched (1.7.1 / 10701). Nothing here ships yet.
 
-> **Install this branch today and the app behaves exactly as 1.7.1.** The remote stack exists, is
-> wired into the graph, and the use cases resolve through it — but the selection is always KJV
-> because nothing yet lets the user change it (step 4) and no banner is rendered (step 5). That is
-> the honest state; no half-wired UI was left applied.
+> **The feature is user-visible as of steps 4–5.** Pick NKJV or NASB in the reader top bar and the
+> text follows; if it cannot be fetched the reader shows bundled KJV with the D-OT-2 banner. A user
+> who never opens the selector reads exactly the offline KJV they read before.
+>
+> **Not yet shippable:** FUMS reporting (step 6) is a *licence obligation* and is still a no-op, and
+> App Check (step 7) is not configured, so the proxy is still publicly reachable (§4).
 
-**Update (steps 1–3 landed).** 918 tests, 0 failures; full pipeline green from clean and
-`assembleRelease` clean. The five data/Room gates are untouched (11/10/8/18/5).
+**Update (steps 1–5 landed).** 926 tests, 0 failures; full pipeline green from clean,
+`assembleRelease` clean, Kover 96.4%, a11y gate 13. The five data/Room gates are untouched
+(11/10/8/18/5).
 
 ⚠️ **`spotlessCheck` was already RED on the committed branch state** before this work — the earlier
 "907 tests green" did not include it, so CI would have failed on this branch regardless. Fixed in
@@ -76,14 +79,24 @@ In dependency order. **Steps 1–3 are now DONE** (commits `c9f3c34`, `157c571`)
    model now has to name a version.
 3. ~~**Persist the selection**~~ ✅ **DONE** — `selectedBibleVersion` over a new
    `selected_bible_version` key; absent ⇒ KJV; unknown codes degrade to KJV, never throw.
-4. **Wire `ReaderViewModel.selectVersion`** — currently a documented no-op. `versionState` should
-   list all three versions (`BibleVersion.entries`), not just the bundled asset's `translation`
-   table. **The dropdown UI already exists** (`ReaderVersionSelector`, D-N-3, built Sprint 00N and
-   never exercised) — it switches from static title to dropdown automatically at >1 version.
-5. **The banner** (owner's exact wording): *"Unable to download content, display KJV"*. Drive it
-   off `ResolvedVerses.degraded`. Do **not** reintroduce a shared "last load failed" flag — the
-   served-version field exists precisely so a pager rendering several pages cannot banner the
-   wrong one.
+4. ~~**Wire `ReaderViewModel.selectVersion`**~~ ✅ **DONE** — `versionState` lists all three
+   `BibleVersion` entries, so D-N-3's dropdown branch renders for the first time. `selectVersion`
+   persists and does NOT write `_versionState`; the settings collector is the single writer, so the
+   label can only show a version that is actually stored. A switch reloads already-open pages.
+   **Supersedes D-N-1 for this control** — NKJV/NASB are not in the bundled artifact, so the version
+   catalog is necessarily code. `BibleTextSource.translations()` stays as the asset-integrity seam;
+   the orphaned `GetTranslationsUseCase` was deleted.
+5. ~~**The banner**~~ ✅ **DONE** — `ReaderUiState.Content.degraded`, computed per page from the
+   blocks (never a shared flag); on a portion page ANY degraded block banners the page. Sits ABOVE
+   the verse list so it cannot occlude scripture, and carries its message in text, not colour.
+   **⚠️ Wording discrepancy for sign-off:** this doc says *"Unable to download content, display
+   KJV"* (labelled the owner's exact words, and what shipped); `docs/features/online-translations.md`
+   D-OT-2 says *"…, displaying KJV"*. Flagged in a comment beside the string.
+
+   **Also fixed here:** the clipboard citation now names the version actually **served**, not the
+   one selected. Those can differ now, and citing "(NKJV)" over degraded KJV text would put a false
+   attribution in someone's notes — the silent-swap failure the banner prevents, pasted somewhere
+   the banner cannot follow. This was the one mutation that survived first time; it is now pinned.
 6. **FUMS + copyright** (D-OT-9, licence obligations). `FumsReporter` currently has only
    `NoOpFumsReporter`; a real implementation is needed, plus copyright displayed wherever non-KJV
    text is shown (`ResolvedVerses.copyright` already carries it).
@@ -194,6 +207,7 @@ The five data/Room gates must stay untouched: plan **11**, M'Cheyne **10**, Chro
 | `1ca15c7` | Make the remote stack pass spotless/ktlint (branch was red) |
 | `c9f3c34` | Step 1 — `di/BibleRemoteModule` |
 | `157c571` | Steps 2+3 — use cases resolve the selected version; persist it |
+| `dce0489` | Steps 4+5 — version selector wired; D-OT-2 banner; served-version citation |
 
 ---
 
