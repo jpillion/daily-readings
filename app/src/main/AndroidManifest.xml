@@ -7,6 +7,18 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- D-OT-4 (online translations): fetching NKJV/NASB through the Bible proxy.
+
+         This RETIRES NFR-V3-A, the app's documented no-network identity, which held from V3
+         through Alt Sprint E and was asserted in CI. That was a deliberate, owner-approved
+         trade to ship translations beyond the bundled KJV — it is NOT leftover cruft, so do
+         not "clean it up".
+
+         Scope is unchanged in every other respect: the reading plan, all progress/streak data,
+         and the bundled KJV reader still work fully offline, and no analytics or telemetry are
+         added (see docs/features/online-translations.md, D-OT-3). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- S15 (D-S15-2): package visibility for install-detected providers. MySword is only
          offered in Settings when detectably installed (spec §4 product rule); API 30+
          requires declaring the package we query. -->

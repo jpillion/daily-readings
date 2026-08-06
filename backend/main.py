@@ -37,6 +37,7 @@ POLICY_ON_ATTESTATION_FAIL = os.environ.get("POLICY_ON_ATTESTATION_FAIL", "deny"
 # turn this service into a general-purpose relay for the whole account catalogue.
 BIBLE_IDS = {
     "NKJV": "63097d2a0a2f7db3-01",
+    "NASB": "a761ca71e0b3ddcf-01",  # New American Standard Bible 2020
 }
 ALLOWED_BIBLES = {
     c.strip().upper()
@@ -195,7 +196,10 @@ async def passage(
     assert _http is not None
     url = f"{API_BIBLE_BASE}/bibles/{BIBLE_IDS[code]}/passages/{ref}"
     try:
-        upstream = await _http.get(url, params={"content-type": "html"})
+        # D-OT-6: structured USX, NOT html. The client needs per-verse addressing
+        # (verse tags carry `sid`/`number`) to build its verse-id-keyed reader; an html
+        # blob cannot be split back into verses reliably.
+        upstream = await _http.get(url, params={"content-type": "json"})
     except httpx.RequestError as exc:
         log.error("upstream_unreachable error=%s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="upstream unreachable") from exc
