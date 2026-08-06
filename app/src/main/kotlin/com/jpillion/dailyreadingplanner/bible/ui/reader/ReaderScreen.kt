@@ -57,6 +57,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.bible.data.markup.MarkupStripper
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
@@ -221,7 +222,7 @@ private fun ReaderPage(
 
         is ReaderUiState.Content -> {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (state.degraded) DegradedVersionBanner()
+                state.degradedFrom?.let { DegradedVersionBanner(it) }
                 ReaderVerseList(
                     state = state,
                     selection = selection,
@@ -238,6 +239,21 @@ private fun ReaderPage(
     }
 }
 
+/** D-OT-9 — the publisher's copyright notice, shown wherever licensed (non-KJV) text is. */
+@Composable
+private fun CopyrightNotice(notice: String) {
+    Text(
+        text = notice,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 24.dp, bottom = 8.dp)
+                .testTag("reader-copyright"),
+    )
+}
+
 /**
  * D-OT-2 case 3 — the mandatory notice that the reader is showing bundled KJV because the selected
  * online version could not be fetched.
@@ -247,14 +263,14 @@ private fun ReaderPage(
  * `errorContainer`, but the text carries the whole message — the banner never relies on colour alone.
  */
 @Composable
-private fun DegradedVersionBanner() {
+private fun DegradedVersionBanner(requested: BibleVersion) {
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         modifier = Modifier.fillMaxWidth().testTag("reader-degraded-banner"),
     ) {
         Text(
-            text = stringResource(R.string.reader_version_degraded),
+            text = stringResource(R.string.reader_version_degraded, requested.code),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
         )
@@ -303,6 +319,16 @@ private fun ColumnScope.ReaderVerseList(
                 )
             }
         }
+        // D-OT-9 — API.Bible's licence: "please include the copyright information along side all of
+        // the Scripture you display". The bundled public-domain KJV carries none, so this renders
+        // only for the licensed online versions. A list item, so it scrolls with the text it
+        // belongs to rather than floating over an unrelated chapter.
+        state.blocks
+            .mapNotNull { it.copyright }
+            .distinct()
+            .forEach { notice ->
+                item(key = "copyright-$notice") { CopyrightNotice(notice) }
+            }
     }
 }
 

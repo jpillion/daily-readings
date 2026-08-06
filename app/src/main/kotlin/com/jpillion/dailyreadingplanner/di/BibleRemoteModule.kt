@@ -4,11 +4,14 @@ import android.content.Context
 import com.jpillion.dailyreadingplanner.bible.data.remote.BibleApiClient
 import com.jpillion.dailyreadingplanner.bible.data.remote.BibleTextCache
 import com.jpillion.dailyreadingplanner.bible.data.remote.BibleTextResolver
+import com.jpillion.dailyreadingplanner.bible.data.remote.DataStoreFumsIdentity
 import com.jpillion.dailyreadingplanner.bible.data.remote.FileBibleTextCache
+import com.jpillion.dailyreadingplanner.bible.data.remote.FumsIdentity
 import com.jpillion.dailyreadingplanner.bible.data.remote.FumsReporter
 import com.jpillion.dailyreadingplanner.bible.data.remote.HttpBibleApiClient
-import com.jpillion.dailyreadingplanner.bible.data.remote.NoOpFumsReporter
+import com.jpillion.dailyreadingplanner.bible.data.remote.HttpFumsReporter
 import com.jpillion.dailyreadingplanner.bible.domain.BibleTextSource
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,6 +34,23 @@ import javax.inject.Singleton
  * **Nothing injects [BibleTextResolver] yet** — the use-case switch is §2 step 2. This module makes
  * the graph resolvable; it does not change any behaviour on its own.
  */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class BibleRemoteBindsModule {
+    /**
+     * D-OT-9 — the real FUMS reporter. A licence obligation for showing NKJV/NASB, so it ships WITH
+     * the feature, not after it. [NoOpFumsReporter] remains for tests and for any build that must be
+     * inert; production reports.
+     */
+    @Binds
+    @Singleton
+    abstract fun bindFumsReporter(impl: HttpFumsReporter): FumsReporter
+
+    @Binds
+    @Singleton
+    abstract fun bindFumsIdentity(impl: DataStoreFumsIdentity): FumsIdentity
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object BibleRemoteModule {
@@ -78,16 +98,6 @@ object BibleRemoteModule {
     fun provideBibleTextCache(
         @ApplicationContext context: Context,
     ): BibleTextCache = FileBibleTextCache(context.cacheDir)
-
-    /**
-     * D-OT-9 — **not done yet.** FUMS reporting is a licence obligation, not telemetry, and it ships
-     * with the feature (§2 step 6), not after it. Until a real reporter exists this binding is inert,
-     * so the resolver's `fums.report(...)` call is a no-op rather than a missing call site: step 6
-     * replaces this provider and needs to touch nothing else.
-     */
-    @Provides
-    @Singleton
-    fun provideFumsReporter(): FumsReporter = NoOpFumsReporter()
 
     /**
      * D-OT-5 — the layer the use cases will inject in §2 step 2, in place of [BibleTextSource].

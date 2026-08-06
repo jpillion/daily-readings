@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
@@ -66,6 +67,32 @@ class ReaderScreenTest {
 
     private val kjv = BibleTranslation("KJV", "King James Version")
 
+    // --- Sprint 00R step 6: the D-OT-9 copyright notice. ---
+
+    /** The bundled public-domain KJV carries no copyright, so nothing must be rendered for it. */
+    @Test
+    fun `no copyright notice for the bundled KJV`() {
+        setContent()
+        composeRule.onNodeWithTag("reader-copyright").assertDoesNotExist()
+    }
+
+    /**
+     * D-OT-9 — API.Bible's licence: "please include the copyright information along side all of the
+     * Scripture you display". Not optional, so it is pinned as visible text, not just present.
+     */
+    @Test
+    fun `licensed text shows its publisher copyright`() {
+        val notice = "NKJV © 1982 Thomas Nelson"
+        setContent(
+            stateProvider = {
+                content().copy(blocks = listOf(psalm23().copy(copyright = notice)))
+            },
+        )
+
+        composeRule.onNodeWithTag("reader-copyright").assertIsDisplayed()
+        composeRule.onNodeWithText(notice).assertIsDisplayed()
+    }
+
     // --- Sprint 00R step 5: the D-OT-2 degraded banner. ---
 
     /**
@@ -84,10 +111,11 @@ class ReaderScreenTest {
      */
     @Test
     fun `a degraded page shows the banner and still renders the verses`() {
-        setContent(stateProvider = { content().copy(degraded = true) })
+        setContent(stateProvider = { content().copy(degradedFrom = BibleVersion.NKJV) })
 
         composeRule.onNodeWithTag("reader-degraded-banner").assertIsDisplayed()
-        composeRule.onNodeWithText("Unable to download content, display KJV").assertIsDisplayed()
+        // Names the version that failed, so the notice explains WHY KJV is on screen.
+        composeRule.onNodeWithText("Unable to download NKJV, displaying KJV").assertIsDisplayed()
         // The warning sits ABOVE the text; it must never replace or occlude scripture.
         composeRule.onNodeWithTag("reader-list").assertIsDisplayed()
         composeRule.onNodeWithText("The LORD is my shepherd", substring = true).assertIsDisplayed()

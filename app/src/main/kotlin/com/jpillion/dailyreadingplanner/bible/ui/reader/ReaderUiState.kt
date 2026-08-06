@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.bible.ui.reader
 
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 
 /**
@@ -22,12 +23,18 @@ sealed interface ReaderUiState {
         // D-V3-14: reserved audio seam, always null in V3.0.
         val activeVerseId: Long? = null,
         /**
-         * D-OT-2 case 3 — this page asked for an online version and got bundled KJV instead, so the
-         * banner must be shown. Carried on the page's own state, never as shared ViewModel state:
-         * with a pager rendering several pages a single flag would race and banner the wrong page.
+         * D-OT-2 case 3 — the online version this page asked for and could not get, so bundled KJV
+         * is on screen instead; null when nothing degraded. Carries the *version* rather than a bare
+         * flag so the banner can name it ("Unable to download NKJV, displaying KJV") — the owner's
+         * requirement that the notice explain WHY KJV is showing.
+         *
+         * Held on the page's own state, never as shared ViewModel state: with a pager rendering
+         * several pages a single flag would race and banner the wrong page.
          */
-        val degraded: Boolean = false,
-    ) : ReaderUiState
+        val degradedFrom: BibleVersion? = null,
+    ) : ReaderUiState {
+        val degraded: Boolean get() = degradedFrom != null
+    }
 
     data class Error(
         val canRetry: Boolean = true,

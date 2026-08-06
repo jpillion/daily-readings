@@ -642,7 +642,8 @@ class ReaderViewModelTest {
             advanceUntilIdle()
             val content = state.value as ReaderUiState.Content
 
-            assertThat(content.degraded).isTrue()
+            // Names the version that failed, so the banner can say WHY KJV is showing.
+            assertThat(content.degradedFrom).isEqualTo(BibleVersion.NKJV)
             assertThat(content.blocks.single().verses).isNotEmpty()
             assertThat(content.blocks.single().servedVersion).isEqualTo(BibleVersion.KJV)
         }
@@ -660,6 +661,6 @@ class ReaderViewModelTest {
             val state = model.uiStateForPage(0)
             advanceUntilIdle()
 
-            assertThat((state.value as ReaderUiState.Content).degraded).isFalse()
+            assertThat((state.value as ReaderUiState.Content).degradedFrom).isNull()
         }
 }

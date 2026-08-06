@@ -82,6 +82,44 @@ class BibleRemoteModuleTest {
             assertThat(cache.get("NKJV", range)).isNull()
         }
 
+    /**
+     * D-OT-8 — API.Bible asks that cached content be refreshed "every 14 days or less"
+     * (https://docs.api.bible/common-questions/). An entry older than that reads as a MISS so the
+     * next online read re-fetches, rather than serving stale licensed text indefinitely.
+     */
+    @Test
+    fun `a cache entry older than 14 days is a miss`() =
+        runTest {
+            val cache = BibleRemoteModule.provideBibleTextCache(context)
+            cache.put("NKJV", range, listOf(kjvVerse))
+            assertThat(cache.get("NKJV", range)).isNotNull() // fresh
+
+            // Backdate the entry past the refresh window.
+            val entry = context.cacheDir.walkTopDown().first { it.isFile && it.name.contains("nkjv") }
+            val fifteenDaysAgo = System.currentTimeMillis() - 15L * 24 * 60 * 60 * 1000
+            assertThat(entry.setLastModified(fifteenDaysAgo)).isTrue()
+
+            assertThat(cache.get("NKJV", range)).isNull()
+            assertThat(entry.exists()).isFalse() // and is cleaned up, not left to rot
+        }
+
+    /**
+     * The converse, and the reason the read path has no LRU touch: reading an entry must NOT push
+     * its refresh deadline out, or the passages someone reads most would never be refreshed.
+     */
+    @Test
+    fun `reading an entry does not extend its refresh deadline`() =
+        runTest {
+            val cache = BibleRemoteModule.provideBibleTextCache(context)
+            cache.put("NKJV", range, listOf(kjvVerse))
+            val entry = context.cacheDir.walkTopDown().first { it.isFile && it.name.contains("nkjv") }
+            val thirteenDaysAgo = System.currentTimeMillis() - 13L * 24 * 60 * 60 * 1000
+            entry.setLastModified(thirteenDaysAgo)
+
+            assertThat(cache.get("NKJV", range)).isNotNull() // still inside the window
+            assertThat(entry.lastModified()).isEqualTo(thirteenDaysAgo) // untouched by the read
+        }
+
     /** Per-version isolation: a cached NKJV chapter must never be served as NASB. */
     @Test
     fun `provided cache keys by version`() =

@@ -146,11 +146,12 @@
       Sprint 00R / D-OT-2 case 3 — shown when an online version could not be fetched and the reader
       fell back to the bundled KJV. Mandatory: a silent translation swap in a Bible app is
       unacceptable, so the user must always know which text they are reading.
-      Wording is the owner's, recorded verbatim in docs/sprints/sprint-00R-online-translations.md §2
-      step 5. NOTE: docs/features/online-translations.md D-OT-2 quotes it as "…, displaying KJV" —
-      the two docs disagree by one word; awaiting owner tone sign-off.
+      Owner sign-off (2026-08-06): keep the explicit "Unable to download…" opening so the notice
+      explains WHY KJV is on screen instead of the version that was asked for — hence %1$s names
+      that version rather than saying "content". Resolves the one-word disagreement between the two
+      sprint docs ("display" vs "displaying") in favour of the grammatical form.
     -->
-    <string name="reader_version_degraded">Unable to download content, display KJV</string>
+    <string name="reader_version_degraded">Unable to download %1$s, displaying KJV</string>
     <string name="reader_retry">Retry</string>
     <!-- Owner reader top-bar redesign: the version control on the right of the reader top bar.
          When more than one version is bundled it becomes a dropdown; %1$s = the selected

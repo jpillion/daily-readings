@@ -196,7 +196,10 @@ class ReaderViewModel
                                 title = portionTitle(portionContent.blocks),
                                 // D-OT-2: any block that fell back to KJV banners the whole page —
                                 // the user must never be shown a mixed page with no warning.
-                                degraded = portionContent.blocks.any { it.degraded },
+                                degradedFrom =
+                                    portionContent.blocks
+                                        .firstOrNull { it.degraded }
+                                        ?.requestedVersion,
                             )
                         } else {
                             val (book, chapter) = chapterForPage(ctx, page)
@@ -207,7 +210,7 @@ class ReaderViewModel
                                     book.canonicalName,
                                     singleChapter = true,
                                 )} $chapter",
-                                degraded = content.degraded,
+                                degradedFrom = content.requestedVersion.takeIf { content.degraded },
                             )
                         }
                     } catch (e: Exception) {

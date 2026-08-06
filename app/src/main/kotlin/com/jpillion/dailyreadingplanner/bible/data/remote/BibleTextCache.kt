@@ -81,12 +81,24 @@ class FileBibleTextCache(
         withContext(Dispatchers.IO) {
             val f = fileFor(versionCode, range)
             if (!f.exists()) return@withContext null
+            // D-OT-8, per API.Bible's published guidance: "refresh cached content every 14 days or
+            // less to ensure you receive platform improvements"
+            // (https://docs.api.bible/common-questions/). An expired entry is deleted and read as a
+            // MISS, so the next online read re-fetches rather than serving stale licensed text
+            // indefinitely; with no network it degrades per D-OT-2, which is the honest outcome.
+            //
+            // NOTE: there is deliberately no LRU touch on read. `lastModified` IS the fetch time,
+            // and touching it on every read would push the refresh deadline out forever — the entry
+            // would never expire for exactly the passages someone reads most. Eviction below is
+            // therefore oldest-fetched-first, which is also the order freshness wants.
+            if (System.currentTimeMillis() - f.lastModified() > MAX_AGE_MS) {
+                f.delete()
+                return@withContext null
+            }
             runCatching {
                 JSON.decodeFromString<List<CachedVerse>>(f.readText()).map {
                     VerseText(it.id, it.label, it.title, it.markup, it.heading)
                 }
-            }.onSuccess {
-                f.setLastModified(System.currentTimeMillis()) // LRU touch
             }.getOrElse {
                 f.delete() // corrupt entry self-heals into a miss
                 null
@@ -133,6 +145,14 @@ class FileBibleTextCache(
     private companion object {
         const val DIR = "bibletext"
         const val MAX_BYTES = 12L * 1024 * 1024
+
+        /**
+         * API.Bible asks for a refresh "every 14 days or less". Their other stated limit — "fewer
+         * than 500 consecutive verses" — is satisfied by construction: one entry is one
+         * `VerseRange`, i.e. a single chapter or verse window, and the longest chapter in scripture
+         * is Psalm 119 at 176 verses.
+         */
+        const val MAX_AGE_MS = 14L * 24 * 60 * 60 * 1000
         val JSON = Json { ignoreUnknownKeys = true }
     }
 }
