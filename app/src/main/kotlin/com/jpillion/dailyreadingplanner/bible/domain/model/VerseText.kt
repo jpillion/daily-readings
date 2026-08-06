@@ -11,4 +11,19 @@ data class VerseText(
     val nativeLabel: String,
     val isTitle: Boolean,
     val markup: String,
+    /**
+     * D-OT-7 / D-OT-10 — an editorial section heading introducing this verse ("Morning Prayer of
+     * Trust in God."), rendered as an italic block ABOVE the verse inside this verse's own list
+     * item. Null for the bundled KJV, which carries no headings.
+     *
+     * It is deliberately NOT its own [VerseText]: the reader keys its list by [canonicalId]
+     * (D-V3-12) and verse ids are dense, so a mid-chapter heading has no id free between verse 8
+     * and verse 9 — a row of its own would be a duplicate key. Carrying it here also means verse
+     * selection and clipboard output exclude headings by construction, since both operate on
+     * verses.
+     *
+     * Distinct from [isTitle]: a superscription IS canonical text with a verse id (verse 0); a
+     * section heading is editorial matter that is not scripture. Do not conflate them.
+     */
+    val heading: String? = null,
 )

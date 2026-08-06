@@ -106,7 +106,16 @@ object BookCatalog {
 
     private val byName: Map<String, Book> = books.associateBy { it.canonicalName }
 
+    private val byUsfm: Map<String, Book> = books.associateBy { it.usfmCode }
+
     fun findByName(canonicalName: String): Book? = byName[canonicalName]
+
+    /**
+     * USFM/OSIS code ("PSA", "3JN") → book. Case-insensitive. Used by the remote text source to
+     * resolve API.Bible verse ids onto catalog book order (D-OT-6) — the SAME [Book.usfmCode]
+     * column the external-link builders use (D-S13-1), never a second table.
+     */
+    fun findByUsfm(usfmCode: String): Book? = byUsfm[usfmCode.uppercase()]
 
     fun requireByName(canonicalName: String): Book =
         findByName(canonicalName)

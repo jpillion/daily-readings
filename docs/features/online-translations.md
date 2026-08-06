@@ -93,12 +93,25 @@ Sprint E). The manifest line carries a comment recording what it retires and why
 "restores" it as cleanup. The CI merged-manifest assertion that pins the absence of INTERNET must be
 updated in the same commit, not deleted.
 
-### D-OT-5 — the seam is a router; `BibleTextSource` is unchanged
+### D-OT-5 — two layers: `BibleTextSource` (per artifact) + a resolver (selection, cache, fallback)
 
-`BibleTextSource` stays exactly as-is. A new routing implementation dispatches on the selected
-version: bundled `RoomBibleTextSource` for KJV, a remote source for NKJV/NASB. Everything above the
-seam — `GetChapterUseCase`, `GetPortionTextUseCase`, `PortionVerseBridge`, the whole reader — is
-untouched. This is the seam working as designed (D-V3-3).
+> **Corrected during implementation.** This decision originally read "`BibleTextSource` stays exactly
+> as-is". That is wrong, and working through D-OT-2 exposed why: the banner has to know **which
+> version was actually served**, and `getVerses` returning a bare `List<VerseText>` cannot express
+> "you asked for NKJV, this is KJV". Recorded rather than quietly changed.
+
+`BibleTextSource` keeps its exact current shape and meaning: *"give me verses from **this**
+artifact."* Two implementations — the existing `RoomBibleTextSource` (bundled KJV) and a new remote
+source per online version.
+
+A new **resolver** sits above it and is what the use cases inject: *"give me verses for the user's
+**selected** version, with cache and fallback."* It returns the verses **plus the version actually
+served**, so the D-OT-2 banner is derived (`served != selected` ⇒ banner) rather than tracked as
+separate mutable state that could race across pager pages.
+
+Ripple is contained: `GetChapterUseCase` and `GetPortionTextUseCase` inject the resolver instead of
+the seam, and `ChapterContent` carries the served version. `RoomBibleTextSource`, the reader, the
+renderer, `PortionVerseBridge` and the whole spine are untouched.
 
 `translations()` becomes bundled ∪ remote rather than a single asset-table read.
 
@@ -122,17 +135,70 @@ Tag mapping into the **closed** `BibleMarkup` vocabulary:
 bundled KJV shows "LORD". Text is preserved; only styling is lost. Extending `BibleMarkup` with a
 small-caps tag is the alternative and is a versioned edit to that file, never a silent change.
 
-### D-OT-7 — section headings (OPEN, needs owner)
+### D-OT-7 — section headings: RENDER them, in italics (owner, resolved)
 
 NKJV and NASB both carry editorial section headings (`para style="s"`, e.g. "Morning Prayer of Trust
-in God."). The bundled KJV has **none**. Options:
+in God."; `para style="ms2"`, e.g. "Psalm 3"). The bundled KJV has **none**. The owner chose to
+render them, italicised to differentiate them from scripture. They are excluded from verse selection
+and clipboard output — they are editorial matter, not scripture.
 
-- **(a) Drop them** — maximum consistency with the KJV reading experience; discards licensed content.
-- **(b) Render them** as a distinct non-verse block — richer, but they are editorial matter, not
-  scripture, and would need to be excluded from verse selection and clipboard output.
+### D-OT-10 — a heading attaches to the verse it precedes; it is NOT its own row
 
-Recommend **(b)**, excluded from selection/copy — but this is a presentation call and it is the
-owner's.
+The obvious implementation — emit a heading as its own `VerseText` — **crashes Compose**.
+`ReaderScreen` keys the list by canonical id (`items(block.verses, key = { it.canonicalId })`,
+D-V3-12) and verse ids are dense integers, so a mid-chapter heading has no id available between
+verse 8 and verse 9. Sharing the next verse's id is a duplicate key.
+
+So `VerseText` gains `heading: String? = null`, rendered as an italic block **above** the verse
+inside that verse's existing list item. Consequences:
+
+- No new list item, so no key collision and no change to D-V3-12.
+- Defaults to `null`, so the bundled KJV source and every existing test are untouched.
+- Selection and clipboard operate on verses, so headings are excluded from both **by
+  construction** — D-OT-7's exclusion needs no separate enforcement.
+
+A superscription stays what it already is: a verse-0 row with `isTitle = true`. The two mechanisms
+are distinct and must not be conflated — a superscription *is* canonical text with a verse id; a
+section heading is not.
+
+### D-OT-11 — USX style inventory (measured, not assumed)
+
+Enumerated across captured NKJV + NASB payloads (Psalm 3, Genesis 1, Matthew 17, 3 John):
+
+| USX | meaning | → |
+|---|---|---|
+| `verse/v` | verse marker | verse boundary |
+| `char/it` | italic — translator-added in NKJV/NASB | `<a>` (same semantic as KJV italics) |
+| `char/wj` | words of Christ | `<w>` — activates a reserved P1 tag |
+| `para/q`, `q1`, `q2` | poetry line | `<l/>` — activates a reserved P1 tag |
+| `para/p` | prose paragraph | paragraph break |
+| `para/d` | superscription | verse 0, `isTitle = true` |
+| `para/s`, `ms2` | section heading | `heading` (D-OT-10) |
+| `char/sc` | small caps (divine name) | dropped, text kept |
+| `char/qs` | Selah | dropped, text kept |
+
+Any style **outside** this table must fail loudly rather than silently dropping text — an unmapped
+style means scripture goes missing on screen. The transformer therefore keeps unknown-style text as
+plain text (production never loses a word) **and** reports the style in
+`UsxParseResult.unmappedStyles`, which is where the failure becomes visible.
+
+**Verified against real payloads (2026-08-06).** The transformer was run over live NKJV + NASB
+responses — NKJV Genesis 1 and Psalm 3, NASB Psalm 3, Matthew 17 and 3 John:
+
+| Payload | Verses | Titles | Headings | Empty bodies | Unmapped styles |
+|---|---|---|---|---|---|
+| NKJV Genesis 1 | 31 | 0 | 1 | 0 | none |
+| NKJV Psalm 3 | 9 | 1 | 1 | 0 | none |
+| NASB Psalm 3 | 9 | 1 | 1 | 0 | none |
+| NASB Matthew 17 | **26** | 0 | 3 | 0 | none |
+| NASB 3 John | **15** | 0 | 1 | 0 | none |
+
+Zero unmapped styles, and **zero verses lost their text**. The two divergences land exactly as
+D-OT-1 predicts without any mapping table: NASB Matthew 17 yields 26 verses where KJV has 27
+(v21 correctly absent), and NASB 3 John yields 15 where KJV has 14.
+
+Per repo discipline these payloads are **not** committed — the suite pins the same behaviour on
+synthetic USX, so no licensed NKJV/NASB text enters the repository.
 
 ### D-OT-8 — on-device cache
 
@@ -153,11 +219,15 @@ Neither is optional; they ship with the feature, not after it.
 
 ---
 
-## Blocking question — must be answered before D-OT-8 lands
+## Licensing confirmation — owner-owned, NOT blocking implementation
 
-**On-device caching of NKJV/NASB text is not yet confirmed as permitted.** This goes to
-support@api.bible in the same message as the still-unanswered proxy question (see backend README).
-Ask explicitly:
+**On-device caching of NKJV/NASB text is not yet confirmed as permitted.** The owner is sending the
+confirmation and has explicitly directed implementation to proceed ahead of the reply, accepting
+that a "no" is handled by turning caching off and degrading via D-OT-2 (every offline read falls to
+the KJV banner). **This is why the cache sits behind an interface — a "no" must be a config change,
+never a rewrite.**
+
+The owner is asking support@api.bible:
 
 1. Is a server-side proxy holding the key acceptable? *(outstanding since the backend was built)*
 2. Is on-device caching of returned text permitted, and is there a retention limit?
