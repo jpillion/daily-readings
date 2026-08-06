@@ -2,19 +2,21 @@
 
 **Branch:** `claude/available-translations-7zc3pq` (pushed)
 **Spec:** [docs/features/online-translations.md](../features/online-translations.md) — read this first; all D-OT-* decisions live there.
-**Status:** backend **done and deployed**; app-side engine + UI **done and tested** (steps 1–5); **FUMS (6) and App Check (7) NOT done** — neither is optional before shipping.
+**Status:** backend **done and deployed**; app-side engine + UI + licence obligations **done and tested** (steps 1–6). **Step 7 (App Check) is deliberately deferred by the owner** — see §4.
 **Version:** untouched (1.7.1 / 10701). Nothing here ships yet.
 
 > **The feature is user-visible as of steps 4–5.** Pick NKJV or NASB in the reader top bar and the
 > text follows; if it cannot be fetched the reader shows bundled KJV with the D-OT-2 banner. A user
 > who never opens the selector reads exactly the offline KJV they read before.
 >
-> **Not yet shippable:** FUMS reporting (step 6) is a *licence obligation* and is still a no-op, and
-> App Check (step 7) is not configured, so the proxy is still publicly reachable (§4).
+> **Licence obligations are met** (step 6): FUMS usage is reported and the publisher copyright is
+> displayed alongside licensed text.
+>
+> **The one thing standing between this and a release is step 7** — the proxy is publicly reachable,
+> which the owner has accepted for now (§4).
 
-**Update (steps 1–5 landed).** 926 tests, 0 failures; full pipeline green from clean,
-`assembleRelease` clean, Kover 96.4%, a11y gate 13. The five data/Room gates are untouched
-(11/10/8/18/5).
+**Update (steps 1–6 landed).** 936 tests, 0 failures; full pipeline green from clean,
+`assembleRelease` clean. The five data/Room gates are untouched (11/10/8/18/5).
 
 ⚠️ **`spotlessCheck` was already RED on the committed branch state** before this work — the earlier
 "907 tests green" did not include it, so CI would have failed on this branch regardless. Fixed in
@@ -97,10 +99,21 @@ In dependency order. **Steps 1–5 are now DONE** (`c9f3c34`, `157c571`, `dce048
    one selected. Those can differ now, and citing "(NKJV)" over degraded KJV text would put a false
    attribution in someone's notes — the silent-swap failure the banner prevents, pasted somewhere
    the banner cannot follow. This was the one mutation that survived first time; it is now pinned.
-6. **FUMS + copyright** (D-OT-9, licence obligations). `FumsReporter` currently has only
-   `NoOpFumsReporter`; a real implementation is needed, plus copyright displayed wherever non-KJV
-   text is shown (`ResolvedVerses.copyright` already carries it).
-7. **App Check**, then flip the proxy back to `deny`. See §4.
+6. ~~**FUMS + copyright**~~ ✅ **DONE** — requirements taken from API.Bible's own docs, not memory:
+   - **FUMS** (https://docs.api.bible/guides/fair-use/): the manual, non-JavaScript form is
+     `GET https://fums.api.bible/f3?t=<fumsToken>&dId=<deviceId>&sId=<sessionId>`.
+     `HttpFumsReporter` + `FumsIdentity` (persistent device UUID, per-process session UUID — both
+     random, **no PII**, `uId` omitted since there are no accounts). Goes DIRECT, not via the proxy:
+     FUMS needs no API key. Failures are swallowed — a dropped report must never withhold scripture.
+   - **Copyright** (https://docs.api.bible/common-questions/): *"please include the copyright
+     information along side all of the Scripture you display"* — rendered at the end of the page's
+     verses. The public-domain KJV carries none, so nothing shows for it.
+   - **Cache freshness** (same FAQ): *"refresh cached content every 14 days or less"* — entries now
+     expire at 14 days. **The LRU touch on read was removed**: it pushed the deadline out on every
+     read, so the most-read passages would never have refreshed. The FAQ's other limit, *"fewer than
+     500 consecutive verses"*, holds by construction (one entry = one `VerseRange`; longest chapter
+     is Psalm 119 at 176).
+7. **App Check**, then flip the proxy back to `deny` — **owner-deferred, see §4.**
 
 Then: version bump (MINOR per D-S9-3 → **1.8.0 / 10800**), whatsnew, `tag → alpha → promote`.
 
@@ -126,15 +139,20 @@ Then: version bump (MINOR per D-S9-3 → **1.8.0 / 10800**), whatsnew, `tag → 
 
 ---
 
-## 4. ⚠️ Live security caveat
+## 4. ⚠️ Live security caveat — **owner-accepted, deliberately deferred**
 
 The proxy is deployed with **`POLICY_ON_ATTESTATION_FAIL=allow`**, so **the endpoint is publicly
 reachable right now**. It was shipped `deny` originally; `allow` was necessary because App Check is
 not configured and the client has no token to send, so `deny` blocks every fetch.
 
+**Owner decision (2026-08-06): keep it open for now to reach a working state, and secure it
+afterwards.** Recorded as an accepted risk, not an oversight. The client side is ready — the App
+Check token supplier is a single lambda in `di/BibleRemoteModule`, so step 7 changes that one
+provider and then flips the policy.
+
 Mitigations in place: unguessable URL, `ALLOWED_BIBLES` allowlist, and the Firestore budget guard
-(140K calls/month, verified recording). **Setting up App Check and returning the policy to `deny` is
-the highest-priority follow-up.** One command:
+(140K calls/month, verified recording). Worst case is someone else's traffic burning the quota; no
+key is exposed (it stays in the proxy) and no user data flows through it. One command:
 
 ```
 gcloud run services update drp-bible-proxy --region us-central1 --project daily-readings-proxy \
@@ -145,13 +163,18 @@ gcloud run services update drp-bible-proxy --region us-central1 --project daily-
 
 ## 5. Owner-side, outstanding
 
-- **API.Bible confirmation** (owner is sending): (1) server-side proxy holding the key acceptable?
-  (2) on-device caching permitted, retention limit? (3) prefetching adjacent chapters acceptable?
-  Owner directed implementation to proceed ahead of the reply.
-- **API key rotation** — the key was exposed in session transcripts. One
-  `gcloud secrets versions add api-bible-key --data-file=-`; no redeploy needed (service reads
-  `:latest`).
-- **String tone sign-off** — the banner wording, and version display names.
+- ~~**Caching permitted?**~~ ✅ **Owner: YES** (2026-08-06), so `FileBibleTextCache` stays bound.
+  API.Bible's published FAQ attaches two conditions, both now implemented (step 6): refresh every
+  ≤14 days, and fewer than 500 consecutive verses per cache entry. **Still unconfirmed:** whether
+  the owner's reply named a *different* retention limit from the published 14 days.
+- **API.Bible confirmation, still outstanding:** (1) is a server-side proxy holding the key
+  acceptable? (3) is prefetching adjacent chapters acceptable? — (3) gates the deferred prefetch.
+- **API key rotation** — the key was exposed in session transcripts. **Owner: not a concern for
+  now.** One `gcloud secrets versions add api-bible-key --data-file=-` when it matters; no redeploy
+  needed (the service reads `:latest`).
+- **String tone sign-off** — version display names. The banner is signed off: the owner chose the
+  explicit "Unable to download…" opening so it explains WHY KJV is showing, which is why it now
+  names the failed version ("Unable to download NKJV, displaying KJV").
 
 ---
 
@@ -208,6 +231,7 @@ The five data/Room gates must stay untouched: plan **11**, M'Cheyne **10**, Chro
 | `c9f3c34` | Step 1 — `di/BibleRemoteModule` |
 | `157c571` | Steps 2+3 — use cases resolve the selected version; persist it |
 | `dce0489` | Steps 4+5 — version selector wired; D-OT-2 banner; served-version citation |
+| `a203110` | Step 6 — FUMS reporting, copyright display, 14-day cache freshness |
 
 ---
 
