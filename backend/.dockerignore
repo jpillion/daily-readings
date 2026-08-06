@@ -1,0 +1,6 @@
+README.md
+deploy.sh
+.dockerignore
+__pycache__/
+*.pyc
+.venv/
