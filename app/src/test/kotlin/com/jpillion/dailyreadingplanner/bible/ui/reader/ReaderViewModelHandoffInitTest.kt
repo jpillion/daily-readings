@@ -7,6 +7,7 @@ import com.jpillion.dailyreadingplanner.bible.domain.GetChapterUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetPortionTextUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.GetTranslationsUseCase
 import com.jpillion.dailyreadingplanner.bible.domain.PortionVerseBridge
+import com.jpillion.dailyreadingplanner.bible.domain.bundledResolver
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
 import com.jpillion.dailyreadingplanner.domain.OpenVerseUseCase
@@ -47,10 +48,11 @@ class ReaderViewModelHandoffInitTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val source = FakeBibleTextSource()
-    private val getChapter = GetChapterUseCase(source)
-    private val getPortionText = GetPortionTextUseCase(PortionVerseBridge(), source)
-    private val getTranslations = GetTranslationsUseCase(source)
     private val settings = FakeSettingsRepository()
+    private val resolver = bundledResolver(source)
+    private val getChapter = GetChapterUseCase(resolver, settings)
+    private val getPortionText = GetPortionTextUseCase(PortionVerseBridge(), resolver, settings)
+    private val getTranslations = GetTranslationsUseCase(source)
     private val openVerse = OpenVerseUseCase(settings, ProviderUrlBuilder())
 
     private val genesis = BookCatalog.requireByName("Genesis")

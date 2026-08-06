@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.testing
 
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
@@ -101,6 +102,18 @@ class FakeSettingsRepository(
     override suspend fun setExternalBibleApp(app: ExternalBibleApp) {
         externalBibleAppCalls += app
         storedExternalBibleApp.value = app
+    }
+
+    // --- Sprint 00R: the in-app reader's text version. ---
+
+    val storedBibleVersion = MutableStateFlow(BibleVersion.DEFAULT)
+    val bibleVersionCalls = mutableListOf<BibleVersion>()
+
+    override val selectedBibleVersion: Flow<BibleVersion> = storedBibleVersion
+
+    override suspend fun setSelectedBibleVersion(version: BibleVersion) {
+        bibleVersionCalls += version
+        storedBibleVersion.value = version
     }
 
     // --- S15: streak visibility. ---

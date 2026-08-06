@@ -3,11 +3,11 @@ package com.jpillion.dailyreadingplanner.di
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.bible.data.remote.BibleApiClient
-import com.jpillion.dailyreadingplanner.bible.data.remote.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.data.remote.NoOpFumsReporter
 import com.jpillion.dailyreadingplanner.bible.data.remote.PassageResult
 import com.jpillion.dailyreadingplanner.bible.domain.BibleTextSource
 import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseRange
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText

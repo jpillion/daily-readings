@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.common.truth.Truth.assertThat
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
@@ -196,6 +197,30 @@ class SettingsRepositoryImplTest {
             assertThat(repository.readingDestinationMode.first())
                 .isEqualTo(ReadingDestinationMode.IN_APP)
             assertThat(repository.externalBibleApp.first()).isEqualTo(ExternalBibleApp.BLB)
+        }
+
+    // --- Sprint 00R step 3: the in-app reader's text version. ---
+
+    @Test
+    fun `bible version defaults to the bundled KJV when nothing is stored`() =
+        themeTest { repository, _ ->
+            // The "an upgrader sees no change" pin: absent key must mean the offline bundled text.
+            assertThat(repository.selectedBibleVersion.first()).isEqualTo(BibleVersion.KJV)
+        }
+
+    @Test
+    fun `set bible version persists and is observable`() =
+        themeTest { repository, _ ->
+            repository.setSelectedBibleVersion(BibleVersion.NASB)
+            assertThat(repository.selectedBibleVersion.first()).isEqualTo(BibleVersion.NASB)
+        }
+
+    @Test
+    fun `an unknown stored bible version degrades to KJV rather than failing`() =
+        themeTest { repository, dataStore ->
+            // A version dropped in a later build must not brick the reader (the D-S13-4 idiom).
+            dataStore.edit { it[stringPreferencesKey("selected_bible_version")] = "ESV" }
+            assertThat(repository.selectedBibleVersion.first()).isEqualTo(BibleVersion.KJV)
         }
 
     @Test

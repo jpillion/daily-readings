@@ -4,13 +4,15 @@ import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
 import com.jpillion.dailyreadingplanner.domain.model.ReferenceVerses
+import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class GetPortionTextUseCaseTest {
     private val source = FakeBibleTextSource()
-    private val useCase = GetPortionTextUseCase(PortionVerseBridge(), source)
+    private val settings = FakeSettingsRepository()
+    private val useCase = GetPortionTextUseCase(PortionVerseBridge(), bundledResolver(source), settings)
 
     private fun ref(
         name: String,

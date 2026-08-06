@@ -1,6 +1,7 @@
 package com.jpillion.dailyreadingplanner.bible.domain
 
 import com.jpillion.dailyreadingplanner.data.reference.BookCatalog
+import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -9,7 +10,8 @@ import org.junit.Test
 
 class GetChapterUseCaseTest {
     private val source = FakeBibleTextSource()
-    private val useCase = GetChapterUseCase(source)
+    private val settings = FakeSettingsRepository()
+    private val useCase = GetChapterUseCase(bundledResolver(source), settings)
 
     @Test
     fun `returns chapter content with verses in order`() =

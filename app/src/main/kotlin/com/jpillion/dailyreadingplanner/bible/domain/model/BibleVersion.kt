@@ -1,9 +1,11 @@
-package com.jpillion.dailyreadingplanner.bible.data.remote
-
-import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
+package com.jpillion.dailyreadingplanner.bible.domain.model
 
 /**
  * The text versions the app can show. KJV is the bundled asset; the rest come from the proxy.
+ *
+ * Lives in `domain/model`, not `data/remote`: "which version is the user reading" is a domain
+ * concept, and [ChapterContent] has to carry the version actually served (D-OT-5) so the D-OT-2
+ * banner can be derived. Only the *transport* for the online versions is a data-layer concern.
  *
  * KJV is deliberately first and is the fallback target (D-OT-3): it is the only version guaranteed
  * available with no network, so the planner and reader keep working offline and D-OT-2's banner

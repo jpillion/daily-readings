@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
@@ -152,6 +153,21 @@ class SettingsRepositoryImpl
             dataStore.edit { preferences -> preferences[BIBLE_PROVIDER_KEY] = app.name }
         }
 
+        /**
+         * Sprint 00R step 3 — absent key ⇒ the bundled KJV, so nothing changes for a user who never
+         * opens the version selector. [BibleVersion.fromCode] degrades unknown/renamed codes to KJV
+         * rather than throwing, so a stored value from a version we later drop cannot brick the
+         * reader (the D-S13-4 idiom).
+         */
+        override val selectedBibleVersion: Flow<BibleVersion> =
+            dataStore.data.map { preferences ->
+                BibleVersion.fromCode(preferences[SELECTED_BIBLE_VERSION_KEY])
+            }
+
+        override suspend fun setSelectedBibleVersion(version: BibleVersion) {
+            dataStore.edit { preferences -> preferences[SELECTED_BIBLE_VERSION_KEY] = version.code }
+        }
+
         override val readingDestinationPromptCompleted: Flow<Boolean> =
             dataStore.data.map { preferences ->
                 preferences[READING_DESTINATION_PROMPT_COMPLETED_KEY] ?: false
@@ -209,6 +225,7 @@ class SettingsRepositoryImpl
             val TRACKING_START_INITIALIZED_KEY = booleanPreferencesKey("tracking_start_initialized")
             val SHOW_STREAKS_KEY = booleanPreferencesKey("show_streaks")
             val SELECTED_PLAN_KEY = stringPreferencesKey("selected_plan")
+            val SELECTED_BIBLE_VERSION_KEY = stringPreferencesKey("selected_bible_version")
             val READING_DESTINATION_PROMPT_COMPLETED_KEY = booleanPreferencesKey("reading_destination_prompt_completed")
             val UPGRADE_NOTE_SHOWN_KEY = booleanPreferencesKey("upgrade_note_shown")
             val REMINDER_ENABLED_KEY = booleanPreferencesKey("reminder_enabled")

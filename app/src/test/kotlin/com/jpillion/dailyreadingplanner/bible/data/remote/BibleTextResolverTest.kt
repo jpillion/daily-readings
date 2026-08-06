@@ -3,6 +3,7 @@ package com.jpillion.dailyreadingplanner.bible.data.remote
 import com.google.common.truth.Truth.assertThat
 import com.jpillion.dailyreadingplanner.bible.domain.BibleTextSource
 import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseRange
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText

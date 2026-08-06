@@ -1,5 +1,6 @@
 package com.jpillion.dailyreadingplanner.data.prefs
 
+import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
@@ -101,6 +102,19 @@ interface SettingsRepository {
     val externalBibleApp: Flow<ExternalBibleApp>
 
     suspend fun setExternalBibleApp(app: ExternalBibleApp)
+
+    /**
+     * Sprint 00R §2 step 3 — which text version the in-app reader shows (KJV bundled, NKJV/NASB
+     * from the proxy). Defaults to [BibleVersion.DEFAULT] (KJV), so an upgrader and anyone who
+     * never opens the version selector reads exactly the offline bundled text they read before.
+     *
+     * Orthogonal to [externalBibleApp] and [readingDestinationMode]: this is what the *in-app*
+     * reader renders, not where a tap sends the user. Unknown stored codes degrade to KJV rather
+     * than failing (the D-S13-4 idiom), so a removed or renamed version can never brick the reader.
+     */
+    val selectedBibleVersion: Flow<BibleVersion>
+
+    suspend fun setSelectedBibleVersion(version: BibleVersion)
 
     /**
      * Whether the first-run reading-destination question has been answered (V3, D-V3-19).
