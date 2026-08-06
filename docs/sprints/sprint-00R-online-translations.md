@@ -2,7 +2,7 @@
 
 **Branch:** `claude/available-translations-7zc3pq` (pushed)
 **Spec:** [docs/features/online-translations.md](../features/online-translations.md) — read this first; all D-OT-* decisions live there.
-**Status:** backend **done and deployed**; app-side engine **done and tested**; **UI wiring NOT done**.
+**Status:** backend **done and deployed**; app-side engine + UI **done and tested** (steps 1–5); **FUMS (6) and App Check (7) NOT done** — neither is optional before shipping.
 **Version:** untouched (1.7.1 / 10701). Nothing here ships yet.
 
 > **The feature is user-visible as of steps 4–5.** Pick NKJV or NASB in the reader top bar and the
@@ -42,12 +42,12 @@ just `testDebugUnitTest`.**
 
 Verified live: both translations return structured content + FUMS token + copyright; `NIV` → 400.
 
-### App — engine only (committed, 907 tests green)
+### App — engine (committed with the earlier session, 907 tests green at that point)
 
 | File | What |
 |---|---|
 | `bible/data/remote/UsxTransformer.kt` | USX tree → `VerseText` rows. 17 tests. |
-| `bible/data/remote/BibleVersions.kt` | `BibleVersion` enum: KJV bundled, NKJV/NASB remote. |
+| `bible/domain/model/BibleVersion.kt` | `BibleVersion` enum: KJV bundled, NKJV/NASB remote. (Moved out of `data/remote` in step 2.) |
 | `bible/data/remote/BibleApiClient.kt` | `HttpURLConnection` client (no new dependency). |
 | `bible/data/remote/BibleTextCache.kt` | Interface + file-backed + no-op impls. |
 | `bible/data/remote/BibleTextResolver.kt` | The D-OT-2 fallback chain. 8 tests. |
@@ -59,7 +59,7 @@ Verified live: both translations return structured content + FUMS token + copyri
 
 ## 2. What is NOT done — the remaining work
 
-In dependency order. **Steps 1–3 are now DONE** (commits `c9f3c34`, `157c571`); 4–7 remain.
+In dependency order. **Steps 1–5 are now DONE** (`c9f3c34`, `157c571`, `dce0489`); **6–7 remain.**
 
 1. ~~**Hilt module**~~ ✅ **DONE** — `di/BibleRemoteModule` provides `BibleApiClient` →
    `HttpBibleApiClient(PROXY_BASE_URL) { null }`, `BibleTextCache` →
