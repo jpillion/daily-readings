@@ -5,8 +5,19 @@
 **Status:** backend **done and deployed**; app-side engine **done and tested**; **UI wiring NOT done**.
 **Version:** untouched (1.7.1 / 10701). Nothing here ships yet.
 
-> **Install this branch today and the app behaves exactly as 1.7.1.** The remote stack exists and is
-> tested, but nothing calls it. That is the honest state — no partial UI was left applied.
+> **Install this branch today and the app behaves exactly as 1.7.1.** The remote stack exists, is
+> wired into the graph, and the use cases resolve through it — but the selection is always KJV
+> because nothing yet lets the user change it (step 4) and no banner is rendered (step 5). That is
+> the honest state; no half-wired UI was left applied.
+
+**Update (steps 1–3 landed).** 918 tests, 0 failures; full pipeline green from clean and
+`assembleRelease` clean. The five data/Room gates are untouched (11/10/8/18/5).
+
+⚠️ **`spotlessCheck` was already RED on the committed branch state** before this work — the earlier
+"907 tests green" did not include it, so CI would have failed on this branch regardless. Fixed in
+`1ca15c7`: `spotlessApply` over the four remote-stack files, plus `BibleVersions.kt` →
+`BibleVersion.kt` (ktlint's `standard:filename` is not auto-fixable). **Run the full pipeline, not
+just `testDebugUnitTest`.**
 
 ---
 
@@ -45,17 +56,26 @@ Verified live: both translations return structured content + FUMS token + copyri
 
 ## 2. What is NOT done — the remaining work
 
-In dependency order. Nothing here is started; no stubs were left behind.
+In dependency order. **Steps 1–3 are now DONE** (commits `c9f3c34`, `157c571`); 4–7 remain.
 
-1. **Hilt module** binding `BibleApiClient` → `HttpBibleApiClient` (base URL above),
-   `BibleTextCache` → `FileBibleTextCache(context.cacheDir)`, and providing `BibleTextResolver`.
-   `HttpBibleApiClient` and `FileBibleTextCache` deliberately have **no `@Inject`** (non-injectable
-   `String`/`File`/lambda params) — they must be `@Provides`-constructed.
-2. **Use cases → resolver.** `GetChapterUseCase` and `GetPortionTextUseCase` currently inject
-   `BibleTextSource`; they should inject `BibleTextResolver` and pass the selected version.
-   `ChapterContent` needs to carry the **served** version so the banner can be derived.
-3. **Persist the selection.** A `selected_bible_version` key in the DataStore `SettingsRepository`,
-   defaulting to `BibleVersion.KJV`.
+1. ~~**Hilt module**~~ ✅ **DONE** — `di/BibleRemoteModule` provides `BibleApiClient` →
+   `HttpBibleApiClient(PROXY_BASE_URL) { null }`, `BibleTextCache` →
+   `FileBibleTextCache(context.cacheDir)`, `FumsReporter` → `NoOpFumsReporter()` (step 6 replaces
+   it) and `BibleTextResolver`. All `@Provides`, since `HttpBibleApiClient`/`FileBibleTextCache`
+   take non-injectable params and carry no `@Inject`. Kept separate from `BibleModule` so the
+   offline bundled asset and the online stack never blur. The App Check token supplier is a
+   per-call lambda returning null, so **step 7 is a change to that one provider**.
+   Pinned by `BibleRemoteModuleTest` (4).
+2. ~~**Use cases → resolver**~~ ✅ **DONE** — `GetChapterUseCase`/`GetPortionTextUseCase` inject
+   `BibleTextResolver` + `SettingsRepository`, read the selection at load time (D-S13-4 idiom) and
+   pass it down. `ChapterContent` gained `requestedVersion`/`servedVersion`/`copyright` with
+   `degraded` derived **per block** (never a shared flag — a pager would banner the wrong page).
+   All three default to KJV, so every pre-existing construction site is untouched.
+   `GetPortionTextUseCase` reads the selection ONCE per portion, so one reading can never render
+   two blocks in different versions. **`BibleVersion` moved to `bible/domain/model`** — a domain
+   model now has to name a version.
+3. ~~**Persist the selection**~~ ✅ **DONE** — `selectedBibleVersion` over a new
+   `selected_bible_version` key; absent ⇒ KJV; unknown codes degrade to KJV, never throw.
 4. **Wire `ReaderViewModel.selectVersion`** — currently a documented no-op. `versionState` should
    list all three versions (`BibleVersion.entries`), not just the bundled asset's `translation`
    table. **The dropdown UI already exists** (`ReaderVersionSelector`, D-N-3, built Sprint 00N and
@@ -171,3 +191,28 @@ The five data/Room gates must stay untouched: plan **11**, M'Cheyne **10**, Chro
 | `c7da547` | Spec: online translations (NKJV + NASB) |
 | `cafb945` | USX → `VerseText` transformer + heading support |
 | `1c896b2` | Remote stack, fallback resolver, `INTERNET`; proxy serves NKJV+NASB |
+| `1ca15c7` | Make the remote stack pass spotless/ktlint (branch was red) |
+| `c9f3c34` | Step 1 — `di/BibleRemoteModule` |
+| `157c571` | Steps 2+3 — use cases resolve the selected version; persist it |
+
+---
+
+## 10. Observation for whoever does step 4 (pre-existing, not introduced here)
+
+`BibleAssetGate`'s KDoc claims its `runBlocking` DataStore read is StrictMode-clean because the
+`BibleDatabase` provider "is only ever resolved off the main thread". That does not hold as written:
+`ReaderViewModel` injects `GetChapterUseCase` directly (no `Lazy`/`Provider`), so constructing the
+ViewModel on the main thread resolves `BibleTextSource` → `RoomBibleTextSource` → `BibleDatabase` →
+`assetGate.ensureUpToDate()` → `runBlocking`.
+
+This predates sprint 00R (Sprint E) and the resolver does **not** deepen it — the same graph edge
+already existed. Flagged because step 4 touches exactly this constructor, so it is the natural
+moment to either wrap the dependency in `Provider`/`Lazy` or correct the comment.
+
+## 11. Known inefficiency (deliberate, not a defect)
+
+`GetPortionTextUseCase` resolves **one range per ref**, so a two-chapter portion costs two API calls
+where the spec's §"Why this is smaller than it looks" measured that a whole portion can be fetched
+in **one** (`GEN.1-GEN.2`). Correct, just chattier. Collapsing it needs the bridge to yield a single
+span for contiguous refs, which is entangled with the deferred prefetch work — worth doing together
+with that, not before.
