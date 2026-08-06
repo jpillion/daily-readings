@@ -1,7 +1,9 @@
 # Releasing — tag-to-Play pipeline
 
-Pushing a version tag publishes that commit to the **Play closed-testing (Alpha) track**
-automatically via `.github/workflows/release.yml`.
+Pushing a version tag publishes that commit to **BOTH the internal testing track and the
+closed-testing (Alpha) track** automatically via `.github/workflows/release.yml`.
+
+Full flow: `tag → internal + alpha (auto)`, then `alpha → production (manual promote)`.
 
 ## Release procedure
 
@@ -13,8 +15,15 @@ automatically via `.github/workflows/release.yml`.
    git tag v1.2.0 && git push origin v1.2.0
    ```
 The workflow verifies the tag matches `versionName`, runs the unit-test gate (incl. the
-plan-data verification gate), builds the signed bundle, and uploads it to the Alpha track
-with the what's-new text.
+plan-data verification gate), builds the signed bundle, and uploads it to the **internal AND
+alpha** tracks with the what's-new text.
+
+**Why both (owner, 2026-08-06):** internal testers must never be stranded on an older build.
+Before this, release.yml uploaded to alpha only, so internal sat on 1.7.1 while production
+moved to 1.8.0 — and the Play Store served enrolled internal testers the *stale* build. It is
+ONE upload to two tracks, not two uploads: a versionCode can only ever be uploaded once, so a
+second upload step would fail. Promotion to production touches only its source and target, so
+the internal assignment survives it.
 
 ## Promoting a release to production
 

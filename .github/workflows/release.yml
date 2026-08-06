@@ -59,19 +59,34 @@ jobs:
 
       # `tracks` (plural, comma-separated) replaces the deprecated singular `track`, which the
       # action has warned about since v1.1.4 and will remove. The two are mutually exclusive --
-      # setting both is a hard error -- so this is a rename, not an addition. Behaviour is
-      # identical: the action logs "Validating tracks: 'alpha'" either way.
+      # setting both is a hard error -- so this is a rename, not an addition.
+      #
+      # ── Why BOTH internal and alpha (owner, 2026-08-06) ──────────────────────────────────
+      # A tag now lands on internal testing AND closed-testing Alpha in the SAME upload, so
+      # internal testers are never left behind on an older build. Before this, release.yml
+      # uploaded to alpha only and internal had to be seeded afterwards by hand via
+      # assign-track.yml -- which is exactly how internal sat on 1.7.1 while production moved
+      # to 1.8.0, and why the owner was served a stale build by the Play Store.
+      #
+      # One upload, two tracks -- NOT two uploads: a versionCode can only ever be uploaded
+      # once, so a second upload step for internal would fail. The Play API assigns one bundle
+      # to many tracks, which is what the comma-separated list does. Documented pattern:
+      # https://github.com/r0adkll/upload-google-play (`tracks: internal,qa`).
+      #
+      # promote-production.yml is UNCHANGED and still promotes alpha -> production. Promotion
+      # touches only its source and target, so the internal assignment survives it.
+      # assign-track.yml stays for back-filling a build onto a track after the fact.
       #
       # The action is pinned to a COMMIT SHA, not the moving `@v1` tag. This is the one step that
       # sees PLAY_SERVICE_ACCOUNT_JSON and can publish to the store, so it should not silently
       # change under us. Upgrade deliberately: read the diff, then bump the SHA and the comment.
-      - name: Upload to Play (closed testing - Alpha)
+      - name: Upload to Play (internal testing + closed testing Alpha)
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.jpillion.dailyreadingplanner
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          tracks: alpha
+          tracks: internal,alpha
           status: completed
           whatsNewDirectory: distribution/whatsnew
 
