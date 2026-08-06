@@ -8,6 +8,52 @@ retained. This is deliberate and load-bearing — see [Why not cache here](#why-
 
 ---
 
+## Deployed (2026-08-06)
+
+| | |
+|---|---|
+| **URL** | `https://drp-bible-proxy-954215684233.us-central1.run.app` |
+| Project | `daily-readings-proxy` (number `954215684233`) |
+| Billing | `billingAccounts/0130C6-BEDA74-720DBD` ("FlipReady") — same account as `daily-reading-planner-app` |
+| Region | `us-central1` |
+| Runtime SA | `drp-proxy-sa@daily-readings-proxy.iam.gserviceaccount.com` (dedicated, least-privilege) |
+| Budget backend | `firestore` (verified recording) |
+| **Attestation policy** | **`deny`** |
+
+Deployed into its **own** project rather than `daily-reading-planner-app`, which has
+`androidpublisher` enabled and holds the Play publishing service account — a public
+internet-facing service does not belong in that blast radius.
+
+**Shipped in `deny`, not the `allow` default in `deploy.sh`.** App Check is not configured yet and
+no client exists, so denying everything means there is no open endpoint sitting on the internet in
+the meantime. The staged rollout in [Configuration](#configuration) still applies, but its correct
+order here is: flip to `allow` **when the client first reaches internal testing**, measure the real
+lockout from the logs, then return to `deny`.
+
+### Verified in production
+
+| Check | Result |
+|---|---|
+| Secret injection + upstream fetch (`GEN.1-GEN.2`) | 200 — 12,398 chars, copyright + FUMS token |
+| Firestore budget counter | doc `2026-08` incremented to 1 |
+| No attestation token | 401 |
+| Malformed token | 401 (`attestation_failed reason=DecodeError policy=deny`) |
+| `/docs`, `/openapi.json` | 404 — not exposed |
+
+> **Note on `/healthz`.** It is served correctly by the container, but was unreachable from the
+> environment this was deployed from: bare `/healthz` never appeared in the Cloud Run request log
+> while every other path did, and `/healthz/` reached the container and returned FastAPI's own 307.
+> That is a health-check path collision in that egress proxy, not a defect here. Verify it from a
+> normal network.
+
+### Not done yet
+
+Firebase, App Check and Play Integrity are **not** set up — they need the Play Console (app signing
+SHA-256, Play Integrity enablement, Play↔Firebase linkage). Until then the service correctly refuses
+every request.
+
+---
+
 ## Why this exists
 
 `docs/features/additional-translations.md` **OQ-3**: an API key shipped in an APK is extractable,
