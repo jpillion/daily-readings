@@ -20,7 +20,6 @@ import com.jpillion.dailyreadingplanner.bible.ui.picker.BookChapterPickerSheet
 import com.jpillion.dailyreadingplanner.ui.browser.launchReadingDestination
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 
 /**
  * I3 (D-I-1 / D-I-2) — stateful reader entry, two-context aware. Owns [ReaderViewModel], the
@@ -48,17 +47,22 @@ fun ReaderRoute(
     val context = LocalContext.current
     val scope = rememberCoroutineScopeForRoute()
     val readerContext by viewModel.context.collectAsStateWithLifecycle()
-    val initialPage by viewModel.initialPage.collectAsStateWithLifecycle()
+    val pagerTarget by viewModel.pagerTarget.collectAsStateWithLifecycle()
     val externalApp by viewModel.externalApp.collectAsStateWithLifecycle()
     val versionState by viewModel.versionState.collectAsStateWithLifecycle()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
 
-    // A fresh PagerState per context (and per portion / initial page): switching Browse <-> Reading
-    // changes the page-index space, so the pager must be rebuilt — wrapped in key(...) on the
-    // context identity so a switch discards the old state (rememberPagerState has no key param).
+    // A fresh PagerState per pager target: switching Browse <-> Reading changes the page-index
+    // space, and a picker jump changes which page to open on, so the pager must be rebuilt —
+    // wrapped in key(...) because rememberPagerState has no key param.
+    //
+    // Keyed on the EPOCH, not on the page. Keying on the page meant the pager was rebuilt whenever
+    // the ViewModel's idea of the page differed from where the user actually was, which snapped
+    // them back to a stale page (Genesis 1). The epoch changes only on a real context switch or a
+    // picker jump, so an ordinary recomposition — a version change, say — never rebuilds it.
     val pagerState =
-        key(keyForContext(readerContext, initialPage)) {
-            rememberPagerState(initialPage = initialPage) { readerContext.pageCount }
+        key(pagerTarget.epoch) {
+            rememberPagerState(initialPage = pagerTarget.page) { readerContext.pageCount }
         }
 
     var showPicker by remember { mutableStateOf(false) }
@@ -111,29 +115,16 @@ fun ReaderRoute(
         BookChapterPickerSheet(
             onChapterSelected = { book, chapter ->
                 showPicker = false
-                // D-I-2: a picker jump is a Browse action — leave any Reading context first, then
-                // jump the (rebuilt) Browse pager to the chosen chapter.
-                viewModel.resetToBrowse()
-                scope.launch { pagerState.animateScrollToPage(GlobalChapterIndex.indexOf(book, chapter)) }
+                // D-I-2: a picker jump is a Browse action. The ViewModel owns the target, so the
+                // rebuilt pager opens ON the picked chapter. It used to call resetToBrowse() and
+                // then scroll `pagerState` here — but resetToBrowse() rebuilds the pager, so that
+                // scrolled a discarded state object and the user landed on Genesis 1.
+                viewModel.jumpToChapter(book, chapter)
             },
             onDismiss = { showPicker = false },
         )
     }
 }
-
-/**
- * A stable identity for a context: Browse is one key; each Reading session is keyed by its portion
- * page so re-entering a different reading rebuilds the pager. The initial page is folded in so an
- * in-session restore to a different page rebuilds too.
- */
-private fun keyForContext(
-    context: ReaderContext,
-    initialPage: Int,
-): Any =
-    when (context) {
-        ReaderContext.Browse -> "browse:$initialPage"
-        is ReaderContext.Reading -> "reading:${context.index.portionFirstGlobal}-${context.index.portionLastGlobal}"
-    }
 
 @Composable
 private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectAsStateValue(): T {

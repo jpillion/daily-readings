@@ -87,9 +87,18 @@ class ReaderViewModel
         private val _context = MutableStateFlow<ReaderContext>(ReaderContext.Browse)
         val context: StateFlow<ReaderContext> = _context.asStateFlow()
 
-        /** The pager page the reader should open on for the CURRENT [context]. */
-        private val _initialPage = MutableStateFlow(restoredBrowsePage())
-        val initialPage: StateFlow<Int> = _initialPage.asStateFlow()
+        /**
+         * The page the pager must be (re)built on, plus the epoch that says "rebuild it now".
+         *
+         * ONE state object, not two flows: the route keys `rememberPagerState` on [PagerTarget.epoch]
+         * and seeds it with [PagerTarget.page], and reading those from two separate flows could tear
+         * — rebuilding at a stale page for one frame is exactly the bug this replaces.
+         *
+         * The epoch is bumped by [switchContext] alone, so the pager is rebuilt on a real context
+         * change (or a picker jump) and NEVER merely because something recomposed.
+         */
+        private val _pagerTarget = MutableStateFlow(PagerTarget(epoch = 0, page = restoredBrowsePage()))
+        val pagerTarget: StateFlow<PagerTarget> = _pagerTarget.asStateFlow()
 
         /**
          * D-N-3 — the text versions on offer and the selected one, for the reader top-bar version
@@ -448,6 +457,23 @@ class ReaderViewModel
             switchContext(ReaderContext.Browse, firstRefPage)
         }
 
+        /**
+         * A picker jump: Browse, at exactly this chapter.
+         *
+         * Routes the target THROUGH [switchContext] so the pager's own source of truth becomes the
+         * picked page. It previously scrolled the live `PagerState` from the route instead, which
+         * broke whenever `resetToBrowse()` had just rebuilt the pager: the scroll animated a
+         * discarded state object while the new one sat at the old page — Genesis 1 on a fresh
+         * install. Going through the target makes the rebuilt pager land on the picked chapter by
+         * construction, so there is no live pager to miss.
+         */
+        fun jumpToChapter(
+            book: Book,
+            chapter: Int,
+        ) {
+            switchContext(ReaderContext.Browse, GlobalChapterIndex.indexOf(book, chapter))
+        }
+
         private fun switchContext(
             ctx: ReaderContext,
             initialPage: Int,
@@ -460,7 +486,10 @@ class ReaderViewModel
             // page number means a different chapter.
             _selection.value = VerseSelection.NONE
             _context.value = ctx
-            _initialPage.value = initialPage
+            // Bumping the epoch is what makes the route rebuild the pager; the page alone is not
+            // enough, because a jump BACK to the page the pager was already seeded with would leave
+            // the key unchanged and the pager stranded wherever the user had swiped to.
+            _pagerTarget.value = PagerTarget(epoch = _pagerTarget.value.epoch + 1, page = initialPage)
         }
 
         /** Records [page] as the in-session last-read GLOBAL chapter — only for single-chapter pages. */

@@ -131,12 +131,91 @@ class ReaderViewModelTest {
             assertThat(state.title).isEqualTo("Psalms 1–2")
         }
 
+    // --- Picker-jump regression (owner-reported: "it kicks me to Gen 1"). ---
+
+    /**
+     * THE bug. From a Reading context (a tapped Schedule reading), a picker jump used to land on
+     * Genesis 1 instead of the chosen chapter: the route called `resetToBrowse()` — which rebuilds
+     * the pager — and THEN scrolled the `PagerState` it had already captured, so the scroll animated
+     * a discarded object while the newly built pager sat at the restored page.
+     *
+     * Pinned on the ViewModel's own target, which is now the single source of truth for where the
+     * pager opens.
+     */
+    @Test
+    fun `a picker jump out of Reading targets the picked chapter, not Genesis 1`() =
+        runTest {
+            val model = vm()
+            handoff.request(nt(Reference(james, 1), Reference(james, 2)))
+            advanceUntilIdle()
+            assertThat(model.context.value).isInstanceOf(ReaderContext.Reading::class.java)
+
+            model.jumpToChapter(psalms, 23)
+            advanceUntilIdle()
+
+            assertThat(model.context.value).isEqualTo(ReaderContext.Browse)
+            assertThat(model.pagerTarget.value.page).isEqualTo(psalms23Page)
+            assertThat(model.pagerTarget.value.page).isNotEqualTo(genesis1Page)
+        }
+
+    /** The same jump from within Browse — the owner's reported path — must also land correctly. */
+    @Test
+    fun `a picker jump from within Browse targets the picked chapter`() =
+        runTest {
+            val model = vm()
+            advanceUntilIdle()
+
+            model.jumpToChapter(psalms, 23)
+            advanceUntilIdle()
+
+            assertThat(model.pagerTarget.value.page).isEqualTo(psalms23Page)
+        }
+
+    /**
+     * The epoch is what forces the route to rebuild the pager. Jumping BACK to the page the pager
+     * was originally seeded with must still bump it — otherwise the key is unchanged and the pager
+     * stays wherever the user had swiped to, silently ignoring the picker.
+     */
+    @Test
+    fun `jumping to the page the pager already started on still bumps the epoch`() =
+        runTest {
+            val model = vm()
+            advanceUntilIdle()
+            val before = model.pagerTarget.value
+            assertThat(before.page).isEqualTo(genesis1Page)
+
+            model.jumpToChapter(genesis, 1)
+            advanceUntilIdle()
+
+            assertThat(model.pagerTarget.value.page).isEqualTo(genesis1Page)
+            assertThat(model.pagerTarget.value.epoch).isGreaterThan(before.epoch)
+        }
+
+    /**
+     * The owner's exact symptom: changing version must NOT move the reader. An ordinary state change
+     * has no business rebuilding the pager, so the epoch must be untouched.
+     */
+    @Test
+    fun `changing version does not move the pager`() =
+        runTest {
+            val model = offlineVm()
+            advanceUntilIdle()
+            model.jumpToChapter(psalms, 23)
+            advanceUntilIdle()
+            val afterJump = model.pagerTarget.value
+
+            model.selectVersion(BibleVersion.NKJV.toTranslation())
+            advanceUntilIdle()
+
+            assertThat(model.pagerTarget.value).isEqualTo(afterJump)
+        }
+
     @Test
     fun `the default context is Browse and the default page is Genesis 1`() =
         runTest {
             val model = vm()
             assertThat(model.context.value).isEqualTo(ReaderContext.Browse)
-            assertThat(model.initialPage.value).isEqualTo(genesis1Page)
+            assertThat(model.pagerTarget.value.page).isEqualTo(genesis1Page)
         }
 
     @Test
@@ -144,7 +223,7 @@ class ReaderViewModelTest {
         runTest {
             val handle = SavedStateHandle(mapOf("reader_page" to psalms23Page))
             val model = vm(handle)
-            assertThat(model.initialPage.value).isEqualTo(psalms23Page)
+            assertThat(model.pagerTarget.value.page).isEqualTo(psalms23Page)
             val state = model.uiStateForPage(psalms23Page).value as ReaderUiState.Content
             assertThat(state.blocks.single().bookName).isEqualTo("Psalms")
             assertThat(state.blocks.single().chapter).isEqualTo(23)
@@ -168,7 +247,7 @@ class ReaderViewModelTest {
             val readingCtx = ctx as ReaderContext.Reading
             // The pager opens on the portion page (James 1 = the portion's first global chapter).
             val portionPage = readingCtx.index.portionPage
-            assertThat(model.initialPage.value).isEqualTo(portionPage)
+            assertThat(model.pagerTarget.value.page).isEqualTo(portionPage)
             assertThat(GlobalChapterIndex.indexOf(james, 1)).isEqualTo(portionPage)
             // That page renders BOTH chapters as ordered blocks (the revived multi-block render).
             val state = model.uiStateForPage(portionPage).value as ReaderUiState.Content
@@ -257,11 +336,11 @@ class ReaderViewModelTest {
             advanceUntilIdle()
 
             assertThat(model.context.value).isEqualTo(ReaderContext.Browse)
-            assertThat(model.initialPage.value).isEqualTo(GlobalChapterIndex.indexOf(isaiah, 37))
+            assertThat(model.pagerTarget.value.page).isEqualTo(GlobalChapterIndex.indexOf(isaiah, 37))
             // Explicitly: NOT the Genesis 1 page. This is the bug the owner saw on device.
-            assertThat(model.initialPage.value).isNotEqualTo(genesis1Page)
+            assertThat(model.pagerTarget.value.page).isNotEqualTo(genesis1Page)
             // And the page it opens on really renders Isaiah 37 as a single Browse chapter.
-            val state = model.uiStateForPage(model.initialPage.value).value as ReaderUiState.Content
+            val state = model.uiStateForPage(model.pagerTarget.value.page).value as ReaderUiState.Content
             assertThat(state.blocks.map { it.bookName to it.chapter }).containsExactly("Isaiah" to 37)
         }
 
@@ -279,7 +358,7 @@ class ReaderViewModelTest {
             assertThat(model.context.value).isEqualTo(ReaderContext.Browse)
             // It lands on the last-read single chapter; James was never single-paged in Reading, so
             // it falls back to the restored Browse page (Genesis 1 with an empty handle).
-            assertThat(model.initialPage.value).isEqualTo(genesis1Page)
+            assertThat(model.pagerTarget.value.page).isEqualTo(genesis1Page)
             // Browse pages are single chapters again.
             val state = model.uiStateForPage(genesis1Page).value as ReaderUiState.Content
             assertThat(state.blocks).hasSize(1)
@@ -300,7 +379,7 @@ class ReaderViewModelTest {
             handoff.requestBrowse()
             advanceUntilIdle()
             assertThat(model.context.value).isEqualTo(ReaderContext.Browse)
-            assertThat(model.initialPage.value).isEqualTo(GlobalChapterIndex.indexOf(james, 3))
+            assertThat(model.pagerTarget.value.page).isEqualTo(GlobalChapterIndex.indexOf(james, 3))
         }
 
     @Test

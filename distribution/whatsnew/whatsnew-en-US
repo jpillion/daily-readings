@@ -1,3 +1,2 @@
-• New: read the New King James Version or the New American Standard Bible 2020 as well as the King James Version
-• Tap the version name in the top right of the Bible tab to switch
-• The King James Version stays built in and always works offline. If another version can't be downloaded you'll see the King James Version with a note saying why, so you always know which text you're reading
+• Fixed: choosing a book and chapter, then switching version, could jump you back to Genesis 1. It now stays where you are
+• Fixed: opening the book and chapter picker straight from a reading could land on Genesis 1 instead of the chapter you picked

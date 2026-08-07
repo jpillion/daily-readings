@@ -42,8 +42,8 @@ android {
         targetSdk = 37
         // D-S9-3: versionCode = MAJOR*10000 + MINOR*100 + PATCH (1.0.0 -> 10000) — monotonic
         // for Play, derivable from versionName, with room for 99 patch/minor steps each.
-        versionCode = 10800
-        versionName = "1.8.0"
+        versionCode = 10801
+        versionName = "1.8.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

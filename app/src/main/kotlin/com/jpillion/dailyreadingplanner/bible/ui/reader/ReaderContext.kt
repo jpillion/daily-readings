@@ -30,3 +30,16 @@ val ReaderContext.pageCount: Int
             ReaderContext.Browse -> GlobalChapterIndex.TOTAL_CHAPTERS
             is ReaderContext.Reading -> index.pageCount
         }
+
+/**
+ * What the reader's `HorizontalPager` must be built as: which [page] to open on, and an [epoch] that
+ * changes whenever the pager has to be rebuilt (a Browse <-> Reading switch, or a picker jump).
+ *
+ * The epoch exists because the page alone is not a sufficient key. Jumping back to the page the
+ * pager was originally seeded with leaves the key unchanged, so the pager would stay wherever the
+ * user had swiped instead of returning to the picked chapter.
+ */
+data class PagerTarget(
+    val epoch: Int,
+    val page: Int,
+)
