@@ -1631,6 +1631,36 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   byte-diff gates). 936 tests.
   Handoff: [docs/sprints/sprint-00R-online-translations.md](docs/sprints/sprint-00R-online-translations.md);
   spec: [docs/features/online-translations.md](docs/features/online-translations.md).
+- 🐛 **1.8.1 / 10801 — picker-jump P1 fix (`2026-08-06`, tag `v1.8.1` → `3c495bc`).** Owner-reported:
+  pick a chapter, switch version, and the reader jumps to Genesis 1. Reproduced on an **R8 release
+  build** and it was worse than reported — from a Reading context (a tapped Schedule reading) the
+  picker landed on Genesis 1 **immediately**, no version change needed.
+  **Root cause: two racing sources of truth for the pager page.** `ReaderRoute` keyed
+  `rememberPagerState` on `"browse:$initialPage"`, and the picker did `resetToBrowse()` then
+  `pagerState.animateScrollToPage(target)`. `resetToBrowse()` changes `initialPage` → changes the key
+  → **rebuilds the pager**, so the scroll animated an already-discarded `PagerState` while the new
+  one sat at the restored page. And because the key tracked `initialPage`, the VM's stale page could
+  snap the user back on ANY later rebuild — the version-change symptom.
+  **Fix:** one source of truth — `PagerTarget(epoch, page)` (a SINGLE state object, so the route can
+  never read a new epoch against a stale page) + `ReaderViewModel.jumpToChapter(book, chapter)`
+  routing the picker through `switchContext`, so the rebuilt pager opens on the picked chapter by
+  construction. **The key is now the EPOCH, not the page**: an ordinary recomposition (a version
+  change) can no longer rebuild the pager, and a jump back to the originally-seeded page still bumps
+  the epoch (otherwise the key is unchanged and the picker is silently ignored). `keyForContext` is
+  deleted. 940 tests (4 new regression pins), 2 mutations killed (reinstating the old
+  resetToBrowse-then-scroll reddens all three jump pins; freezing the epoch reddens the
+  jump-to-same-page pin). Verified on the R8 APK: picker-out-of-Reading lands on Psalm 23, and
+  KJV → NKJV → NASB holds position (NASB was the untested direction).
+  **Standing lesson reinforced: `rememberPagerState` keyed on a value the ViewModel also mutates is
+  a trap — key it on an explicit epoch, never on the page itself.**
+- ✅ **Pipeline: a tag now publishes to internal testing AND alpha** (`60a5678`). `release.yml` uses
+  `tracks: internal,alpha` — ONE upload, two tracks (a versionCode can only be uploaded once, so a
+  second upload step would fail). Fixes internal testers being stranded: internal sat on 1.7.1 while
+  production moved to 1.8.0, and Play served enrolled internal testers that **stale** build. Flow is
+  now `tag → internal + alpha (auto) → production (manual promote)`; promotion touches only its
+  source and target, so the internal assignment survives. First exercised by v1.8.1 —
+  `Validating tracks: 'internal, alpha'`, then promoted to production. `assign-track.yml` remains for
+  back-filling a build onto a track after the fact. See [docs/RELEASING.md](docs/RELEASING.md).
 - 🔓 **OPEN SECURITY ITEM (owner-accepted, sprint 00R step 7):** the Bible proxy runs with
   `POLICY_ON_ATTESTATION_FAIL=allow`, i.e. **the endpoint is publicly reachable**, because App Check
   is not configured and the client sends no token. The owner chose to ship first and secure after.
