@@ -1671,13 +1671,86 @@ This is a **standalone, self-contained repo** — it does not depend on any othe
   `gcloud run services update drp-bible-proxy --update-env-vars POLICY_ON_ATTESTATION_FAIL=deny`.
 - 🧹 **Repo debt:** `.github/workflows/zz-sqlite-probe.yml` ("zz probe (TEMPORARY - delete before
   merge)") is on `main` and registered as an ACTIVE workflow. Delete it.
-- Next up (non-blocking): monitor 1.6.0 **crash/ANR vitals + reviews** (Play Console → Monitor and
-  improve; the two minor edge-to-edge "recommended actions" remain noted, non-blocking). Store-title
-  rename in review. Still pending: the owner **device pass** on 1.6.0 — especially the sprint-00P
-  items (the P0 on glass; the amber partial tick vs the green complete tick in light/dark and
-  **under dynamic colour**, which is NOT JVM-provable; the 6-card Chronological 04/22 layout) — plus
-  the accumulated **string/tone sign-offs**. Then `sprint-00Q-reader-verse-selection` (spec locked,
-  now unblocked). (V2.x release prep remains queued, owner-scheduled independently.)
+- 🍎 **iOS PORT — PHASE 0 COMPLETE, OWNER-SIGNED, READY FOR EXECUTION KICKOFF** (`2026-08-08`;
+  all artifacts uncommitted in the working tree; **zero files under `app/`, `gradle/`, `tools/` or
+  `.github/` were touched** — this phase produced documents only). The owner decided the app ships
+  on iOS from a **Kotlin Multiplatform + Compose Multiplatform shared core**, not a separate Swift
+  app. Six specialists reviewed the codebase independently (port architect, senior shared-core,
+  senior shared-UI, iOS platform, build & release, verification); the EM synthesized all six,
+  resolved four inter-reviewer contradictions, and the owner **signed off the scope and the
+  approach**.
+  **START HERE NEXT SESSION:** [docs/ios-execution-plan.md](docs/ios-execution-plan.md).
+  **The verdict: proceed, gated.** The honest headline is that this is a **4–7 month program that
+  makes the Android app riskier before an iPhone app exists, and produces a smaller product on
+  iOS.** It is viable because of measurement, not optimism: **only 22 of 162 main files import
+  `android.*`** (VERIFIED — an earlier "64" conflated `androidx.*`), `domain/` (39 files), `core/`
+  (2) and `bible/domain/` (13) are at **zero** `android.*` AND zero `androidx.*`, twelve platform
+  capabilities are already interfaces with hand-written fakes, there are **zero mocking libraries**
+  across 940 tests (MockK's absent Kotlin/Native support is the usual wall for a port this size —
+  this repo walks past it), and there is **zero `TextField`/`SelectionContainer`/`AndroidView`**, so
+  the reader dodges Compose Multiplatform's weakest iOS area. Version alignment is free: Compose BOM
+  2026.05.01 → Compose 1.11.2, CMP 1.11.1 is built on exactly 1.11.2, and the repo is on Kotlin
+  2.3.21 (VERIFIED against real POMs). **No Compose version has to move on either side.**
+  **D-PORT-1 — the stop rule** (added by the EM; it corrects both engineers' proposed sequences):
+  the two port-killing spikes — the **Room identity hash** and an **on-device reader-gesture rig** —
+  run **BEFORE any production Android code changes**, because the three Android-only Play releases
+  are **not free option value**. Stop after them and you have a slightly *worse* Android app (Koin
+  loses Hilt's compile-time graph verification). Don't spend that risk before you know the port can
+  finish.
+  **Owner-signed scope (`ios-port-approach.md` §3):** iOS v1.0 ships the planner, all three plans,
+  segments/partial checks, the date picker, stats + year strips, settings, the **in-app KJV reader**,
+  online NKJV/NASB, and full offline operation. It does **NOT** ship: the Glance widget, the
+  persistent tray notification (**no iOS mechanism exists — three of its properties are individually
+  impossible**), in-app updates, MySword, Material You, or hardware-back exit from verse selection.
+  **The compound consequence, signed knowingly: iOS users get NO glanceable surface at all.**
+  Degradations: generic reminder body (**owner-chosen** — never stale, but fires on completed days;
+  the specific-references option carries a silent ~60-day horizon cliff), non-byte-identical
+  date/time strings, Android-shaped navigation, and **every one-screen-fit budget from S16/S18/S20
+  invalidated** (iOS Dynamic Type reaches ~310% vs Android's 1.3–2×; composed with the app's
+  0.85–1.5× slider ≈ **4.6×**).
+  **Release plan: three Android-only Play releases ordered BY FAILURE MODE** — 1.9.0 datetime+HTTP →
+  1.10.0 **DI alone** → 1.11.0 modules+persistence — because two of the three failure classes have
+  already shipped here (1.7.0's R8-only init-order crash; sprint-00F's unopened Room asset). Each
+  requires an **R8 release-build device smoke before tagging**; a debug device pass does not cover
+  R8 (the standing 1.7.0 lesson). Android feature work freezes for the duration and **no
+  `ProgressDatabase` schema change ships** until the port lands.
+  **Artifacts (all new):** [docs/ios-port-approach.md](docs/ios-port-approach.md) (the owner-facing
+  decision doc) · [docs/port-inventory.md](docs/port-inventory.md) ·
+  [docs/adr/](docs/adr/) **14 ADRs + amendments** · [docs/parity-matrix.md](docs/parity-matrix.md)
+  (**187 rows, all UNVERIFIED/N-A — zero green is the correct signature state with no iOS binary**;
+  53 rows closable only by a human with a physical iPhone on a release build) ·
+  [docs/test-port-strategy.md](docs/test-port-strategy.md) · **25 six-field task briefs** in
+  [docs/task-briefs/](docs/task-briefs/) (`gate0-*` ×4, `p1-*` ×9, `p2-*` ×10, `p0-build-foundation`,
+  `ios-delivery-pipeline` rewritten) · [docs/RELEASING-IOS.md](docs/RELEASING-IOS.md) amended.
+  **Corrections to the record made during Phase 0:** there are **six** data gates, not five
+  (`PlanSegmentGateTest` postdates the earlier docs); **940 tests, not 936** (936 is the 1.8.0
+  figure); **842 of 940 reach `commonTest`, and 0 move "essentially free"** — 846 assertions go
+  through Google Truth (Guava, JVM-only) and every one needs rewriting; `docs/data/README.md` still
+  records the stale bible asset SHA `ce174e9…` (real: `ad46a777…9099`, regenerated in sprint-00F).
+  **Hard constraints discovered:** `Room.createFromAsset` **does not exist in Room KMP common** — on
+  iOS that copy path is new code, not ported code, in exactly the place sprint-00F already shipped a
+  P0. **`iosX64` is unavailable** in CMP 1.11.1 (not a cost choice) — an Intel Mac cannot build this
+  app. **You cannot run Kotlin/Native unit tests on a physical iPhone** — every automated iOS result
+  is simulator+debug+Apple Silicon while the shipped artifact is device+release+arm64; Android had
+  one axis of divergence, iOS has three. **`data-rebuild` must never move to a macOS runner** — the
+  `LD_PRELOAD` of self-compiled SQLite 3.43.2 has no macOS equivalent (`DYLD_INSERT_LIBRARIES` is
+  SIP-blocked) and moving it re-opens the defect that sat red for six weeks.
+  **Owner critical path (multi-day latency, start regardless):** Apple Developer Program enrolment
+  ($99; Individual puts your legal name publicly as seller) → App Store Connect record (reserves the
+  globally-unique name) → **App Groups enabled AT bundle-ID registration** (`RELEASING-IOS.md` Step 2
+  was corrected today — it previously said to register with all capabilities off; three separate
+  actions, and getting it wrong invalidates every provisioning profile and turns a storage decision
+  into a live user-data migration) → a **privacy policy, which does not exist and blocks
+  submission**. Also: no Xcode on this machine (CLT only), 126 GB free disk, system Ruby 2.6.10.
+  **Open owner question not yet answered:** `A11Y-03` — `Role.Button` on every verse means VoiceOver
+  announces each verse of scripture as "button". Must be decided **before** the 3–4h first VoiceOver
+  pass is scheduled, or that pass produces a finding it cannot act on.
+- Next up (Android, non-blocking): monitor **crash/ANR vitals + reviews** for 1.8.1 (Play Console →
+  Monitor and improve; the two minor edge-to-edge "recommended actions" remain noted). The Play
+  store-title rename ("Daily Bible Reading Planner") was submitted 2026-07-25. Still pending: the
+  accumulated **string/tone sign-offs**, and the open **App Check / `POLICY_ON_ATTESTATION_FAIL=allow`**
+  security item on the Bible proxy. Note the Android feature freeze above — the iOS port now owns the
+  roadmap, and no `ProgressDatabase` schema change may ship until it lands.
 ## The reading plan
 
 Three parallel streams through scripture, one portion each per day:
