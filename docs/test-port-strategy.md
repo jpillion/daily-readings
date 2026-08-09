@@ -33,6 +33,8 @@ Two prior figures were wrong and are corrected:
 | Robolectric files / tests | 29 files | **29 files / 278 tests** | `^import org.robolectric` |
 | Compose-harness tests | 201 | **201** ✓ (17 files, all also Robolectric) | `createComposeRule` |
 | Reach `commonTest` | 855 (91%) | **842 (89.6%)**, of which 18 are contingent | §2 — **the earlier 855 was a coarse estimate; this is the file-level number** |
+| Backticked test names | — | **843** (every `@Test` in the repo; zero backticked helpers) | `fun \`…\`` across 117 test files |
+| …rejected by Kotlin/Native (`,` `(` `)`) | — | **120** across 47 files | §12 — **the single largest mechanical blocker to `commonTest`, and invisible until the first native compile** |
 
 Two greps that look right and are not, recorded so nobody repeats them: `grep -l "Robolectric"`
 matches KDoc prose (`VerseSelectionTest` says "pinned pure (no Robolectric)") — match
@@ -561,8 +563,246 @@ make it *visible* when it happens. They cannot prevent it. Only scheduled owner 
 | Phase | Test work | Gate |
 |---|---|---|
 | **Gate 0** | Nothing. Spikes only — but the gesture rig result is recorded against parity **SEL-01** as the first real evidence in the matrix | R5 pass/fail |
+| **Step 0** (before *any* conversion) | **The 120 comma- and paren-bearing test names are renamed, in one commit, alone** — §12. Nothing moves to `commonTest` until this has landed and been proven a JVM no-op | 940 executed, six gates 11/10/8/6/18/5, zero `@Test` deleted |
 | **Phase 1** (Android-only, 3 Play releases) | The `java.time` → `kotlinx-datetime` mutation sweep (§7 item 1). The `MainDispatcherRule` redesign (§4) and its fallout triage. Koin `checkModules()` + the ViewModel-init rule (§8 part 3). PG-1/PG-2/PG-3 persistence fixtures | Each release's own gate, per D-PORT-7 |
 | **Phase 2** (core → iOS) | Category A ports first, then B incrementally. The four plan gates → `commonTest`. **GATE-07 and GATE-08 written, and GATE-08 proven to fail** | Tier-1 gates green on iOS targets; GATE-07/09 green on simulator |
 | **Phase 3** (UI + shell) | Category C: 201 tests → `runComposeUiTest`. The ~19 locale-formatted pins split (§5) | Every screen renders; **the reader gesture pass on hardware** |
 | **Phase 4** (platform + delivery) | ≈80–90 net-new iOS tests. `ios-release-smoke` built and wired | A tagged commit reaches TestFlight with no local step |
 | **Phase 5** (hardening) | Full device pass, VoiceOver pass, mutation re-kill sweep completed | **Parity matrix clean** — no `DEFECT`, no shipping-feature row `UNVERIFIED` at T4 |
+
+---
+
+## 12. Test names: 120 of 843 do not compile on Kotlin/Native
+
+**Found by** Sr Shared-Core, compiling for a real Apple target: `Name contains illegal characters`.
+**Counts independently re-derived here.** The scope grew once during this work and the growth is the
+most important thing in this section.
+
+### The finding, after the probe
+
+The first report was "the comma is illegal" — 85 names. Recording that as **INFERRED** rather than
+accepting it, on the grounds that it might describe *the files that were compiled* rather than the
+population, is what prompted a deliberate probe: one throwaway file containing **one test name per
+character observed anywhere in the suite**, compiled for `iosSimulatorArm64`.
+
+**The probe found parentheses are rejected too — another 42 names.** They had been carried as
+"reported OK". It also cleared the em dash, which had been held out as the suspicious one.
+
+| Character | Names | Verdict |
+|---|---|---|
+| `,` U+002C | 85 | **REJECTED** |
+| `(` `)` U+0028/29 | **42** | **REJECTED** — found only by the probe |
+| `—` U+2014 | 6 | **ACCEPTED** — the one non-ASCII character, and it is fine |
+| `-` `'` `_` `=` `+` | 420 | ACCEPTED |
+
+**True scope: 120 distinct names across 47 files** (85 comma + 42 paren − 7 carrying both) — about
+**40% more than the comma count alone**. Found before the conversion rather than during it.
+
+The probe is **non-vacuous**: the comma row is a positive control and fired, and the compiler emits
+every illegal name in one pass, so the ACCEPTED verdicts are real rather than an artefact of
+compilation stopping at the first error. An independent scan of all 843 names confirms the only
+out-of-allowlist characters anywhere are `,` `(` `)`.
+
+**The verified allowlist is `A–Z a–z 0–9 space - ' _ = + —`,** and it is now complete *for this
+codebase* — not "the observed set minus the known-bad one."
+
+### Two reconciled counts, recorded so they are not re-litigated
+
+- **85, not 86.** The 86 came from a grep that did not strip comments; one match was inside a
+  comment. A name in a comment never reaches the compiler.
+- **843 pre-existing backticked names**, all `@Test`, zero backticked helpers. The suite now reports
+  **847** because `TestNamePortabilityGateTest` (below) adds four of its own.
+
+### The convention: four ordered substitutions and exactly one named exception
+
+The comma rule was a single unambiguous substitution. **Parens are a different shape** — they wrap a
+qualifier rather than separate a list, so position matters. Measured: **37 trailing**, **4 mid-name**,
+**1 embedded with no preceding space**.
+
+Applied in order, to the backticked name only:
+
+| # | Rule | Purpose |
+|---|---|---|
+| 1 | `", "` → `" - "` | comma |
+| 2 | `" ("` → `" - "` | opening paren |
+| 3 | `")"` at end of name → *(delete)* | trailing qualifier |
+| 4 | `") "` → `" - "` | mid-name qualifier, closing side |
+
+Rules 3 and 4 exist because deleting the closing paren everywhere reads as a meaning change on the
+four mid-name cases — `density (dp sizing) is not affected` would become `density - dp sizing is not
+affected`, which parses as a different claim. With rule 4 it becomes `density - dp sizing - is not
+affected`, which does not.
+
+**The one exception, named in full so the diff stays reviewable:**
+
+```
+strip invariant - plain equals strip(markup) - and a11y has no tags
+  ->  strip invariant - plain equals strip of markup - and a11y has no tags
+```
+
+It is the only name where `(` is not preceded by a space; the mechanical rules would produce
+`strip - markup`, which is not what the test asserts.
+
+**Verified over all 120:** **0 names still contain an illegal character** after the transform,
+**0 collisions** within any class, and **0 double, leading or trailing spaces**. Worked examples:
+
+```
+copySelection exits selection mode (P-Q-1, owner-decided)
+  ->  copySelection exits selection mode - P-Q-1 - owner-decided
+
+a non-contiguous portion opens the first ref's chapter in Browse, never Genesis 1 (D-SEG-7)
+  ->  a non-contiguous portion opens the first ref's chapter in Browse - never Genesis 1 - D-SEG-7
+
+the two-book portion (2 John + 3 John) renders as one combined page
+  ->  the two-book portion - 2 John + 3 John - renders as one combined page
+```
+
+One separator (`" - "`) is used throughout rather than mixing in the em dash, so the whole Step-0
+change states as four rules. The 6 existing em-dash names are legal and are **not** touched.
+
+**Rejected alternatives:** deleting the comma outright (enumerations run together — `no dialog no
+write`); `;` or `:` (illegal on the JVM too — trades a native-only failure for a universal one);
+hand-rewording all 120 — **rejected on auditability, not effort**: a scripted substitution is
+reviewable with one regex, 120 bespoke rewordings are not, and they invite "while I'm here" edits
+that destroy the attribution the commit exists to provide.
+
+**Accepted cosmetic cost:** 25 of the comma names already contain `" - "`, so they end up with two
+dash separators. The codebase currently uses `-` for *scenario → qualifier* and `,` for *enumeration*;
+a blanket rule flattens that. Readability regression, not correctness — and the price of a change
+that can be verified by regex.
+
+### Sequencing: one discrete commit, before any conversion
+
+Exactly as `p1-06` precedes `p1-07`.
+
+1. **Attribution.** ~120 native errors inside a PR that is *also* moving assertion library, source
+   set and production code reads as "the conversion broke something." It did not. Same shape as
+   1.7.0's R8-only crash and sprint-00F's unopened asset: the failure appears far from its cause,
+   under a configuration not routinely exercised.
+2. **It is provably behaviour-free on the JVM today.** Identifier text only — so it is verified to
+   this repo's normal standard (**940 executed, six gates 11/10/8/6/18/5, zero `@Test` deleted, no
+   diff outside backticked `fun` names**) *before a Kotlin/Native toolchain exists on any machine*.
+3. **Repo-wide**, not just files heading for `commonTest`: membership is still moving, a partial
+   rename cannot be guarded by a repo-wide assertion, and doing it twice costs two attribution
+   windows.
+
+**Blast radius, measured:** ad-hoc `--tests` filters break; **2 documentation references**, both in
+`docs/task-briefs/gate0-minor-spikes.md` (Sr Shared-Core's, updated in the same window); and
+**`CLAUDE.md` is NOT affected** — a full-text scan against every offender returns zero matches, so no
+edit to it should be budgeted.
+
+### The standing gate — `TestNamePortabilityGateTest`
+
+A one-time count rots. `app/src/test/kotlin/com/jpillion/dailyreadingplanner/TestNamePortabilityGateTest.kt`
+scans every test source root and asserts each backticked `fun` name matches the allowlist.
+
+**It is an allowlist, not a comma denylist** — and the paren discovery is the proof that this
+mattered. A denylist would have encoded the comma and silently admitted all 42 paren names. Widening
+it requires a native probe compile with the evidence in the commit message; never to make a red build
+green.
+
+Design points, each answering a way this class of check fails silently:
+
+- **Comment-aware.** A name inside a comment never reaches the compiler, so failing on one is a false
+  positive — the exact discrepancy that produced the 86-vs-85 confusion.
+- **Explicit `MODULES` list, not a glob.** A glob picks up the agent worktrees under `.claude` (a
+  full second copy of the repo) and the probes under `spikes`. A separate test then asserts **no
+  unlisted module has test sources**, so being explicit cannot silently leave a module unscanned —
+  `shared` is already listed, and is covered the day `shared/src/commonTest/kotlin` exists.
+- **A vacuity guard**, because a check that scans nothing passes forever.
+- **A 120-name quarantine that is exact in both directions**: nothing can be added without editing
+  the file, and nothing can be left behind. **The Step-0 rename's proof of completeness is therefore
+  mechanical — it deletes the quarantine and the gate stays green.**
+
+It runs inside `testDebugUnitTest`, so it needs **no `ci.yml` change**.
+
+**Fail-demonstrated, all four assertions, each restored byte-identically** (SHA-256
+`eba53a38…8140`):
+
+| # | Injected fault | Result |
+|---|---|---|
+| D1 | A new, unquarantined name with parens and a comma | allowlist test **FAILS**, naming file, name and each illegal character |
+| D2 | One quarantine entry renamed to something nonexistent | stale-entry test **FAILS** — and the allowlist test fails too, since that live name is no longer covered |
+| D3 | `MODULES` pointed at a module that does not exist | vacuity, quarantine and unlisted-module tests **FAIL** |
+| D4 | `app` removed from `MODULES` | same three **FAIL** |
+
+**The most useful result is what D3 and D4 show about the main assertion:** with the scan finding
+nothing, `every backticked test name uses only characters proven to compile` **passed**. Vacuously.
+That is the same failure mode as the release-AAB check that passed twice over a bundle containing the
+schemas, and it is the whole reason the vacuity and unlisted-module tests exist alongside it.
+
+### Executed 2026-08-08 (`p1-09`) — three findings from applying it at scale
+
+**Result: 120 names across 47 files renamed; 0 remaining illegal characters, 0 collisions, 0 spacing
+artefacts, and a `git diff` of 47 files / 120 insertions / 120 deletions with 0 lines outside
+backticked `fun` names.** The convention held. Three things it did not anticipate:
+
+**1. A second named exception was forced — by line length, not by Kotlin.** The substitutions are
+net +1 character per comma or paren pair. Exactly one line in the suite sat at *exactly* 120 columns
+and became 121, failing `ktlint standard:max-line-length`:
+
+```
+PlanSwitchIntegrationTest.kt:82
+  selecting M'Cheyne makes the day live-emit the 4-stream plan, then switching back restores Bible Companion
+```
+
+**This is deliberately NOT a fifth rule.** One name in 843 is affected; a general rule inferred from
+a single case would be worse than an enumerated exception. For this name alone, rule 1 becomes
+`", "` → `" "` (drop the comma, keep the separator implicit):
+
+```
+  ->  selecting M'Cheyne makes the day live-emit the 4-stream plan then switching back restores Bible Companion
+```
+
+**Every word of the original name is preserved** — only the separator differs — which is why this
+was chosen over deleting a word. It reads correctly because "then" already carries the sequencing
+the comma was marking. It is the rejected "delete the comma" alternative applied as a *scoped*
+exception, and it is safe here for the reason that alternative was rejected in general: this is a
+clause boundary, not an enumeration.
+
+**For a future rename: check line lengths before choosing a separator.** A +1-character
+substitution against a 120-column limit will find every line already sitting on the boundary.
+
+**2. The diff-shape criterion must be commit-scoped, not working-tree-scoped.** Measured across the
+whole tree it read **29** non-conforming lines. All 29 belonged to a *different, already-accepted*
+task (the `ProgressMigrationTest` KDoc correction from `p1-08`) that happened to be uncommitted in
+the same tree. Scoped to the rename it is **0**.
+
+> ### ⚠ STANDING CAUTION — every "no diff outside X" criterion in this program
+>
+> **A measurement taken over a shared working tree attributes other agents' lines to your change.**
+> This is the Step-0 attribution argument reappearing one level down, and it is not specific to
+> `p1-09`: this repository now routinely carries **four or five agents' uncommitted work in one
+> tree** at the same time.
+>
+> `p1-09`'s own numbers are the demonstration — **29 whole-tree versus 0 rename-scoped**, for a
+> change that was in fact perfectly clean. Had the criterion been read at face value it would have
+> failed a compliant change; had it read 0 while someone else's non-compliant lines sat in the tree,
+> it would have passed a non-compliant one. **It is wrong in both directions.**
+>
+> **Therefore, for any criterion of the form "the diff contains no change outside X":**
+> 1. **State the pathspec the number was measured over**, in the report, next to the number. A bare
+>    number is not a measurement — `git diff -- <paths> ':(exclude)<other-agents-files>'`.
+> 2. **Stage with an explicit pathspec, never `git add <dir>`.** A directory-wide add sweeps in
+>    whatever else is in the tree and destroys the attribution the commit exists to provide.
+> 3. **Re-measure against the staged set** (`git diff --cached`) before committing, not against the
+>    working tree. What you commit is what a reviewer sees; what is in your tree is not.
+>
+> This applies to `p1-05`, `p2-08` and every conversion brief that inherits R10.
+
+**3. Deleting the quarantine removes a test, so the expected count moves 944 → 943.** The quarantine
+test had no subject once the list was gone, and keeping it as an assertion over an empty list would
+have been exactly the vacuous check this section argues against. The gate is **3 tests**, and the
+suite is **953 total / 943 executed / 10 skipped**. Queued, deliberately NOT absorbed into this
+commit: a literal pin on `ALLOWED_CHARACTERS`, so that widening the allowlist is a visible edit
+rather than a silent one.
+
+### Acceptance criteria this adds to other briefs
+
+> **The Step-0 rename (§12 of `test-port-strategy.md`) has already landed on `main` before this brief
+> begins.** No test moved by this brief may contain a comma or a parenthesis in its backticked name,
+> and `TestNamePortabilityGateTest` must be green over the destination source set — including
+> `shared/src/commonTest` once it exists, which requires `shared` to be in its `MODULES` list. If a
+> native compile in this brief produces `Name contains illegal characters`, **stop**: that is a
+> Step-0 escape, not a conversion defect, and it is fixed in its own commit.
+

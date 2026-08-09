@@ -32,6 +32,14 @@ either true on the device in your hand or it is not.
 | **Evidence** | A concrete artifact. See §4. `—` means none, which forces `UNVERIFIED`. |
 | **Ref** | ADR / decision id / sprint / issue that governs the row. |
 
+> **⚠ `G*` is ambiguous across this program — always qualify it.** In this table's **Ref** column,
+> `G1`–`G8` mean the **gaps in [`ios-port-approach.md`](ios-port-approach.md)** (G4 = font scaling,
+> G5 = navigation feel, G8 = long-press on scripture, …). The **reader gesture rig** brief uses
+> `G1`–`G6` for an entirely **separate** set of on-device gesture checks (G1 = long-press registers,
+> G5 = no iOS system text UI, …). The two schemes share notation and appear in adjacent rows.
+> **Any reference to the rig's checks must say "the gesture rig's G*" explicitly**; a bare `G5` in
+> this document means the approach doc's navigation gap, not the rig's system-text-UI check.
+
 ---
 
 ## 2. The four verification tiers
@@ -257,14 +265,14 @@ The project's core IP. Six gates today; two new iOS gates required.
 
 | ID | Behavior (Android = the oracle) | Tier | Status | Evidence | Ref |
 |---|---|---|---|---|---|
-| SEL-01 | **Long-press on a verse enters selection mode** — inside a `LazyColumn` inside a `HorizontalPager`, on physical hardware | T4 | UNVERIFIED | — | **R5 — the port's highest technical risk.** Synthetic `longClick()` is explicitly not evidence |
-| SEL-02 | In selection mode, tapping a verse adds or removes it | T3 | UNVERIFIED | — | Sprint 00Q |
+| SEL-01 | **Long-press on a verse enters selection mode** — inside a `LazyColumn` inside a `HorizontalPager`, on physical hardware | T4 | **UNVERIFIED — gate waived by owner 2026-08-08, zero of the gesture rig's G1–G6 executed, deferred to Phase 3's hardware pass** | — | **R5 — the port's highest technical risk.** Synthetic `longClick()` is explicitly not evidence; ADR-0004 |
+| SEL-02 | In selection mode, tapping a verse adds or removes it | T3 | **UNVERIFIED — the gesture rig's G6 would have given early hardware evidence; waived by owner 2026-08-08. Tier is unchanged: still closable at T3** | — | Sprint 00Q; ADR-0004 |
 | SEL-03 | The X in the contextual bar exits selection | T3 | UNVERIFIED | — | Sprint 00Q |
 | SEL-04 | Deselecting the last verse exits selection | T1 | UNVERIFIED | — | Sprint 00Q |
 | SEL-05 | Copy exits selection, and the copy is taken from the selection captured **before** the clear | T1 | UNVERIFIED | — | P-Q-1 (owner, 2026-07-25) |
 | SEL-06 | Hardware back exits selection | — | **N/A-IOS** | ios-port-approach §3 N6, owner-signed 2026-08-08 | iOS has no back button |
 | SEL-06a | **No invented substitute gesture** for the missing back exit (no swipe-to-clear that Android lacks) | T3 | UNVERIFIED | — | §3 N6 |
-| SEL-07 | Changing page clears the selection; in a Reading context the "page" is the whole combined portion | T1 | UNVERIFIED | — | D-Q-3 |
+| SEL-07 | Changing page clears the selection; in a Reading context the "page" is the whole combined portion | T1 | **UNVERIFIED — the gesture rig's G6 would have given early hardware evidence; waived by owner 2026-08-08. Tier is unchanged: still closable at T1 and NOT blocked on hardware** | — | D-Q-3; ADR-0004 |
 | SEL-08 | The clipboard payload is text first, citation last: `… — Genesis 1:1–2 (KJV)` | T1 | UNVERIFIED | — | D-Q-1 |
 | SEL-09 | Contiguous verses collapse to a range; non-contiguous join with commas; cross-chapter groups by chapter; cross-book by book | T1 | UNVERIFIED | — | `VerseClipboardFormatter` |
 | SEL-10 | Psalm 23 cites **singular** in the clipboard, via `singularizeBookName` — never re-derived | T1 | UNVERIFIED | — | D-UI-2 |
@@ -274,7 +282,7 @@ The project's core IP. Six gates today; two new iOS gates required.
 | SEL-14 | A short tap opens a three-item verse menu: Open in `<app>` / Copy this verse / Select verses | T3 | UNVERIFIED | — | Sprint 00Q |
 | SEL-15 | Every menu item dismisses the menu before acting | T3 | UNVERIFIED | — | sprint-00Q mutation finding |
 | SEL-16 | "Select verses" is the screen-reader-reachable equivalent of long-press | T4 | UNVERIFIED | — | Sprint 00Q a11y build requirement |
-| SEL-17 | **Long-press does not trigger the iOS system text magnifier / grab handles / system Copy** | T4 | UNVERIFIED | — | **G8 — a product question as much as a technical one** |
+| SEL-17 | **Long-press does not trigger the iOS system text magnifier / grab handles / system Copy** | T4 | **UNVERIFIED — gate waived by owner 2026-08-08, the gesture rig's G5 not executed, deferred to Phase 3's hardware pass** | — | **G8 (approach-doc gap) — a product question as much as a technical one**; ADR-0004 |
 | SEL-18 | The verse spoken label does **not** begin "Open …" — the affordance lives in `onClickLabel` | T3 | UNVERIFIED | — | Sprint 00Q rewording |
 
 ### 5.7 External Bible destinations
