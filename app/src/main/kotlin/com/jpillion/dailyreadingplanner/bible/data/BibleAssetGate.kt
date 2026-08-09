@@ -1,8 +1,8 @@
 package com.jpillion.dailyreadingplanner.bible.data
 
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.jpillion.dailyreadingplanner.platform.AppFilePaths
 import kotlinx.coroutines.runBlocking
+import okio.FileSystem
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,12 +26,18 @@ import javax.inject.Singleton
  * The persisted version key lives in the existing DataStore alongside every other setting; this
  * is NOT user-writable data inside `bible.db` (the converse rule of D-V3-8 — bible.db is wiped
  * on every content bump, so user data stays in ProgressDatabase).
+ *
+ * p1-04: the database directory now comes from [AppFilePaths] instead of `Context.getDatabasePath`.
+ * Same file on Android — `getDatabasePath(name)` IS `<databases dir>/<name>` — but the *location*
+ * decision now has one home, which matters because on iOS the answer is the App Group container
+ * and not the sandbox default (D-PORT-4).
  */
 @Singleton
 class BibleAssetGate
     @Inject
     constructor(
-        @ApplicationContext private val context: Context,
+        private val appFilePaths: AppFilePaths,
+        private val fileSystem: FileSystem,
         private val assetVersionStore: BibleAssetVersionStore,
     ) {
         /**
@@ -44,7 +50,8 @@ class BibleAssetGate
             runBlocking {
                 val stored = assetVersionStore.read()
                 BibleAssetVersion.ensureCurrent(
-                    databaseFile = context.getDatabasePath(databaseName),
+                    fileSystem = fileSystem,
+                    databaseFile = appFilePaths.databases / databaseName,
                     stored = stored,
                     persist = { newVersion -> runBlocking { assetVersionStore.write(newVersion) } },
                 )

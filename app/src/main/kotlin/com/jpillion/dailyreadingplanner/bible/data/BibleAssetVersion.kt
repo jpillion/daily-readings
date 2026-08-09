@@ -1,6 +1,8 @@
 package com.jpillion.dailyreadingplanner.bible.data
 
-import java.io.File
+import okio.FileSystem
+import okio.Path
+import okio.Path.Companion.toPath
 
 /**
  * VA-T7 / ESpec-v3 §4.3, D-V3-8 — asset content-version + re-copy-on-update.
@@ -13,6 +15,12 @@ import java.io.File
  * path BEFORE the Room builder runs — forcing createFromAsset to re-copy — then persists the new
  * version. This is a content-driven re-copy, NOT a Room migration (the schema never changes for a
  * text correction).
+ *
+ * ADR-0007 A3.3 raises the stakes on the delete: Room restamps the copied `bible.db` on first
+ * open, so every shipped device is thereafter in the state where the schema hash IS compared, and
+ * this deletion is the ONLY route by which a corrected asset reaches an existing install. Its
+ * failure mode is silence — nothing breaks, users simply keep the old text — which is why the
+ * `-wal`/`-shm` sidecars are enumerated explicitly rather than left to a directory sweep.
  *
  * The compare-and-delete logic is a pure, JVM-testable function ([shouldRecopy] / [ensureCurrent]
  * with injected seams); the DataStore read/write is supplied by the caller (di/BibleModule).
@@ -41,10 +49,11 @@ object BibleAssetVersion {
      * version persistence are the only side effects, both via injected seams.
      */
     fun ensureCurrent(
-        databaseFile: File,
+        fileSystem: FileSystem,
+        databaseFile: Path,
         stored: Int?,
         constant: Int = ASSET_CONTENT_VERSION,
-        deleteFiles: (File) -> Unit = ::deleteDatabaseFiles,
+        deleteFiles: (Path) -> Unit = { deleteDatabaseFiles(fileSystem, it) },
         persist: (Int) -> Unit,
     ): Boolean {
         if (!shouldRecopy(constant, stored)) return false
@@ -53,9 +62,18 @@ object BibleAssetVersion {
         return true
     }
 
-    /** Deletes the copied Room DB and its WAL/SHM sidecars so createFromAsset re-copies. */
-    fun deleteDatabaseFiles(databaseFile: File) {
-        listOf(databaseFile.path, "${databaseFile.path}-wal", "${databaseFile.path}-shm")
-            .forEach { File(it).delete() }
+    /**
+     * Deletes the copied Room DB and its WAL/SHM sidecars so createFromAsset re-copies.
+     *
+     * `mustExist = false` is the okio spelling of the `File.delete()` this replaced, which
+     * returned false rather than throwing when the file was absent — the fresh-install case,
+     * where the copied DB does not exist yet, must stay a silent no-op.
+     */
+    fun deleteDatabaseFiles(
+        fileSystem: FileSystem,
+        databaseFile: Path,
+    ) {
+        listOf(databaseFile, "$databaseFile-wal".toPath(), "$databaseFile-shm".toPath())
+            .forEach { fileSystem.delete(it, mustExist = false) }
     }
 }

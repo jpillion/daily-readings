@@ -11,7 +11,10 @@ import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseRange
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
+import com.jpillion.dailyreadingplanner.platform.AndroidAppFilePaths
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import okio.FileSystem
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -70,7 +73,12 @@ class BibleRemoteModuleTest {
     @Test
     fun `provided cache round-trips and lives under the app cache dir`() =
         runTest {
-            val cache = BibleRemoteModule.provideBibleTextCache(context)
+            val cache =
+                BibleRemoteModule.provideBibleTextCache(
+                    FileSystem.SYSTEM,
+                    AndroidAppFilePaths(context),
+                    Dispatchers.IO,
+                )
 
             assertThat(cache.get("NKJV", range)).isNull() // cold
             cache.put("NKJV", range, listOf(kjvVerse))
@@ -90,7 +98,12 @@ class BibleRemoteModuleTest {
     @Test
     fun `a cache entry older than 14 days is a miss`() =
         runTest {
-            val cache = BibleRemoteModule.provideBibleTextCache(context)
+            val cache =
+                BibleRemoteModule.provideBibleTextCache(
+                    FileSystem.SYSTEM,
+                    AndroidAppFilePaths(context),
+                    Dispatchers.IO,
+                )
             cache.put("NKJV", range, listOf(kjvVerse))
             assertThat(cache.get("NKJV", range)).isNotNull() // fresh
 
@@ -110,7 +123,12 @@ class BibleRemoteModuleTest {
     @Test
     fun `reading an entry does not extend its refresh deadline`() =
         runTest {
-            val cache = BibleRemoteModule.provideBibleTextCache(context)
+            val cache =
+                BibleRemoteModule.provideBibleTextCache(
+                    FileSystem.SYSTEM,
+                    AndroidAppFilePaths(context),
+                    Dispatchers.IO,
+                )
             cache.put("NKJV", range, listOf(kjvVerse))
             val entry = context.cacheDir.walkTopDown().first { it.isFile && it.name.contains("nkjv") }
             val thirteenDaysAgo = System.currentTimeMillis() - 13L * 24 * 60 * 60 * 1000
@@ -124,7 +142,12 @@ class BibleRemoteModuleTest {
     @Test
     fun `provided cache keys by version`() =
         runTest {
-            val cache = BibleRemoteModule.provideBibleTextCache(context)
+            val cache =
+                BibleRemoteModule.provideBibleTextCache(
+                    FileSystem.SYSTEM,
+                    AndroidAppFilePaths(context),
+                    Dispatchers.IO,
+                )
             cache.put("NKJV", range, listOf(kjvVerse))
 
             assertThat(cache.get("NASB", range)).isNull()
@@ -142,7 +165,12 @@ class BibleRemoteModuleTest {
                 BibleRemoteModule.provideBibleTextResolver(
                     bundled = FakeBundled(listOf(kjvVerse)),
                     api = ForbiddenApi,
-                    cache = BibleRemoteModule.provideBibleTextCache(context),
+                    cache =
+                        BibleRemoteModule.provideBibleTextCache(
+                            FileSystem.SYSTEM,
+                            AndroidAppFilePaths(context),
+                            Dispatchers.IO,
+                        ),
                     fums = NoOpFumsReporter(),
                 )
 

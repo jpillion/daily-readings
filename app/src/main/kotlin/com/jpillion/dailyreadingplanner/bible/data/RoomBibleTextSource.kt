@@ -5,7 +5,8 @@ import com.jpillion.dailyreadingplanner.bible.domain.BibleTextSource
 import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseRange
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseText
-import kotlinx.coroutines.Dispatchers
+import com.jpillion.dailyreadingplanner.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -25,6 +26,9 @@ class RoomBibleTextSource
     constructor(
         private val verseDao: VerseDao,
         private val database: BibleDatabase,
+        // p1-04: `Dispatchers.IO` does not exist on Kotlin/Native. The qualifier is the one place
+        // the platform answer lives; on Android it still resolves to Dispatchers.IO.
+        @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : BibleTextSource {
         override suspend fun getVerses(range: VerseRange): List<VerseText> =
             verseDao
@@ -39,7 +43,7 @@ class RoomBibleTextSource
                 }
 
         override suspend fun translations(): List<BibleTranslation> =
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 val cursor =
                     database.openHelper.readableDatabase.query(
                         SimpleSQLiteQuery("SELECT code, name FROM translation ORDER BY id ASC"),
