@@ -67,7 +67,7 @@ class ChronologicalPlanVerificationTest {
     }
 
     @Test
-    fun `plan has exactly 365 days with correct per-month counts, no Feb 29, every date unique`() {
+    fun `plan has exactly 365 days with correct per-month counts - no Feb 29 - every date unique`() {
         assertThat(plan.days).hasSize(365)
         for (m in 1..12) {
             assertWithMessage("month $m day count")

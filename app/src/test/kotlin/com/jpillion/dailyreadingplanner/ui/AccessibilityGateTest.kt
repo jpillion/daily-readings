@@ -554,7 +554,7 @@ class AccessibilityGateTest {
     }
 
     @Test
-    fun `Q2 the menu a real verse tap opens is fully reachable - three items, 48dp, spoken words`() {
+    fun `Q2 the menu a real verse tap opens is fully reachable - three items - 48dp - spoken words`() {
         // Reached the way the user reaches it: a short tap on a verse while nothing is selected.
         // A menu that never opens would silently pass the direct-composition pin above.
         setStatefulReader()
@@ -570,7 +570,7 @@ class AccessibilityGateTest {
     }
 
     @Test
-    fun `Q2 the Select verses menu item genuinely enters selection mode (the TalkBack path)`() {
+    fun `Q2 the Select verses menu item genuinely enters selection mode - the TalkBack path`() {
         // THE spec requirement: long-press is not reliably reachable under TalkBack, so this menu
         // item is the equivalent path into selection — and it must actually get there, not merely
         // fire a callback. Proven end-to-end: the contextual action bar appears, the tapped verse

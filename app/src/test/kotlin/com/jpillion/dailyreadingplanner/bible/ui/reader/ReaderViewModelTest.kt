@@ -105,7 +105,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `a single Psalms chapter title is the singular Psalm N (D-UI-2)`() =
+    fun `a single Psalms chapter title is the singular Psalm N - D-UI-2`() =
         runTest {
             // Mutation anchor for the reader's singular branch: one Psalms chapter -> "Psalm 23".
             val model = vm()
@@ -114,7 +114,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `a multi-chapter Psalms portion title is the plural Psalms M to N (D-UI-2)`() =
+    fun `a multi-chapter Psalms portion title is the plural Psalms M to N - D-UI-2`() =
         runTest {
             // A portion spanning two Psalms chapters stays plural -> "Psalms 1–2" (en dash),
             // mirroring ReadingFormatter's run rule.
@@ -143,7 +143,7 @@ class ReaderViewModelTest {
      * pager opens.
      */
     @Test
-    fun `a picker jump out of Reading targets the picked chapter, not Genesis 1`() =
+    fun `a picker jump out of Reading targets the picked chapter - not Genesis 1`() =
         runTest {
             val model = vm()
             handoff.request(nt(Reference(james, 1), Reference(james, 2)))
@@ -258,7 +258,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `swiping out of the portion and back shows the SAME combined portion page (consistency)`() =
+    fun `swiping out of the portion and back shows the SAME combined portion page - consistency`() =
         runTest {
             val model = vm()
             handoff.request(nt(Reference(james, 1), Reference(james, 2)))
@@ -280,7 +280,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `an end-of-book portion flanks into the next book (James 4-5 then 1 Peter 1)`() =
+    fun `an end-of-book portion flanks into the next book - James 4-5 then 1 Peter 1`() =
         runTest {
             // James has exactly 5 chapters, so the spec's "James 4–5" portion ends the book — the
             // page right of the portion is 1 Peter 1 (the canon successor), then 1 Peter 2.
@@ -295,7 +295,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `the two-book portion (2 John + 3 John) renders as one combined page`() =
+    fun `the two-book portion - 2 John + 3 John - renders as one combined page`() =
         runTest {
             val model = vm()
             handoff.request(
@@ -314,7 +314,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `a non-contiguous portion opens the first ref's chapter in Browse, never Genesis 1 (D-SEG-7)`() =
+    fun `a non-contiguous portion opens the first ref's chapter in Browse - never Genesis 1 - D-SEG-7`() =
         runTest {
             // THE Ticket-1 regression pin. Chronological 07/25 is ONE portion whose refs are NOT a
             // contiguous ascending global-chapter run: Psalms 76 precedes Isaiah 37 in canon order,
@@ -345,7 +345,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `tapping the Bible tab resets a Reading context to single-chapter Browse (D-I-2)`() =
+    fun `tapping the Bible tab resets a Reading context to single-chapter Browse - D-I-2`() =
         runTest {
             val model = vm()
             handoff.request(nt(Reference(james, 1), Reference(james, 2)))
@@ -404,7 +404,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `externalApp reflects the stored setting and updates reactively (Sprint K footer hint)`() =
+    fun `externalApp reflects the stored setting and updates reactively - Sprint K footer hint`() =
         runTest {
             // Seeds with the default, then mirrors a Settings change live (the footer hint is driven
             // by this flow). A collector keeps the WhileSubscribed stateIn hot.
@@ -456,7 +456,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `settling on another page clears the selection (D-Q-3)`() =
+    fun `settling on another page clears the selection - D-Q-3`() =
         runTest {
             // Selection scope is the current page: swiping away must not leave an invisible
             // off-screen selection alive. (Mutation target: dropping the onPageChanged call.)
@@ -469,7 +469,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `a context switch resets the selection (a whole new page-index space)`() =
+    fun `a context switch resets the selection - a whole new page-index space`() =
         runTest {
             val model = vm()
             model.onVerseLongPressed(genesis1Page, VerseId.encode(1, 1, 1))
@@ -487,7 +487,7 @@ class ReaderViewModelTest {
      * the banner cannot follow it.
      */
     @Test
-    fun `a degraded page cites the served version, not the selected one`() =
+    fun `a degraded page cites the served version - not the selected one`() =
         runTest {
             settings.storedBibleVersion.value = BibleVersion.NKJV
             val model = offlineVm()
@@ -527,7 +527,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `copySelection exits selection mode (P-Q-1, owner-decided)`() =
+    fun `copySelection exits selection mode - P-Q-1 - owner-decided`() =
         runTest {
             // P-Q-1: the owner chose the note-taking / mail idiom — Copy completes the task and
             // returns the user to reading. The sprint originally shipped the spec-literal reading
@@ -610,7 +610,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `a copy from the combined portion page spans its chapters (the reader's real selection scope)`() =
+    fun `a copy from the combined portion page spans its chapters - the reader's real selection scope`() =
         runTest {
             // D-Q-3: a page is one chapter in Browse but a WHOLE portion in Reading, so a selection
             // inside a portion legitimately crosses chapters — the citation must group by chapter.
@@ -631,7 +631,7 @@ class ReaderViewModelTest {
         }
 
     @Test
-    fun `versionState offers every version the app can show, selected from the setting`() =
+    fun `versionState offers every version the app can show - selected from the setting`() =
         runTest {
             // Sprint 00R step 4 supersedes D-N-1's asset-table lookup for this control: NKJV and
             // NASB are served from the proxy and are not in the bundled artifact, so the catalog is

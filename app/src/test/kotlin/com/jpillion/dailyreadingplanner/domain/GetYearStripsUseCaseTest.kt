@@ -44,7 +44,7 @@ class GetYearStripsUseCaseTest {
     private fun june(day: Int): LocalDate = LocalDate.of(2026, 6, day)
 
     @Test
-    fun `array covers the whole year - one entry per calendar day, all streams`() =
+    fun `array covers the whole year - one entry per calendar day - all streams`() =
         runTest {
             val strips = strips()
             assertThat(strips.year).isEqualTo(2026)
@@ -73,7 +73,7 @@ class GetYearStripsUseCaseTest {
         }
 
     @Test
-    fun `today unmarked is NEUTRAL - grace, never red while the day is still in progress`() =
+    fun `today unmarked is NEUTRAL - grace - never red while the day is still in progress`() =
         runTest {
             // Yesterday red proves the walk reaches this region; today must stay neutral.
             val strips = strips()
@@ -124,7 +124,7 @@ class GetYearStripsUseCaseTest {
         }
 
     @Test
-    fun `boundary day 1 - Jan 1 is classified, not skipped`() =
+    fun `boundary day 1 - Jan 1 is classified - not skipped`() =
         runTest {
             progress.setRead(LocalDate.of(2026, 1, 1), 1, isRead = true)
             val strips = strips()
@@ -135,7 +135,7 @@ class GetYearStripsUseCaseTest {
         }
 
     @Test
-    fun `boundary day 365 - Dec 31 is classified, not truncated`() =
+    fun `boundary day 365 - Dec 31 is classified - not truncated`() =
         runTest {
             progress.setRead(LocalDate.of(2026, 12, 31), 3, isRead = true)
             val strips = strips()

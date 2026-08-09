@@ -81,7 +81,7 @@ class DeliverDueReminderUseCaseTest {
         }
 
     @Test
-    fun `Feb 29 has no scheduled readings - quietly skipped, alarm still re-armed`() =
+    fun `Feb 29 has no scheduled readings - quietly skipped - alarm still re-armed`() =
         runTest {
             // R-REM-5 (mutation target M-S12-2: drop the Scheduled type check and this fails).
             settings.storedReminderEnabled.value = true
@@ -91,7 +91,7 @@ class DeliverDueReminderUseCaseTest {
         }
 
     @Test
-    fun `a stale alarm after disabling does nothing - no notification, no re-arm`() =
+    fun `a stale alarm after disabling does nothing - no notification - no re-arm`() =
         runTest {
             settings.storedReminderEnabled.value = false
             useCase(ordinaryDay)()
@@ -101,7 +101,7 @@ class DeliverDueReminderUseCaseTest {
         }
 
     @Test
-    fun `re-arm uses the currently persisted time, not a captured one`() =
+    fun `re-arm uses the currently persisted time - not a captured one`() =
         runTest {
             settings.storedReminderEnabled.value = true
             settings.storedReminderTime.value = LocalTime.of(6, 45)

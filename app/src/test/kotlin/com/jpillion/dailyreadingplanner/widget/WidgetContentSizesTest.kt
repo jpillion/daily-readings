@@ -91,7 +91,7 @@ class WidgetContentSizesTest {
     }
 
     @Test
-    fun `the date header is a height decision - tall tiers keep it, short tiers spend the room on readings`() {
+    fun `the date header is a height decision - tall tiers keep it - short tiers spend the room on readings`() {
         assertThat(showsHeader(WidgetLayout.LARGE, LARGE_SIZE)).isTrue()
         assertThat(showsHeader(WidgetLayout.MEDIUM, MEDIUM_SIZE)).isTrue()
         assertThat(showsHeader(WidgetLayout.MEDIUM, MEDIUM_SHORT_SIZE)).isFalse()
@@ -239,7 +239,7 @@ class WidgetContentSizesTest {
         }
 
     @Test
-    fun `tiny keeps the Feb 29 state, spoken`() =
+    fun `tiny keeps the Feb 29 state - spoken`() =
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(TINY_SIZE)
@@ -252,7 +252,7 @@ class WidgetContentSizesTest {
         }
 
     @Test
-    fun `small keeps the dated Feb 29 state, spoken`() =
+    fun `small keeps the dated Feb 29 state - spoken`() =
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(SMALL_SIZE)
@@ -266,7 +266,7 @@ class WidgetContentSizesTest {
         }
 
     @Test
-    fun `tiny load failure degrades, spoken, and stays tappable`() =
+    fun `tiny load failure degrades - spoken - and stays tappable`() =
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(TINY_SIZE)

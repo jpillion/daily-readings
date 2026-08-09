@@ -104,7 +104,7 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
-    fun `tracking start round-trips, including a leap day - no epoch-day off-by-one`() =
+    fun `tracking start round-trips - including a leap day - no epoch-day off-by-one`() =
         themeTest { repository, _ ->
             repository.setTrackingStartDate(LocalDate.of(2026, 6, 10))
             assertThat(repository.trackingStartDate.first()).isEqualTo(LocalDate.of(2026, 6, 10))
@@ -147,7 +147,7 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
-    fun `reminder time round-trips, including midnight and 23-59 boundaries`() =
+    fun `reminder time round-trips - including midnight and 23-59 boundaries`() =
         themeTest { repository, _ ->
             repository.setReminderTime(LocalTime.of(21, 15))
             assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(21, 15))

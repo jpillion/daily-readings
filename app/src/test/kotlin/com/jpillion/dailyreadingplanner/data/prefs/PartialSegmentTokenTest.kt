@@ -10,7 +10,7 @@ import org.junit.Test
  */
 class PartialSegmentTokenTest {
     @Test
-    fun `round-trips every field, including negative epoch days and multi-digit indexes`() {
+    fun `round-trips every field - including negative epoch days and multi-digit indexes`() {
         val cases =
             listOf(
                 PartialSegmentToken.Parsed("bible_companion", 20_640L, 1, 0),

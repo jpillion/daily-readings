@@ -19,7 +19,7 @@ class TrackingStartPromptUseCasesTest {
     private val complete = CompleteTrackingStartPromptUseCase(settings)
 
     @Test
-    fun `fresh install - no marker, no marks - prompts and persists nothing yet`() =
+    fun `fresh install - no marker - no marks - prompts and persists nothing yet`() =
         runTest {
             assertThat(resolve()).isTrue()
             // Process death before an answer must re-ask: nothing may be written here.

@@ -44,7 +44,7 @@ class UsxTransformerTest {
     // ---- verse attribution -------------------------------------------------
 
     @Test
-    fun `extracts verses with canonical id, native label and text`() {
+    fun `extracts verses with canonical id - native label and text`() {
         val r = transform("[${para("p", verse("GEN 1:1", "1", text("In the beginning.")))}]")
 
         assertThat(r.verses).hasSize(1)
@@ -57,7 +57,7 @@ class UsxTransformerTest {
     }
 
     @Test
-    fun `the verse number inside the verse tag is the label, never content`() {
+    fun `the verse number inside the verse tag is the label - never content`() {
         val r = transform("[${para("p", verse("GEN 1:1", "1", text("Real text.")))}]")
 
         // Regression: naive tree-walking appends the "1" inside the verse tag to the verse body.
@@ -92,7 +92,7 @@ class UsxTransformerTest {
     // ---- superscription vs section heading (D-OT-10) ------------------------
 
     @Test
-    fun `a superscription becomes a verse-0 title row, not a heading`() {
+    fun `a superscription becomes a verse-0 title row - not a heading`() {
         val r =
             transform(
                 "[" + para("d", text("A Psalm of David.")) + "," +
@@ -267,7 +267,7 @@ class UsxTransformerTest {
     // ---- catalog integration ------------------------------------------------
 
     @Test
-    fun `book resolution goes through the one catalog, including awkward USFM codes`() {
+    fun `book resolution goes through the one catalog - including awkward USFM codes`() {
         // Anti-drift: these resolve via Book.usfmCode (D-S13-1), never a second table here.
         val cases =
             mapOf(

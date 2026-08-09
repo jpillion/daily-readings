@@ -69,7 +69,7 @@ class ReadingPagerIndexTest {
     }
 
     @Test
-    fun `the page after the portion is the chapter AFTER the portion's last chapter, not within it`() {
+    fun `the page after the portion is the chapter AFTER the portion's last chapter - not within it`() {
         // Swipe right from the portion (James 1+2) -> James 3 (last+1), shifted over the collapsed run.
         val pageAfter = james12.portionPage + 1
         assertEquals(james to 3, james12.chapterAt(pageAfter))
@@ -78,7 +78,7 @@ class ReadingPagerIndexTest {
     }
 
     @Test
-    fun `a portion at the end of a book flanks into the next book (James 4-5 to 1 Peter 1)`() {
+    fun `a portion at the end of a book flanks into the next book - James 4-5 to 1 Peter 1`() {
         // James has exactly 5 chapters, so the spec's "James 4–5" portion ends the book: the page
         // right of the portion is 1 Peter 1 (the canon successor), proving the flank crosses books.
         val james45 = ReadingPagerIndex(portion(Reference(james, 4), Reference(james, 5)))
@@ -119,7 +119,7 @@ class ReadingPagerIndexTest {
     }
 
     @Test
-    fun `the two-book Jun19 Dec19 portion is one contiguous page (2 John 1 then 3 John 1)`() {
+    fun `the two-book Jun19 Dec19 portion is one contiguous page - 2 John 1 then 3 John 1`() {
         val twoBook = ReadingPagerIndex(portion(Reference(twoJohn, 1), Reference(threeJohn, 1)))
         // 2 John 1 and 3 John 1 are globally adjacent chapters -> collapsedSpan 1, one page.
         assertEquals(1, twoBook.collapsedSpan)

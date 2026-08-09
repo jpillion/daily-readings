@@ -43,7 +43,7 @@ class WidgetContentTest {
         )
 
     @Test
-    fun `scheduled day renders date, all three stream titles and collapsed references`() =
+    fun `scheduled day renders date - all three stream titles and collapsed references`() =
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             provideComposable { WidgetContent(scheduled()) }
@@ -167,7 +167,7 @@ class WidgetContentTest {
         }
 
     @Test
-    fun `load failure degrades to the fallback message, never a crash`() =
+    fun `load failure degrades to the fallback message - never a crash`() =
         runGlanceAppWidgetUnitTest {
             setContext(ApplicationProvider.getApplicationContext())
             provideComposable { WidgetContent(TodayWidgetState.LoadFailed) }

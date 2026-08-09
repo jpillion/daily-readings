@@ -106,7 +106,7 @@ class PartialReadingRepositoryImplTest {
         }
 
     @Test
-    fun `MUTATION a write touches only its own plan, date and stream`() =
+    fun `MUTATION a write touches only its own plan - date and stream`() =
         cacheTest { repository, _ ->
             val otherPlan = token(planId = "mcheyne", segment = 0)
             val otherDate = token(date = today.minusDays(1), segment = 0)

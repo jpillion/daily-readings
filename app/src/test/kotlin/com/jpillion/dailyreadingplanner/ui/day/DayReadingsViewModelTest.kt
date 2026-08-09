@@ -365,7 +365,7 @@ class DayReadingsViewModelTest {
         }
 
     @Test
-    fun `tapping an already-read reading leaves it read - idempotent, never unmarks`() =
+    fun `tapping an already-read reading leaves it read - idempotent - never unmarks`() =
         runTest {
             // Test 3b: mark-on-open is one-way. An already-read reading stays read after a tap;
             // a second tap never toggles it off (the checkbox is the only un-mark affordance).
@@ -390,7 +390,7 @@ class DayReadingsViewModelTest {
         }
 
     @Test
-    fun `tapping a reading on another date marks that actual date, not today`() =
+    fun `tapping a reading on another date marks that actual date - not today`() =
         runTest {
             // Test 3c: the mark is keyed to the displayed full date (D-S5-3), mirroring the
             // browsing-another-date toggle test. Today must be untouched.
@@ -577,7 +577,7 @@ class DayReadingsViewModelTest {
         }
 
     @Test
-    fun `choosing a date persists it, sets the marker, and hides the prompt`() =
+    fun `choosing a date persists it - sets the marker - and hides the prompt`() =
         runTest {
             val settings = FakeSettingsRepository()
             val vm = viewModel(settings = settings)

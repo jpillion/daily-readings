@@ -136,7 +136,7 @@ class BibleRemoteModuleTest {
      * — the failure mode that would break D-OT-2's last rung, where the fallback must not fail.
      */
     @Test
-    fun `provided resolver serves a bundled version from the bundled source, offline`() =
+    fun `provided resolver serves a bundled version from the bundled source - offline`() =
         runTest {
             val resolver =
                 BibleRemoteModule.provideBibleTextResolver(

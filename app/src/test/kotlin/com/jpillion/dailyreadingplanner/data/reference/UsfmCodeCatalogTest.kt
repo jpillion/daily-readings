@@ -85,7 +85,7 @@ class UsfmCodeCatalogTest {
         )
 
     @Test
-    fun `every catalog usfm code matches the live-verified value, book by book`() {
+    fun `every catalog usfm code matches the live-verified value - book by book`() {
         assertThat(verified).hasSize(66)
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)

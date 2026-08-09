@@ -33,7 +33,7 @@ class BibleAssetGateTest {
     }
 
     @Test
-    fun `fresh install (never stored) re-copies and persists the current version`() {
+    fun `fresh install - never stored - re-copies and persists the current version`() {
         val store = FakeStore(stored = null)
         val gate = BibleAssetGate(context, store)
         val dbFile = context.getDatabasePath("bible.db")
@@ -48,7 +48,7 @@ class BibleAssetGateTest {
     }
 
     @Test
-    fun `current version is a no-op — no delete, no write`() {
+    fun `current version is a no-op — no delete - no write`() {
         val store = FakeStore(stored = BibleAssetVersion.ASSET_CONTENT_VERSION)
         val gate = BibleAssetGate(context, store)
         val dbFile = context.getDatabasePath("bible.db")

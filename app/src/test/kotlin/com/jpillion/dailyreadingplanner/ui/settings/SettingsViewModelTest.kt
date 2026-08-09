@@ -180,7 +180,7 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `changing the tracking start writes through, and clearing writes null`() =
+    fun `changing the tracking start writes through - and clearing writes null`() =
         runTest {
             viewModel.trackingStartDate.test {
                 awaitItem() // null default
@@ -309,7 +309,7 @@ class SettingsViewModelTest {
     // --- S15: MySword install detection (D-S15-2) + show-streaks (D-S15-5). ---
 
     @Test
-    fun `mySwordInstalled reflects the install checker, queried for the mysword package`() {
+    fun `mySwordInstalled reflects the install checker - queried for the mysword package`() {
         mySwordInstalled = true
         assertThat(viewModel.mySwordInstalled).isTrue()
         assertThat(appInstallChecker.queries).containsExactly("com.riversoft.android.mysword")
@@ -371,7 +371,7 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `a granted permission result for the persistent toggle enables persistent, not the reminder`() =
+    fun `a granted permission result for the persistent toggle enables persistent - not the reminder`() =
         runTest {
             // The shared prompt must route to whichever toggle requested it (S21).
             permissionChecker.granted = false
@@ -423,7 +423,7 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `selecting the already-active plan is a no-op - no dialog, no write`() =
+    fun `selecting the already-active plan is a no-op - no dialog - no write`() =
         runTest {
             // Prime the selector so options are loaded (activeId == bible_companion).
             viewModel.planSelector.test {

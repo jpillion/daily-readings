@@ -182,7 +182,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `superscription renders as an unnumbered heading, not a numbered verse`() {
+    fun `superscription renders as an unnumbered heading - not a numbered verse`() {
         setContent()
         // It is a title node with heading semantics...
         composeRule.onNodeWithTag("reader-title-$titleId").assert(hasHeading())
@@ -191,7 +191,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `TalkBack speaks the plain stripped title text, never markup`() {
+    fun `TalkBack speaks the plain stripped title text - never markup`() {
         setContent()
         // Q2 REWORDED: the label no longer starts with "Open " (a tap opens the verse menu, not the
         // external app); it is the reference + the plain title text, verse 0 clamped to verse 1.
@@ -210,7 +210,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `verse label is the seam nativeLabel, never derived from the canonicalId (D-V3-4)`() {
+    fun `verse label is the seam nativeLabel - never derived from the canonicalId - D-V3-4`() {
         // canonicalId encodes verse 1, but the artifact's nativeLabel is "1a" (a future
         // differently-numbered artifact). The reader MUST show "1a", proving it never derives
         // the number from the id. (Mutation target: nativeLabel-not-derived.)
@@ -235,7 +235,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `list is keyed by canonicalId so same-label verses across chapters never collide (D-V3-12)`() {
+    fun `list is keyed by canonicalId so same-label verses across chapters never collide - D-V3-12`() {
         // Two chapters each have a verse with nativeLabel "1". If the LazyColumn were keyed by
         // the label (or any non-unique field) Compose would throw on the duplicate key; keying by
         // the globally-unique canonicalId is what lets both render. (Mutation target: keyed-by-id.)
@@ -364,7 +364,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `the Open in item names the user's chosen external app (LITERAL)`() {
+    fun `the Open in item names the user's chosen external app - LITERAL`() {
         // LITERAL expected string: a wrong external-app -> name mapping reddens this pin.
         setContent(externalApp = ExternalBibleApp.MYSWORD)
         openMenuOn(verse1Id)
@@ -382,7 +382,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `the menu's Select verses item enters selection mode, the same entry point as long-press`() {
+    fun `the menu's Select verses item enters selection mode - the same entry point as long-press`() {
         // The TalkBack-reachable path into selection (long-press is not reliably reachable).
         var selected: Pair<Int, Long>? = null
         setContent(onVerseLongPressed = { page, id -> selected = page to id })
@@ -393,7 +393,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `a superscription is tappable into the same menu (both verse branches share the gesture)`() {
+    fun `a superscription is tappable into the same menu - both verse branches share the gesture`() {
         setContent()
         composeRule.onNodeWithTag("reader-title-$titleId").performClick()
         composeRule.waitForIdle()
@@ -428,7 +428,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `while selecting, a tap toggles the verse instead of opening the menu`() {
+    fun `while selecting - a tap toggles the verse instead of opening the menu`() {
         var toggled: Pair<Int, Long>? = null
         setContent(
             selection = VerseSelection.start(page = 0, verseId = verse1Id),
@@ -442,7 +442,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `while selecting, every verse speaks its selected state (never colour alone)`() {
+    fun `while selecting - every verse speaks its selected state - never colour alone`() {
         setContent(selection = VerseSelection.start(page = 0, verseId = verse1Id))
         composeRule
             .onNodeWithTag("reader-verse-$verse1Id")
@@ -455,7 +455,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `outside selection mode no verse carries selected semantics (it would be noise)`() {
+    fun `outside selection mode no verse carries selected semantics - it would be noise`() {
         setContent()
         composeRule
             .onNodeWithTag("reader-verse-$verse1Id")
@@ -518,7 +518,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `footer hint wording is the BLB phrasing for BLB (LITERAL, mutation-pins the mapping)`() {
+    fun `footer hint wording is the BLB phrasing for BLB - LITERAL - mutation-pins the mapping`() {
         // LITERAL expected string (NOT computed via the prod mapping): a wrong external-app -> hint
         // mapping or a wrong app-name mapping reddens this pin. Q2 REWORDED: a tap opens the verse
         // menu, from which the user can copy OR open externally, so the hint says both.
@@ -527,26 +527,26 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `footer hint wording is the MySword phrasing with the in preposition (LITERAL)`() {
+    fun `footer hint wording is the MySword phrasing with the in preposition - LITERAL`() {
         // MySword takes "in", proving the per-provider preposition mapping is not flattened.
         assertThat(hintString(ExternalBibleApp.MYSWORD))
             .isEqualTo("Tap a verse to copy it or open it in MySword")
     }
 
     @Test
-    fun `footer hint wording is the Bible Gateway phrasing (LITERAL)`() {
+    fun `footer hint wording is the Bible Gateway phrasing - LITERAL`() {
         assertThat(hintString(ExternalBibleApp.BIBLE_GATEWAY))
             .isEqualTo("Tap a verse to copy it or open it on Bible Gateway")
     }
 
     @Test
-    fun `footer hint wording is the YouVersion phrasing (LITERAL)`() {
+    fun `footer hint wording is the YouVersion phrasing - LITERAL`() {
         assertThat(hintString(ExternalBibleApp.YOUVERSION))
             .isEqualTo("Tap a verse to copy it or open it on YouVersion")
     }
 
     @Test
-    fun `footer hint renders and is hidden from TalkBack (no text, no contentDescription)`() {
+    fun `footer hint renders and is hidden from TalkBack - no text - no contentDescription`() {
         // The footer is present (findable by tag), but clearAndSetSemantics strips its spoken text
         // and any description so TalkBack does not restate what every verse already carries.
         setContent(externalApp = ExternalBibleApp.BLB)
@@ -560,7 +560,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `footer hint does not break verse-keyed items (D-V3-12)`() {
+    fun `footer hint does not break verse-keyed items - D-V3-12`() {
         // The footer sits below the pager; the verse items must still be addressable by their
         // canonicalId and the footer coexists with them on the same page.
         setContent(externalApp = ExternalBibleApp.BLB)
@@ -572,7 +572,7 @@ class ReaderScreenTest {
     // --- Owner reader top-bar redesign: pencil (left, opens the picker) + version (right). ---
 
     @Test
-    fun `the pencil action opens the picker (onOpenPicker fires) and keeps the reader-open-picker tag`() {
+    fun `the pencil action opens the picker - onOpenPicker fires - and keeps the reader-open-picker tag`() {
         // The picker affordance moved from the actions list-icon to a pencil in the title slot, but
         // keeps the reader-open-picker tag + onOpenPicker callback (the a11y gate pins that tag).
         var opened = false
@@ -591,7 +591,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `with one bundled version the version renders as a static title KJV (not a dropdown)`() {
+    fun `with one bundled version the version renders as a static title KJV - not a dropdown`() {
         // D-N-3 single-version branch: a static title shows the version CODE; the dropdown row does
         // not exist. (Mutation target: forcing the dropdown branch with one version reddens this.)
         setContent()
@@ -600,7 +600,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `the single-version title speaks the unabbreviated name to TalkBack (D-N-2)`() {
+    fun `the single-version title speaks the unabbreviated name to TalkBack - D-N-2`() {
         // The visible label is "KJV" but TalkBack announces the full "King James Version".
         setContent()
         composeRule
@@ -609,7 +609,7 @@ class ReaderScreenTest {
     }
 
     @Test
-    fun `with more than one bundled version the version renders as a dropdown (D-N-3, mutation pin)`() {
+    fun `with more than one bundled version the version renders as a dropdown - D-N-3 - mutation pin`() {
         // D-N-3 multi-version branch: forces the OTHER branch — the static title must NOT exist and a
         // selectable dropdown must. (Mutation target: collapsing the size check to always-title, or
         // always-dropdown, reddens exactly one of these two version-shape tests.)

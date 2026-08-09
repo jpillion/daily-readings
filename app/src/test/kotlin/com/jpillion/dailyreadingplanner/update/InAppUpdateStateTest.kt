@@ -16,7 +16,7 @@ class InAppUpdateStateTest {
     }
 
     @Test
-    fun `markPrompted is single-shot per process (D-L-5 no-nag)`() {
+    fun `markPrompted is single-shot per process - D-L-5 no-nag`() {
         val state = InAppUpdateState()
         // First caller wins and proceeds with the check.
         assertThat(state.markPrompted()).isTrue()

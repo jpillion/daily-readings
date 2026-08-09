@@ -150,7 +150,7 @@ class ProgressRepositoryTest {
         }
 
     @Test
-    fun `hasAnyMarks is false on an empty store, true with any mark, false again after unmark`() =
+    fun `hasAnyMarks is false on an empty store - true with any mark - false again after unmark`() =
         runTest {
             assertThat(repository.hasAnyMarks()).isFalse()
             repository.setRead(LocalDate.of(2026, 6, 1), 3, isRead = true)

@@ -46,7 +46,7 @@ class FontScaleThemeTest {
     }
 
     @Test
-    fun `density (dp sizing) is not affected by the text-size factor`() {
+    fun `density - dp sizing - is not affected by the text-size factor`() {
         var ambientDensity = 0f
         var insideDensity = 0f
         composeRule.setContent {

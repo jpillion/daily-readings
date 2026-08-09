@@ -75,7 +75,7 @@ class RefreshPersistentNotificationUseCaseTest {
         }
 
     @Test
-    fun `disabled - cancels the notification and its alarm, does not re-arm or post`() =
+    fun `disabled - cancels the notification and its alarm - does not re-arm or post`() =
         runTest {
             // Mutation target: drop the disabled gate and this fails (it would post + re-arm).
             settings.storedPersistentEnabled.value = false

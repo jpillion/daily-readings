@@ -121,7 +121,7 @@ class BibleTextResolverTest {
         }
 
     @Test
-    fun `a network success is served, cached, and reports FUMS`() =
+    fun `a network success is served - cached - and reports FUMS`() =
         runTest {
             val cache = FakeCache()
             var reported: String? = null
@@ -158,7 +158,7 @@ class BibleTextResolverTest {
         }
 
     @Test
-    fun `a genuinely absent passage is empty in the requested version, NOT a fallback`() =
+    fun `a genuinely absent passage is empty in the requested version - NOT a fallback`() =
         runTest {
             // NASB Matthew 17:21 does not exist. Nothing failed, so silently swapping in KJV
             // would show the user a verse their chosen translation does not contain.

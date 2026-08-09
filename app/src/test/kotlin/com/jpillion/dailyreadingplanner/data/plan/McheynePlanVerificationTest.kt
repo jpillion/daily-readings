@@ -203,7 +203,7 @@ class McheynePlanVerificationTest {
     }
 
     @Test
-    fun `coverage invariant - OT verses once, Psalms and NT verses twice, every verse covered`() {
+    fun `coverage invariant - OT verses once - Psalms and NT verses twice - every verse covered`() {
         // The M'Cheyne load-bearing structural proof. Verse-aware: a verse-windowed chapter is read
         // across days, so coverage is checked per VERSE (the windows must tile each chapter exactly).
         val reads = mutableMapOf<Triple<String, Int, Int>, Int>()
@@ -285,7 +285,7 @@ class McheynePlanVerificationTest {
     }
 
     @Test
-    fun `the cross-chapter ranges are encoded faithfully, not chapter-collapsed`() {
+    fun `the cross-chapter ranges are encoded faithfully - not chapter-collapsed`() {
         // The fidelity invariant (R-ALT-3): the verse-faithful spanning ranges must be present, NOT
         // the chapter-collapsed bibleplan.org form (which had a Feb-28 off-by-one). Spot-pin the
         // documented spanning days against the verse-faithful source.

@@ -48,7 +48,7 @@ class YearStripRunsTest {
     }
 
     @Test
-    fun `runs partition the input exactly - contiguous, complete, and maximal`() {
+    fun `runs partition the input exactly - contiguous - complete - and maximal`() {
         // A messy mixed year: the structural invariants must hold for any input.
         val states =
             List(366) { index ->

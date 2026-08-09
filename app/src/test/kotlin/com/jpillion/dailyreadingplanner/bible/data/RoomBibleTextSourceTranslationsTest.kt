@@ -50,7 +50,7 @@ class RoomBibleTextSourceTranslationsTest {
     }
 
     @Test
-    fun `translations reads the single KJV row from the bundled asset (code and name)`() {
+    fun `translations reads the single KJV row from the bundled asset - code and name`() {
         val translations = runBlocking { source.translations() }
         assertThat(translations).hasSize(1)
         val kjv = translations.single()

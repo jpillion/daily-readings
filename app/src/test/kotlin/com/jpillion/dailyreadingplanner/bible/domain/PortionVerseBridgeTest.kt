@@ -77,7 +77,7 @@ class PortionVerseBridgeTest {
     }
 
     @Test
-    fun `a whole-chapter ref still maps to the whole chapter (windowing is opt-in)`() {
+    fun `a whole-chapter ref still maps to the whole chapter - windowing is opt-in`() {
         val portion = Portion(2, listOf(ref("Psalms", 23)))
         assertEquals(VerseId.chapterRange(19, 23), bridge.rangesFor(portion).single())
     }

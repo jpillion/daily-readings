@@ -310,7 +310,7 @@ class BibleTextVerificationTest {
     }
 
     @Test
-    fun `strip invariant - plain equals strip(markup) - and a11y has no tags`() {
+    fun `strip invariant - plain equals strip of markup - and a11y has no tags`() {
         val rows = query("SELECT text_markup FROM verse") { it.getString("text_markup") }
         val withTags = rows.map { MarkupStripper.strip(it) }.count { it.contains("<") || it.contains(">") }
         assertWithMessage("stripped plain text must contain no markup tags").that(withTags).isEqualTo(0)

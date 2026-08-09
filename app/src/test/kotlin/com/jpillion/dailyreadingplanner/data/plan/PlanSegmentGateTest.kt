@@ -154,7 +154,7 @@ class PlanSegmentGateTest {
     }
 
     @Test
-    fun `segments partition every portion - concatenation reproduces the refs in order, stream kept`() {
+    fun `segments partition every portion - concatenation reproduces the refs in order - stream kept`() {
         assertWithMessage("portions inspected").that(allPortions).hasSize(totalPortions)
         for (dp in allPortions) {
             val segments = ReadingSegments.segmentsOf(dp.portion)

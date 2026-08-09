@@ -111,7 +111,7 @@ class ChapterVersionResolutionTest {
 
     /** The selection is read at load time, so changing it takes effect on the next chapter load. */
     @Test
-    fun `selection is read per load, not captured once`() =
+    fun `selection is read per load - not captured once`() =
         runTest {
             val uc = useCase()
 

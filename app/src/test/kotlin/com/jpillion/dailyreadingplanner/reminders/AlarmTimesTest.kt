@@ -29,7 +29,7 @@ class AlarmTimesTest {
     }
 
     @Test
-    fun `exactly-now schedules tomorrow, never today again - the no-refire-loop boundary`() {
+    fun `exactly-now schedules tomorrow - never today again - the no-refire-loop boundary`() {
         // The alarm just fired at its target instant; rescheduling "today" would refire
         // immediately. Strict isAfter is the load-bearing comparison (mutation target M-S12-3).
         val next = AlarmTimes.nextOccurrence(at(8, 0), LocalTime.of(8, 0))
@@ -49,7 +49,7 @@ class AlarmTimesTest {
     }
 
     @Test
-    fun `at exactly midnight the next midnight is tomorrow's, not now`() {
+    fun `at exactly midnight the next midnight is tomorrow's - not now`() {
         val midnight = ZonedDateTime.of(2026, 6, 10, 0, 0, 0, 0, zone)
         assertThat(AlarmTimes.nextMidnight(midnight))
             .isEqualTo(ZonedDateTime.of(2026, 6, 11, 0, 0, 0, 0, zone))

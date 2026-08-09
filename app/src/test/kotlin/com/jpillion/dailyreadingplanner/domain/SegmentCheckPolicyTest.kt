@@ -26,7 +26,7 @@ class SegmentCheckPolicyTest {
     // ---- stateFor -------------------------------------------------------------------------
 
     @Test
-    fun `state is COMPLETE whenever the stream is marked, regardless of tokens or count`() {
+    fun `state is COMPLETE whenever the stream is marked - regardless of tokens or count`() {
         assertThat(SegmentCheckPolicy.stateFor(streamMarked = true, segmentCount = 1, hasToken = false))
             .isEqualTo(ReadingCheckState.COMPLETE)
         assertThat(SegmentCheckPolicy.stateFor(streamMarked = true, segmentCount = 3, hasToken = false))

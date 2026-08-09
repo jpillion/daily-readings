@@ -20,7 +20,7 @@ class ResetYearProgressUseCaseTest {
         }
 
     @Test
-    fun `the year tracks the clock, not a constant`() =
+    fun `the year tracks the clock - not a constant`() =
         runTest {
             val clock = Clock.fixed(Instant.parse("2031-01-01T00:00:00Z"), ZoneOffset.UTC)
             ResetYearProgressUseCase(progress, clock).invoke()

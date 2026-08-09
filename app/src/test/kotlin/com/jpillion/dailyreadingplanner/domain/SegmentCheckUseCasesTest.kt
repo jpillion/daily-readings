@@ -130,7 +130,7 @@ class SegmentCheckUseCasesTest {
     // ---- ToggleSegmentCheckUseCase: the transition table, applied to storage ----------------
 
     @Test
-    fun `first check of three writes only a token, no real mark`() =
+    fun `first check of three writes only a token - no real mark`() =
         runTest {
             toggleSegment(date, streamNumber = 1, segmentIndex = 0, segmentCount = 3, streamMarked = false)
 

@@ -27,7 +27,7 @@ class PlanRegistryTest {
         }
 
     @Test
-    fun `the registry enumerates bible_companion, mcheyne and chronological with their asset paths`() =
+    fun `the registry enumerates bible_companion - mcheyne and chronological with their asset paths`() =
         runTest {
             val plans = registry().plans()
             assertThat(plans.map { it.id })

@@ -79,7 +79,7 @@ class PlanSwitchIntegrationTest {
         )
 
     @Test
-    fun `selecting M'Cheyne makes the day live-emit the 4-stream plan, then switching back restores Bible Companion`() =
+    fun `selecting M'Cheyne makes the day live-emit the 4-stream plan then switching back restores Bible Companion`() =
         runTest {
             val date = LocalDate.of(2026, 1, 1)
             // A Bible-Companion mark that must survive the round-trip.
@@ -113,7 +113,7 @@ class PlanSwitchIntegrationTest {
         }
 
     @Test
-    fun `M'Cheyne marks are isolated from Bible Companion marks (non-destructive switch)`() =
+    fun `M'Cheyne marks are isolated from Bible Companion marks - non-destructive switch`() =
         runTest {
             val date = LocalDate.of(2026, 1, 1)
             // Mark M'Cheyne stream 1 only.
@@ -173,7 +173,7 @@ class PlanSwitchIntegrationTest {
         }
 
     @Test
-    fun `Chronological marks are isolated from Bible Companion and M'Cheyne (three-plan partition)`() =
+    fun `Chronological marks are isolated from Bible Companion and M'Cheyne - three-plan partition`() =
         runTest {
             val date = LocalDate.of(2026, 1, 1)
             // Mark the single chronological stream read; mark BC and M'Cheyne nothing.

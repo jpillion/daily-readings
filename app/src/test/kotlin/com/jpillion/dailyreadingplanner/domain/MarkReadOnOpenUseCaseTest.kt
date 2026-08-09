@@ -34,7 +34,7 @@ class MarkReadOnOpenUseCaseTest {
         }
 
     @Test
-    fun `only the tapped stream is affected, other streams untouched`() =
+    fun `only the tapped stream is affected - other streams untouched`() =
         runTest {
             progress.setRead(date, 1, true)
             useCase(date, streamNumber = 3)

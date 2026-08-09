@@ -23,7 +23,7 @@ class VerseClipboardTest {
     }
 
     @Test
-    fun `from API 33 the system confirmation is the only one (no app toast)`() {
+    fun `from API 33 the system confirmation is the only one - no app toast`() {
         assertThat(shouldShowCopyConfirmation(33)).isFalse() // the boundary
         assertThat(shouldShowCopyConfirmation(34)).isFalse()
         assertThat(shouldShowCopyConfirmation(40)).isFalse() // future levels stay silent

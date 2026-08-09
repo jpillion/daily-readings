@@ -56,7 +56,7 @@ class SystemReminderNotifierTest {
     }
 
     @Test
-    fun `without notification permission it degrades to silence, never a crash`() {
+    fun `without notification permission it degrades to silence - never a crash`() {
         // R-REM-7 belt-and-braces: permission can be revoked while an alarm is pending.
         notifier.showTodayReminder(threePortions)
         assertThat(shadowOf(notificationManager).allNotifications).isEmpty()

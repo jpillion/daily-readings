@@ -74,7 +74,7 @@ class ReadingPlanAssetLoaderValidationTest {
     }
 
     @Test
-    fun `rejects a plan whose declared planId differs from the expected id (anti-drift)`() {
+    fun `rejects a plan whose declared planId differs from the expected id - anti-drift`() {
         assertThat(loadResult(fullYear(), expectedPlanId = "mcheyne").exceptionOrNull())
             .isInstanceOf(IllegalStateException::class.java)
     }

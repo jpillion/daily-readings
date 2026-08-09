@@ -37,7 +37,7 @@ class GetMonthCompletionUseCaseTest {
     private fun Map<LocalDate, DayCompletion>.june(day: Int) = this[LocalDate.of(2026, 6, day)]
 
     @Test
-    fun `classifies complete, missed and none across past, today and future`() =
+    fun `classifies complete - missed and none across past - today and future`() =
         runTest {
             progress.setWholeDay(LocalDate.of(2026, 6, 1), listOf(1, 2, 3), isRead = true) // past, complete
             progress.setRead(LocalDate.of(2026, 6, 2), 3, isRead = true) // past, partial
@@ -56,7 +56,7 @@ class GetMonthCompletionUseCaseTest {
         }
 
     @Test
-    fun `today incomplete is NONE, not missed`() =
+    fun `today incomplete is NONE - not missed`() =
         runTest {
             progress.setRead(LocalDate.of(2026, 6, 10), 1, isRead = true)
             val map = useCase(YearMonth.of(2026, 6)).first()
@@ -82,7 +82,7 @@ class GetMonthCompletionUseCaseTest {
         }
 
     @Test
-    fun `a past Feb 29 is NONE, never missed`() =
+    fun `a past Feb 29 is NONE - never missed`() =
         runTest {
             // Clock in March 2028: Feb 29 2028 is in the past with zero marks — but it had no
             // scheduled readings (D1), so it must not be flagged as missed.
@@ -115,7 +115,7 @@ class GetMonthCompletionUseCaseTest {
     // the "unset = exact pre-S10 behavior" regression guard.
 
     @Test
-    fun `a past incomplete day strictly before the tracking start is NONE, not missed`() =
+    fun `a past incomplete day strictly before the tracking start is NONE - not missed`() =
         runTest {
             settings.storedTrackingStartDate.value = LocalDate.of(2026, 6, 5)
             val map = useCase(YearMonth.of(2026, 6)).first()
@@ -169,7 +169,7 @@ class GetMonthCompletionUseCaseTest {
         }
 
     @Test
-    fun `re-emits when the tracking start changes while collected - combine, not map`() =
+    fun `re-emits when the tracking start changes while collected - combine - not map`() =
         runTest {
             useCase(YearMonth.of(2026, 6)).test {
                 assertThat(awaitItem().june(9)).isEqualTo(DayCompletion.MISSED)

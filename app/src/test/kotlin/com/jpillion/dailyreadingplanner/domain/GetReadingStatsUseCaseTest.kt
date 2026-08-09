@@ -187,7 +187,7 @@ class GetReadingStatsUseCaseTest {
         }
 
     @Test
-    fun `only future marks - streaks are zero, totals still counted`() =
+    fun `only future marks - streaks are zero - totals still counted`() =
         runTest {
             markDays(june(20))
             val stats = useCase()().first()
@@ -199,7 +199,7 @@ class GetReadingStatsUseCaseTest {
     // --- Year + per-stream totals (groups 3 and 4) ---
 
     @Test
-    fun `year totals count only the current calendar year, per stream`() =
+    fun `year totals count only the current calendar year - per stream`() =
         runTest {
             progress.setWholeDay(LocalDate.of(2025, 12, 31), listOf(1, 2, 3), isRead = true) // other year: excluded
             progress.setRead(june(1), 1, isRead = true)

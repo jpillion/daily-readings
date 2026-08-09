@@ -101,7 +101,7 @@ class NStreamCorrectnessTest {
         }
 
     @Test
-    fun `N4 - denominators are dayCount times four and dayCount, and there are four stream rows`() =
+    fun `N4 - denominators are dayCount times four and dayCount - and there are four stream rows`() =
         runTest {
             val s = stats(mcheyneN4())().first()
             assertThat(s.yearTotalReadings).isEqualTo(1_460) // 365 * 4, NOT 1095
@@ -111,7 +111,7 @@ class NStreamCorrectnessTest {
         }
 
     @Test
-    fun `N4 - the year strips render one strip per declared stream, keyed by number`() =
+    fun `N4 - the year strips render one strip per declared stream - keyed by number`() =
         runTest {
             val strips = yearStrips(mcheyneN4())().first()
             assertThat(strips.dayStates.keys).containsExactly(1, 2, 3, 4)
@@ -149,7 +149,7 @@ class NStreamCorrectnessTest {
         }
 
     @Test
-    fun `the classifier itself takes the threshold as a parameter, not a constant`() {
+    fun `the classifier itself takes the threshold as a parameter - not a constant`() {
         // Direct seam pin (D-ALT-6): the SAME classifier instance classifies the SAME readCount
         // differently per streamCount — proof generality flows through the one predicate, not a fork.
         val classifier = DayCompletionClassifier(ScheduleDateResolver())
@@ -170,7 +170,7 @@ class NStreamCorrectnessTest {
     // --- D-ALT-22/23: the stream TITLE is resolved from the active descriptor onto each reading ---
 
     @Test
-    fun `N4 - each reading carries its plan-supplied title, resolved from the active descriptor`() =
+    fun `N4 - each reading carries its plan-supplied title - resolved from the active descriptor`() =
         runTest {
             val descriptor = mcheyneN4()
             val plan =
@@ -196,7 +196,7 @@ class NStreamCorrectnessTest {
         }
 
     @Test
-    fun `N1 - the single reading carries a null title, so the card renders no stream label`() =
+    fun `N1 - the single reading carries a null title - so the card renders no stream label`() =
         runTest {
             // D-ALT-23 at the SOURCE: a single-stream plan resolves a null title in the use case
             // (not just the UI). A mutation that drops the single-stream guard in titleFor reddens.

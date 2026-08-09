@@ -19,7 +19,7 @@ class ReaderHandoffTest {
         )
 
     @Test
-    fun `consume returns and clears the pending portion (single-shot)`() {
+    fun `consume returns and clears the pending portion - single-shot`() {
         val handoff = ReaderHandoff()
         handoff.request(portion())
         assertThat(handoff.consume()).isNotNull()

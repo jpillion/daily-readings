@@ -24,7 +24,7 @@ class ProviderUrlBuilderTest {
     // --- Blue Letter Bible (unchanged shipped behavior). ---
 
     @Test
-    fun `blb builds the documented url shape for all 66 books, first and last chapter`() {
+    fun `blb builds the documented url shape for all 66 books - first and last chapter`() {
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)
                 .that(builder.build(ExternalBibleApp.BLB, portion(book.canonicalName to 1)))
@@ -50,7 +50,7 @@ class ProviderUrlBuilderTest {
     // --- YouVersion / Bible.com (single-chapter; USFM codes; version 1 = KJV). ---
 
     @Test
-    fun `youversion builds the documented url shape for all 66 books, first and last chapter`() {
+    fun `youversion builds the documented url shape for all 66 books - first and last chapter`() {
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)
                 .that(builder.build(ExternalBibleApp.YOUVERSION, portion(book.canonicalName to 1)))
@@ -80,7 +80,7 @@ class ProviderUrlBuilderTest {
     }
 
     @Test
-    fun `youversion is single-chapter - first chapter of a range, first book of the two-book portion`() {
+    fun `youversion is single-chapter - first chapter of a range - first book of the two-book portion`() {
         assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("Genesis" to 1, "Genesis" to 2)))
             .isEqualTo("https://www.bible.com/bible/1/GEN.1.KJV")
         assertThat(builder.build(ExternalBibleApp.YOUVERSION, portion("2 John" to 1, "3 John" to 1)))
@@ -127,7 +127,7 @@ class ProviderUrlBuilderTest {
     // --- MySword (S15, D-S15-1: numeric vendor form; single-chapter). ---
 
     @Test
-    fun `mysword builds the numeric vendor form for all 66 books, first and last chapter`() {
+    fun `mysword builds the numeric vendor form for all 66 books - first and last chapter`() {
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)
                 .that(builder.build(ExternalBibleApp.MYSWORD, portion(book.canonicalName to 1)))
@@ -139,7 +139,7 @@ class ProviderUrlBuilderTest {
     }
 
     @Test
-    fun `mysword is single-chapter - first chapter of a range, first book of the two-book portion`() {
+    fun `mysword is single-chapter - first chapter of a range - first book of the two-book portion`() {
         assertThat(builder.build(ExternalBibleApp.MYSWORD, portion("Genesis" to 1, "Genesis" to 2)))
             .isEqualTo("https://mysword.info/b?r=1.1")
         assertThat(builder.build(ExternalBibleApp.MYSWORD, portion("2 John" to 1, "3 John" to 1)))

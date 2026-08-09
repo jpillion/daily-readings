@@ -86,7 +86,7 @@ class MySwordTokenCatalogTest {
         )
 
     @Test
-    fun `the catalog order matches the hand-pinned 66-book numbering, field by field`() {
+    fun `the catalog order matches the hand-pinned 66-book numbering - field by field`() {
         assertThat(verified).hasSize(66)
         for (book in BookCatalog.books) {
             assertWithMessage(book.canonicalName)
