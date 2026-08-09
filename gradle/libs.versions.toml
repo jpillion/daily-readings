@@ -16,10 +16,22 @@ serializationJson = "1.9.0"
 browser = "1.10.0"
 composeMaterialIconsCore = "1.7.8"
 glance = "1.1.1"
+# --- iOS port, release 1.9.0 (docs/dependency-contract.md §3.3, §3.5) -----------------
+# Added as coordinates only; call sites are converted by p1-02…p1-05. Every version below
+# was probed against the real repository on 2026-08-08 and resolves for android + iosArm64 +
+# iosSimulatorArm64, so nothing here has to move again when the shared modules land.
+kotlinxDatetime = "0.8.0"  # NOT 0.7.0 — Gate 0 M1/M3 pinned 0.8.0; it has kotlinx.datetime.YearMonth
+okio = "3.18.1"            # bump, not a new stack: okio 3.9.1 already ships via datastore-core-okio
+ktor = "3.5.2"
+assertk = "0.28.1"         # newest published; replaces Truth once p1-05 clears the call sites (R1)
+# --------------------------------------------------------------------------------------
 junit = "4.13.2"
-coroutinesTest = "1.10.2"
-turbine = "1.2.0"
-truth = "1.4.4"
+# 1.10.2 -> 1.11.0: FORCED by ktor-client-core 3.5.2, which requires coroutines-core 1.11.0.
+# coroutines-test reaches into core internals and must track it (dependency-contract §3.5).
+# This also closes a pre-existing skew: the app shipped 1.9.0 while testing against 1.10.2.
+coroutinesTest = "1.11.0"
+turbine = "1.2.1"
+truth = "1.4.4"  # R1: removed in the LAST commit of 1.9.0, after p1-05 clears 1,444 call sites
 robolectric = "4.15.1"
 sqliteJdbc = "3.50.1.0"
 kover = "0.9.8"
@@ -48,6 +60,17 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serializationJson" }
+# --- iOS port, release 1.9.0 ----------------------------------------------------------
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
+okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+# R3: the Android engine is ktor-client-android, NOT ktor-client-okhttp. See app/build.gradle.kts.
+ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
+assertk = { group = "com.willowtreeapps.assertk", name = "assertk", version.ref = "assertk" }
+# ktor-client-darwin is deliberately absent: no iOS target exists in this build yet, so an
+# entry here would never be resolved and never verified. It lands with p2-09.
+# --------------------------------------------------------------------------------------
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 play-app-update = { group = "com.google.android.play", name = "app-update", version.ref = "appUpdate" }
 play-app-update-ktx = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "appUpdate" }

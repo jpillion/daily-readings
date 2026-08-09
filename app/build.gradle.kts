@@ -179,6 +179,24 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
+    // --- iOS port, release 1.9.0: coordinates only ------------------------------------
+    // Added by Build & Release so p1-02…p1-05 can start; NO call site is converted here.
+    // Every artifact below resolves for android + iosArm64 + iosSimulatorArm64
+    // (docs/dependency-contract.md §3.4-§3.5), so none of them moves again in Phase 2.
+    implementation(libs.kotlinx.datetime) // p1-02 — java.time has no Kotlin/Native equivalent
+    implementation(libs.okio) // p1-04 — java.io.File; a 3.9.1 -> 3.18.1 bump, not a new stack
+    implementation(libs.ktor.client.core) // p1-03 — HttpURLConnection does not exist on Native
+    // R3 (dependency-contract §1): the Android engine is ktor-client-android (~26 KB), NOT
+    // ktor-client-okhttp (~927 KB, and okhttp is not on this classpath today). ktor-client-android
+    // IS the HttpURLConnection engine, so 1.9.0 changes the API the app calls without changing the
+    // transport that reaches the network — the smallest Android-user-facing delta available.
+    // Swap to ktor-client-okhttp only for a named requirement (HTTP/2, pooling, interceptors);
+    // p1-03 supplies the engine at the DI boundary, so that swap stays a one-line change.
+    implementation(libs.ktor.client.android)
+    // NOTE: ktor-client-content-negotiation / ktor-serialization-* are deliberately NOT added.
+    // BibleApiClient parses with Json.parseToJsonElement by hand today and p1-03 preserves that
+    // behaviour exactly (unknown keys ignored, any parse failure -> Unavailable, per D-OT-2).
+    // ---------------------------------------------------------------------------------
     implementation(libs.androidx.browser)
     // S-L (D-L-1): Google Play In-App Updates (flexible flow). Pulls Play Core +
     // GMS transitive deps (core-common 2.0.3, play-services-basement 18.1.0,
@@ -203,6 +221,14 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    // R1: assertk lands ALONGSIDE Truth. Truth is removed in the LAST commit of release 1.9.0,
+    // once `grep -rl "com.google.common.truth" app/src/test/kotlin` is empty (p1-05 criterion 1);
+    // removing it now is a red build across ~92 files. assertk resolves for android + both iOS
+    // targets, so the same assertions survive the move to commonTest in Phase 2.
+    testImplementation(libs.assertk)
+    // Pre-approved in the contract (§3.5) so p1-03 can pin the request shape without a second
+    // request to me: the FUMS/passage sockets are NOT exercised by any test today.
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.truth)
     testImplementation(libs.robolectric)
     testImplementation(libs.sqlite.jdbc)
