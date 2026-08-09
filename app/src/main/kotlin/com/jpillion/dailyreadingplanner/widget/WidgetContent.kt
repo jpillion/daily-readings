@@ -92,6 +92,14 @@ internal fun showsHeader(
         WidgetLayout.TINY -> false
     }
 
+// p1-01 (deliberate, sanctioned by the brief): these two do NOT go through DateTextFormatter.
+// Two independent reasons. (1) The shapes do not exist on the interface — the widget wants
+// abbreviated "EEE, MMM d" / "MMM d", while `weekdayMonthDay`/`monthDay` are the full-width
+// "EEEE, MMMM d" / "MMMM d". Routing them through the seam would change the rendered text,
+// which p1-01 forbids. (2) `Locale.US` is deliberate and must stay (see the class KDoc), and
+// the interface is intentionally locale-free. The widget is Android-only forever (ADR-0006),
+// so `java.time` here is not a portability problem — and the acceptance grep is scoped to
+// `ui/**` and `bible/ui/**`, which excludes `widget/**`.
 private val HeaderDateFormat = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US)
 private val ShortDateFormat = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 

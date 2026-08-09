@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,6 +41,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
+import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorGreenDark
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorGreenLight
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorRedDark
@@ -51,11 +52,6 @@ import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.time.format.TextStyle
-import java.time.temporal.WeekFields
-import java.util.Locale
 
 /**
  * Month/day date picker (FR-5) as a dialog over the day pager (D-S5-2), rebuilt in Sprint 8
@@ -83,6 +79,9 @@ fun DayDatePickerDialog(
     completionFor: (YearMonth) -> StateFlow<Map<LocalDate, DayCompletion>>,
     onConfirm: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    // p1-01: localized date text comes from the platform seam. Defaulted so every existing
+    // caller (and the tests that pin real English output) is unchanged.
+    formatter: DateTextFormatter = AndroidDateTextFormatter,
 ) {
     val initialMonth = YearMonth.from(initialDate)
     val pagerState = rememberPagerState(initialPage = MONTH_CENTER_PAGE) { MONTH_PAGE_COUNT }
@@ -102,6 +101,7 @@ fun DayDatePickerDialog(
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
                 MonthHeader(
                     month = displayedMonth,
+                    formatter = formatter,
                     onPreviousMonth = {
                         scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                     },
@@ -109,10 +109,8 @@ fun DayDatePickerDialog(
                         scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                     },
                 )
-                // Locale read observably via LocalConfiguration (lint: NonObservableLocale).
-                val locale = LocalConfiguration.current.locales[0]
-                val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
-                WeekdayHeader(firstDayOfWeek, locale)
+                val firstDayOfWeek = formatter.firstDayOfWeek()
+                WeekdayHeader(firstDayOfWeek, formatter)
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxWidth().testTag("picker-month-pager"),
@@ -127,6 +125,7 @@ fun DayDatePickerDialog(
                         completion = completion,
                         // One-tap: select this full date and close immediately (BACKLOG #7).
                         onSelect = onConfirm,
+                        formatter = formatter,
                     )
                 }
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -144,6 +143,7 @@ fun DayDatePickerDialog(
 @Composable
 private fun MonthHeader(
     month: YearMonth,
+    formatter: DateTextFormatter,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
 ) {
@@ -152,7 +152,7 @@ private fun MonthHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = month.format(MonthTitleFormat),
+            text = formatter.monthYear(month.atDay(1)),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(start = 8.dp).weight(1f).testTag("picker-month-title"),
         )
@@ -181,7 +181,7 @@ private fun MonthHeader(
 @Composable
 private fun WeekdayHeader(
     firstDayOfWeek: DayOfWeek,
-    locale: Locale,
+    formatter: DateTextFormatter,
 ) {
     Row(modifier = Modifier.fillMaxWidth()) {
         weekdayOrder(firstDayOfWeek).forEach { dayOfWeek ->
@@ -190,7 +190,7 @@ private fun WeekdayHeader(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = dayOfWeek.getDisplayName(TextStyle.NARROW, locale),
+                    text = formatter.weekdayInitial(dayOfWeek),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -206,6 +206,7 @@ private fun MonthGrid(
     today: LocalDate,
     completion: Map<LocalDate, DayCompletion>,
     onSelect: (LocalDate) -> Unit,
+    formatter: DateTextFormatter,
 ) {
     val leading = leadingEmptyCells(month, firstDayOfWeek)
     val totalCells = leading + month.lengthOfMonth()
@@ -222,6 +223,7 @@ private fun MonthGrid(
                             isToday = month.atDay(day) == today,
                             completion = completion[month.atDay(day)] ?: DayCompletion.NONE,
                             onSelect = onSelect,
+                            formatter = formatter,
                             modifier = Modifier.weight(1f),
                         )
                     } else {
@@ -239,6 +241,7 @@ private fun DayCell(
     isToday: Boolean,
     completion: DayCompletion,
     onSelect: (LocalDate) -> Unit,
+    formatter: DateTextFormatter,
     modifier: Modifier = Modifier,
 ) {
     val onDarkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
@@ -254,7 +257,7 @@ private fun DayCell(
             DayCompletion.MISSED -> stringResource(R.string.day_missed)
             DayCompletion.NONE -> null
         }
-    val dateText = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+    val dateText = formatter.fullDate(date)
     val description = if (stateText != null) "$dateText, $stateText" else dateText
     Box(
         modifier =
@@ -300,8 +303,6 @@ private fun DayCell(
         }
     }
 }
-
-private val MonthTitleFormat = DateTimeFormatter.ofPattern("MMMM uuuu", Locale.getDefault())
 
 /**
  * Month-pager geometry (BACKLOG #6), mirroring the day-pager idiom (D-S5-4): a bounded window

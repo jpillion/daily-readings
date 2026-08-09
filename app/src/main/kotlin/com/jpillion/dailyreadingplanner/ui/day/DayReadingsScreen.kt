@@ -39,6 +39,8 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
+import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.browser.launchReadingDestination
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
@@ -47,7 +49,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 
 /**
  * Pager geometry (D-S5-4): a bounded window of [PAGE_COUNT] real calendar days with "today"
@@ -153,6 +154,9 @@ fun DayReadingsPagerScreen(
     onReadingDestinationPromptDismissed: () -> Unit = {},
     showUpgradeNote: Boolean = false,
     onUpgradeNoteDismissed: (Boolean) -> Unit = {},
+    // p1-01: localized date text comes from the platform seam. The D-S16-1 title *rule* stays
+    // here (below) — only the localized fragment is the platform's.
+    formatter: DateTextFormatter = AndroidDateTextFormatter,
 ) {
     val pagerState = rememberPagerState(initialPage = TODAY_PAGE) { PAGE_COUNT }
     val scope = rememberCoroutineScope()
@@ -170,9 +174,9 @@ fun DayReadingsPagerScreen(
                     Text(
                         text =
                             if (currentDate == today) {
-                                stringResource(R.string.title_today_date, formatMonthDay(currentDate))
+                                stringResource(R.string.title_today_date, formatMonthDay(currentDate, formatter))
                             } else {
-                                formatDayDate(currentDate, today.year)
+                                formatDayDate(currentDate, today.year, formatter)
                             },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -245,6 +249,7 @@ fun DayReadingsPagerScreen(
                         stats = statsPanel.stats,
                         strips = statsPanel.strips,
                         showStreaks = statsPanel.showStreaks,
+                        formatter = formatter,
                         modifier =
                             Modifier
                                 .heightIn(max = statsMaxHeight)
@@ -261,6 +266,7 @@ fun DayReadingsPagerScreen(
             today = today,
             onChoose = onTrackingStartChosen,
             onDismiss = onTrackingStartPromptDismissed,
+            formatter = formatter,
         )
     }
 
@@ -289,21 +295,30 @@ fun DayReadingsPagerScreen(
                 scope.launch { pagerState.scrollToPage(pageForDate(today, picked)) }
             },
             onDismiss = { showDatePicker = false },
+            formatter = formatter,
         )
     }
 }
 
 /** D-S16-1: "June 12" — the month-day half of the "Today – …" title. */
-internal fun formatMonthDay(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("MMMM d"))
+internal fun formatMonthDay(
+    date: LocalDate,
+    formatter: DateTextFormatter,
+): String = formatter.monthDay(date)
 
 /**
  * D-S16-1: the title for a non-today page — "Friday, June 13", with the year appended only
  * when it differs from [todayYear] (the pager crosses Dec 31 → Jan 1, D-S5-3).
+ *
+ * p1-01: the *rule* — when a year is appended, and how — is product logic and stays here. Only
+ * the localized "Friday, June 13" fragment comes from [formatter]. Pushing the rule into the
+ * platform implementation would make iOS reimplement it, and the two would drift.
  */
 internal fun formatDayDate(
     date: LocalDate,
     todayYear: Int,
+    formatter: DateTextFormatter,
 ): String {
-    val base = date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
+    val base = formatter.weekdayMonthDay(date)
     return if (date.year == todayYear) base else "$base, ${date.year}"
 }

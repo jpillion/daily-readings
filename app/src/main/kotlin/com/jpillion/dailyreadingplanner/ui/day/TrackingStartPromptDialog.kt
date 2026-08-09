@@ -21,10 +21,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
+import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.settings.TrackingStartDatePickerDialog
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * The one-time first-run tracking-start prompt (S19, D-S19-1): exactly three choices —
@@ -40,6 +40,9 @@ internal fun TrackingStartPromptDialog(
     today: LocalDate,
     onChoose: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    // p1-01: localized date text comes from the platform seam; defaulted so callers/tests are
+    // unchanged.
+    formatter: DateTextFormatter = AndroidDateTextFormatter,
 ) {
     var showCustomPicker by rememberSaveable { mutableStateOf(false) }
     if (showCustomPicker) {
@@ -69,7 +72,7 @@ internal fun TrackingStartPromptDialog(
                     text =
                         stringResource(
                             R.string.tracking_prompt_today,
-                            today.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
+                            formatter.mediumDate(today),
                         ),
                     tag = "tracking-prompt-today",
                     onClick = { onChoose(today) },

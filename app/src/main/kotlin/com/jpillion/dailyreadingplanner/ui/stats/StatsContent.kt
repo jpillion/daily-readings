@@ -28,7 +28,8 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.YearStrips
-import java.text.NumberFormat
+import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
 
 /**
  * What the main-screen stats panel renders (S15, D-S15-4): the live stats + the streak gate,
@@ -58,6 +59,9 @@ fun StatsContent(
     strips: YearStrips,
     showStreaks: Boolean,
     modifier: Modifier = Modifier,
+    // p1-01: the locale's grouping separator ("1,095") comes from the platform seam. Defaulted
+    // so every existing caller and the "438 of 1,095 readings" pins are unchanged.
+    formatter: DateTextFormatter = AndroidDateTextFormatter,
 ) {
     // S18 (owner): deliberate density — readings + this whole panel must fit one screen on
     // a ~411x915dp device at default font. Section labels merged into value rows, gaps and
@@ -89,7 +93,7 @@ fun StatsContent(
                 tag = "stats-longest-streak",
             )
         }
-        YearGroup(stats = stats, strips = strips)
+        YearGroup(stats = stats, strips = strips, formatter = formatter)
         StreamGroup(stats = stats, strips = strips)
         StripLegend()
     }
@@ -182,8 +186,8 @@ private fun StreakRow(
 private fun YearGroup(
     stats: ReadingStats,
     strips: YearStrips,
+    formatter: DateTextFormatter,
 ) {
-    val numberFormat = NumberFormat.getIntegerInstance()
     val percent = stats.yearReadCount * 100 / stats.yearTotalReadings
     Column(
         modifier =
@@ -207,8 +211,8 @@ private fun YearGroup(
                 text =
                     stringResource(
                         R.string.stats_year_count,
-                        numberFormat.format(stats.yearReadCount),
-                        numberFormat.format(stats.yearTotalReadings),
+                        formatter.integer(stats.yearReadCount),
+                        formatter.integer(stats.yearTotalReadings),
                     ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

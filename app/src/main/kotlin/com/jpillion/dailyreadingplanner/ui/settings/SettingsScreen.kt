@@ -66,10 +66,10 @@ import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 
 /** Stateful entry point for the pushed `settings` route (ESpec §7). */
@@ -201,6 +201,9 @@ fun SettingsScreen(
     onResetProgressConfirmed: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    // p1-01: localized date/time text comes from the platform seam. Defaulted so every existing
+    // caller and the "Jun 3, 2026" pin are unchanged.
+    formatter: DateTextFormatter = AndroidDateTextFormatter,
 ) {
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
     var showTrackingStartDialog by rememberSaveable { mutableStateOf(false) }
@@ -312,6 +315,7 @@ fun SettingsScreen(
             if (reminderEnabled) {
                 ReminderTimeRow(
                     reminderTime = reminderTime,
+                    formatter = formatter,
                     onOpenPicker = { showReminderTimeDialog = true },
                 )
             }
@@ -335,6 +339,7 @@ fun SettingsScreen(
             SectionTitle(stringResource(R.string.tracking_section_title))
             TrackingStartRow(
                 trackingStartDate = trackingStartDate,
+                formatter = formatter,
                 onOpenPicker = { showTrackingStartDialog = true },
                 onClear = { onTrackingStartChanged(null) },
             )
@@ -558,9 +563,10 @@ private fun ShowStreaksToggleRow(
 @Composable
 private fun ReminderTimeRow(
     reminderTime: LocalTime,
+    formatter: DateTextFormatter,
     onOpenPicker: () -> Unit,
 ) {
-    val valueText = reminderTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+    val valueText = formatter.timeOfDay(reminderTime)
     val rowDescription = stringResource(R.string.reminder_time_row_description, valueText)
     Row(
         modifier =
@@ -602,6 +608,12 @@ private fun ReminderTimePickerDialog(
         rememberTimePickerState(
             initialHour = initialTime.hour,
             initialMinute = initialTime.minute,
+            // p1-01 ESCALATION (open, Staff): this is NOT text formatting — it is a boolean that
+            // configures the M3 picker's input mode from the *device's 12/24-hour setting*. The
+            // nine-method DateTextFormatter cannot express it, and routing it through
+            // `timeOfDay` would be a behaviour change: `timeOfDay` is
+            // `ofLocalizedTime(SHORT)`, which follows the *locale*, not this setting. Left
+            // exactly as shipped pending a Staff decision; see the p1-01 report.
             is24Hour = DateFormat.is24HourFormat(LocalContext.current),
         )
     AlertDialog(
@@ -631,11 +643,12 @@ private fun ReminderTimePickerDialog(
 @Composable
 private fun TrackingStartRow(
     trackingStartDate: LocalDate?,
+    formatter: DateTextFormatter,
     onOpenPicker: () -> Unit,
     onClear: () -> Unit,
 ) {
     val valueText =
-        trackingStartDate?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+        trackingStartDate?.let(formatter::mediumDate)
             ?: stringResource(R.string.tracking_start_unset)
     val rowDescription = stringResource(R.string.tracking_start_row_description, valueText)
     Row(
