@@ -1,11 +1,12 @@
 package com.jpillion.dailyreadingplanner.bible.data.remote
 
 import com.jpillion.dailyreadingplanner.di.IoDispatcher
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.get
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,48 +26,60 @@ import javax.inject.Singleton
  * **A reporting failure must never break reading.** Every error is swallowed — the reader has
  * already rendered by the time this runs, and a dropped report is a licence-reporting gap, not a
  * reason to deny someone their scripture.
+ *
+ * p1-03 moved this off `HttpURLConnection` (which does not exist on Kotlin/Native) onto Ktor;
+ * see [HttpBibleApiClient] for why, and for the engine choice. The transport changed, the
+ * documented URL form did not.
  */
 @Singleton
 class HttpFumsReporter
     @Inject
     constructor(
+        private val httpClient: HttpClient,
         private val identity: FumsIdentity,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : FumsReporter {
         override suspend fun report(fumsToken: String) {
             if (fumsToken.isBlank()) return
             withContext(ioDispatcher) {
-                var conn: HttpURLConnection? = null
                 try {
                     val url =
-                        URL(
-                            "$FUMS_ENDPOINT?t=${enc(fumsToken)}" +
-                                "&dId=${enc(identity.deviceId())}" +
-                                "&sId=${enc(identity.sessionId())}",
-                        )
-                    conn =
-                        (url.openConnection() as HttpURLConnection).apply {
-                            requestMethod = "GET"
-                            connectTimeout = CONNECT_TIMEOUT_MS
-                            readTimeout = READ_TIMEOUT_MS
+                        "$FUMS_ENDPOINT?t=${enc(fumsToken)}" +
+                            "&dId=${enc(identity.deviceId())}" +
+                            "&sId=${enc(identity.sessionId())}"
+                    // The response body is of no interest; completing the request is the whole job.
+                    httpClient.get(url) {
+                        timeout {
+                            connectTimeoutMillis = CONNECT_TIMEOUT_MS
+                            socketTimeoutMillis = READ_TIMEOUT_MS
                         }
-                    // The response body is of no interest; reading the status is what completes the
-                    // request, and draining the stream lets the connection be reused.
-                    conn.responseCode
-                    conn.inputStream?.use { it.readBytes() }
+                    }
                 } catch (e: Exception) {
                     android.util.Log.w("FumsReporter", "usage report dropped")
-                } finally {
-                    conn?.disconnect()
                 }
             }
         }
 
-        private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
+        /**
+         * Ktor's encoder, per ADR-0014 Amendment A1: this file lands in `shared/data`, where Ktor is
+         * already a dependency. [com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder]
+         * uses the in-house [com.jpillion.dailyreadingplanner.data.reference.PercentEncoder] instead,
+         * because it lands in `shared/domain`, where ADR-0001 forbids Ktor.
+         *
+         * It is NOT byte-identical to the `java.net.URLEncoder` this replaced for three characters:
+         * space (`%20` here, `+` there), `~` (passed through here, `%7E` there) and `*` (`%2A` here,
+         * passed through there). **None can occur in these three values** — the two ids are
+         * generated UUIDs (hex and dashes) and `fumsToken` is an opaque API.Bible token over a
+         * base64-family alphabet. `the encoded url form is pinned exactly` in the test measures the
+         * real values; `encoding diverges from form encoding only on characters these values cannot
+         * contain` measures the divergence itself, so it can never become invisible. If a token ever
+         * does carry one of the three, the one-line fix is to call `PercentEncoder.encode` here.
+         */
+        private fun enc(value: String): String = value.encodeURLParameter()
 
         private companion object {
             const val FUMS_ENDPOINT = "https://fums.api.bible/f3"
-            const val CONNECT_TIMEOUT_MS = 10_000
-            const val READ_TIMEOUT_MS = 10_000
+            const val CONNECT_TIMEOUT_MS = 10_000L
+            const val READ_TIMEOUT_MS = 10_000L
         }
     }

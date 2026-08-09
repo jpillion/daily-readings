@@ -5,9 +5,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.first
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * D-OT-9 — the two anonymous ids FUMS requires alongside each `fumsToken`
@@ -30,6 +31,16 @@ interface FumsIdentity {
     fun sessionId(): String
 }
 
+/**
+ * p1-03 swapped `java.util.UUID` (absent on Kotlin/Native) for `kotlin.uuid.Uuid`.
+ *
+ * **The generated string format is an external contract** — these ids go to API.Bible's FUMS
+ * endpoint under the licence. `Uuid.random()` is a v4 UUID and `Uuid.toString()` is the canonical
+ * lowercase 8-4-4-4-12 hex-and-dash form, i.e. character-for-character what
+ * `java.util.UUID.randomUUID().toString()` produced. `a generated id is a canonical lowercase
+ * version 4 uuid` in `HttpFumsReporterTest` pins that shape rather than trusting it.
+ */
+@OptIn(ExperimentalUuidApi::class)
 @Singleton
 class DataStoreFumsIdentity
     @Inject
@@ -37,11 +48,11 @@ class DataStoreFumsIdentity
         private val dataStore: DataStore<Preferences>,
     ) : FumsIdentity {
         // Per-process, so a new launch is a new session. Not persisted, by definition.
-        private val session: String = UUID.randomUUID().toString()
+        private val session: String = Uuid.random().toString()
 
         override suspend fun deviceId(): String {
             dataStore.data.first()[KEY]?.let { return it }
-            val generated = UUID.randomUUID().toString()
+            val generated = Uuid.random().toString()
             // Re-read inside edit: two concurrent first-calls must not each write a different id.
             var stored = generated
             dataStore.edit { prefs ->

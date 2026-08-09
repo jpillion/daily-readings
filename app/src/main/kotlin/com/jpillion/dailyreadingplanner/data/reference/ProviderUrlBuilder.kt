@@ -4,7 +4,6 @@ import com.jpillion.dailyreadingplanner.bible.domain.ConsecutiveChapterRuns
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.Reference
-import java.net.URLEncoder
 import javax.inject.Inject
 
 /**
@@ -65,7 +64,7 @@ class ProviderUrlBuilder
                     "https://mysword.info/b?r=${book.order}.$ch.$v"
                 ExternalBibleApp.BIBLE_GATEWAY -> {
                     val search = "${book.canonicalName} $ch:$v"
-                    val encoded = URLEncoder.encode(search, Charsets.UTF_8.name())
+                    val encoded = PercentEncoder.encode(search)
                     "https://www.biblegateway.com/passage/?search=$encoded&version=KJV"
                 }
             }
@@ -107,7 +106,7 @@ class ProviderUrlBuilder
                         "$book ${run.first().chapter}-${run.last().chapter}"
                     }
                 }
-            val encoded = URLEncoder.encode(search, Charsets.UTF_8.name())
+            val encoded = PercentEncoder.encode(search)
             return "https://www.biblegateway.com/passage/?search=$encoded&version=KJV"
         }
     }

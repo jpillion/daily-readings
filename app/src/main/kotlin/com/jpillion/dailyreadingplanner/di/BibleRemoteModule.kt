@@ -1,6 +1,5 @@
 package com.jpillion.dailyreadingplanner.di
 
-import android.content.Context
 import com.jpillion.dailyreadingplanner.bible.data.remote.BibleApiClient
 import com.jpillion.dailyreadingplanner.bible.data.remote.BibleTextCache
 import com.jpillion.dailyreadingplanner.bible.data.remote.BibleTextResolver
@@ -11,12 +10,17 @@ import com.jpillion.dailyreadingplanner.bible.data.remote.FumsReporter
 import com.jpillion.dailyreadingplanner.bible.data.remote.HttpBibleApiClient
 import com.jpillion.dailyreadingplanner.bible.data.remote.HttpFumsReporter
 import com.jpillion.dailyreadingplanner.bible.domain.BibleTextSource
+import com.jpillion.dailyreadingplanner.platform.AppFilePaths
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
+import kotlinx.coroutines.CoroutineDispatcher
+import okio.FileSystem
 import javax.inject.Singleton
 
 /**
@@ -27,9 +31,11 @@ import javax.inject.Singleton
  * the one thing that must keep working with no network (D-OT-3). This module owns everything that
  * *does* touch the network, so the offline core and the online extra never blur together.
  *
- * Every provider here is `@Provides` rather than `@Binds` because [HttpBibleApiClient] and
- * [FileBibleTextCache] take non-injectable constructor params (a `String` base URL, a `File`, a
- * lambda) and deliberately carry no `@Inject`.
+ * Every provider here is `@Provides` rather than `@Binds` because [HttpBibleApiClient] takes
+ * non-injectable constructor params (a `String` base URL, a lambda) and deliberately carries no
+ * `@Inject`. [FileBibleTextCache]'s params all became injectable in p1-04, but its provider stays
+ * `@Provides`: swapping the body to `NoOpBibleTextCache()` is the entire cost of a "caching not
+ * permitted" answer from API.Bible, and that stays a one-line edit only while it is a provider.
  *
  * **Nothing injects [BibleTextResolver] yet** — the use-case switch is §2 step 2. This module makes
  * the graph resolvable; it does not change any behaviour on its own.
@@ -65,6 +71,31 @@ object BibleRemoteModule {
     const val PROXY_BASE_URL = "https://drp-bible-proxy-954215684233.us-central1.run.app"
 
     /**
+     * p1-03 / ADR-0014 — **the engine boundary**. The HTTP engine is chosen here and nowhere else:
+     * [HttpBibleApiClient] and [HttpFumsReporter] take an [HttpClient] and know nothing about which
+     * engine backs it, so Phase 2's Darwin engine is a change to this one function.
+     *
+     * `Android` rather than `OkHttp`, per dependency-contract R3: `ktor-client-android` adds ~26 KB
+     * against `ktor-client-okhttp`'s ~927 KB (OkHttp is not on this app's classpath at all today),
+     * and it is the `HttpURLConnection`-backed engine — the same transport the app used before
+     * p1-03. Release 1.9.0 therefore changes the API without changing what reaches the network.
+     *
+     * `expectSuccess` is left at Ktor's default of `false` on purpose: both call sites map status
+     * codes themselves, and a plugin that threw on 404 would turn `NotFound` into `Unavailable` —
+     * a real behaviour change, silently, in the D-OT-2 chain.
+     *
+     * [HttpTimeout] is installed because both call sites set **per-request** timeouts (the passage
+     * fetch reads for 15s, FUMS for 10s, exactly as before); the plugin is what applies them.
+     */
+    @Provides
+    @Singleton
+    fun provideHttpClient(): HttpClient =
+        HttpClient(Android) {
+            expectSuccess = false
+            install(HttpTimeout)
+        }
+
+    /**
      * The App Check token supplier is a per-call lambda so §2 step 7 is a change to *this provider*
      * and nothing else — the client, the resolver and the use cases stay untouched.
      *
@@ -72,13 +103,22 @@ object BibleRemoteModule {
      * is exactly why the proxy has to stay on `allow` until step 7 lands: a `deny` policy would
      * reject every unattested fetch, and the reader would silently degrade to the KJV banner on
      * every non-KJV read.
+     *
+     * p1-03 added the [HttpClient] and the `@IoDispatcher` parameters. The dispatcher is injected
+     * rather than `Dispatchers.IO`-by-default because `Dispatchers.IO` does not exist on
+     * Kotlin/Native, and this compiles fine on Android — which is exactly how it gets missed.
      */
     @Provides
     @Singleton
-    fun provideBibleApiClient(): BibleApiClient =
+    fun provideBibleApiClient(
+        httpClient: HttpClient,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+    ): BibleApiClient =
         HttpBibleApiClient(
+            httpClient = httpClient,
             baseUrl = PROXY_BASE_URL,
             appCheckTokenProvider = { null },
+            ioDispatcher = ioDispatcher,
         )
 
     /**
@@ -90,14 +130,21 @@ object BibleRemoteModule {
      * disappears and every offline read falls to the KJV banner. That is the entire cost of a "no" —
      * a binding change, never a rewrite. Nothing above [BibleTextCache] knows which impl is live.
      *
-     * `cacheDir` rather than `filesDir`: this is disposable data and the OS evicting it under
-     * storage pressure is correct behaviour for a cache.
+     * [AppFilePaths.cache] rather than [AppFilePaths.files]: this is disposable data and the OS
+     * evicting it under storage pressure is correct behaviour for a cache.
+     *
+     * p1-04 replaced the `Context`-derived directory with the [AppFilePaths] seam and the
+     * `@IoDispatcher` qualifier. Same directory on Android — `AppFilePaths.cache` IS
+     * `context.cacheDir` — but the location decision now has one home, which matters because on
+     * iOS it is the App Group container rather than the sandbox default (D-PORT-4).
      */
     @Provides
     @Singleton
     fun provideBibleTextCache(
-        @ApplicationContext context: Context,
-    ): BibleTextCache = FileBibleTextCache(context.cacheDir)
+        fileSystem: FileSystem,
+        appFilePaths: AppFilePaths,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+    ): BibleTextCache = FileBibleTextCache(fileSystem, appFilePaths, ioDispatcher)
 
     /**
      * D-OT-5 — the layer the use cases will inject in §2 step 2, in place of [BibleTextSource].
