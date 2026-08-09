@@ -4,23 +4,30 @@ import android.content.Context
 import com.jpillion.dailyreadingplanner.platform.AndroidAppFilePaths
 import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.AppFilePaths
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.SystemDateProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okio.FileSystem
-import java.time.Clock
 import javax.inject.Singleton
 
-/** App-wide primitives (ESpec §9). The injectable [Clock] makes "today" swappable in tests. */
+/** App-wide primitives (ESpec §9). The injectable [DateProvider] makes "today" swappable in tests. */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+    /**
+     * p1-02 (ADR-0009): the one place that decides which calendar day the user is in. Replaces the
+     * `java.time.Clock` this module used to provide — `java.time` does not exist on Kotlin/Native,
+     * and `kotlin.time.Clock` yields an instant with no zone, so a straight swap would have put the
+     * "which zone?" question at all 13 former injection sites instead of here.
+     */
     @Provides
     @Singleton
-    fun provideClock(): Clock = Clock.systemDefaultZone()
+    fun provideDateProvider(impl: SystemDateProvider): DateProvider = impl
 
     /**
      * p1-01: the localized date/time/number text seam. Production code depends on the interface;

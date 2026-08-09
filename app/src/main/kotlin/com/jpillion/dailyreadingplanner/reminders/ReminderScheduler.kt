@@ -4,10 +4,9 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.Clock
-import java.time.LocalTime
-import java.time.ZonedDateTime
+import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
 /**
@@ -45,16 +44,16 @@ class AlarmManagerReminderScheduler
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) : ReminderScheduler {
         private val alarmManager: AlarmManager
             get() = requireNotNull(context.getSystemService(AlarmManager::class.java))
 
         override fun scheduleReminder(time: LocalTime) {
-            val trigger = AlarmTimes.nextOccurrence(ZonedDateTime.now(clock), time)
+            val trigger = AlarmTimes.nextOccurrence(dateProvider.now(), dateProvider.timeZone, time)
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                trigger.toInstant().toEpochMilli(),
+                trigger.toEpochMilliseconds(),
                 reminderIntent(),
             )
         }
@@ -64,19 +63,24 @@ class AlarmManagerReminderScheduler
         }
 
         override fun scheduleMidnightRefresh() {
-            val trigger = AlarmTimes.nextMidnight(ZonedDateTime.now(clock))
+            val trigger = AlarmTimes.nextMidnight(dateProvider.now(), dateProvider.timeZone)
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                trigger.toInstant().toEpochMilli(),
+                trigger.toEpochMilliseconds(),
                 midnightRefreshIntent(),
             )
         }
 
         override fun schedulePersistentRefresh() {
-            val trigger = AlarmTimes.nextOccurrence(ZonedDateTime.now(clock), AlarmTimes.PERSISTENT_REFRESH_TIME)
+            val trigger =
+                AlarmTimes.nextOccurrence(
+                    dateProvider.now(),
+                    dateProvider.timeZone,
+                    AlarmTimes.PERSISTENT_REFRESH_TIME,
+                )
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                trigger.toInstant().toEpochMilli(),
+                trigger.toEpochMilliseconds(),
                 persistentRefreshIntent(),
             )
         }

@@ -11,9 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.jpillion.dailyreadingplanner.R
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneOffset
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Stock M3 full-calendar-date picker (S10; extracted to its own file in S19 — it now also
@@ -31,11 +34,18 @@ internal fun TrackingStartDatePickerDialog(
 ) {
     val state =
         rememberDatePickerState(
+            // p1-02: `LocalDate.now()` here read the SYSTEM DEFAULT zone with no injected clock —
+            // a pre-existing quirk of this fallback, deliberately preserved rather than corrected.
+            // M3's DatePicker speaks UTC-midnight millis, so the two zones below are different on
+            // purpose and were before this change too.
             initialSelectedDateMillis =
-                (initialDate ?: LocalDate.now())
-                    .atStartOfDay(ZoneOffset.UTC)
-                    .toInstant()
-                    .toEpochMilli(),
+                (
+                    initialDate ?: Clock.System
+                        .now()
+                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                        .date
+                ).atStartOfDayIn(TimeZone.UTC)
+                    .toEpochMilliseconds(),
         )
     DatePickerDialog(
         onDismissRequest = onDismiss,
@@ -44,7 +54,7 @@ internal fun TrackingStartDatePickerDialog(
                 onClick = {
                     val millis = state.selectedDateMillis ?: return@TextButton
                     onConfirm(
-                        Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
+                        Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.UTC).date,
                     )
                 },
                 enabled = state.selectedDateMillis != null,

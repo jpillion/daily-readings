@@ -4,13 +4,16 @@ import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import java.time.Clock
-import java.time.LocalDate
-import java.time.YearMonth
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.YearMonth
+import kotlinx.datetime.onDay
+import kotlinx.datetime.plus
 import javax.inject.Inject
 
 /**
@@ -31,25 +34,25 @@ class GetMonthCompletionUseCase
         private val progressRepository: ProgressRepository,
         private val settingsRepository: SettingsRepository,
         private val activePlanRepository: ActivePlanRepository,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) {
         @OptIn(ExperimentalCoroutinesApi::class)
         operator fun invoke(month: YearMonth): Flow<Map<LocalDate, DayCompletion>> {
-            val start = month.atDay(1)
-            val end = month.atEndOfMonth()
+            val start = month.onDay(1)
+            val end = month.lastDay
             return activePlanRepository.activePlanId.flatMapLatest { planId ->
                 combine(
                     activePlanRepository.activeDescriptor,
                     progressRepository.readCounts(start, end, planId),
                     settingsRepository.trackingStartDate,
                 ) { descriptor, counts, trackingStart ->
-                    val today = LocalDate.now(clock)
+                    val today = dateProvider.today()
                     val streamCount = descriptor.streamCount
                     buildMap {
                         var date = start
-                        while (!date.isAfter(end)) {
+                        while (date <= end) {
                             put(date, classifier.classify(date, counts[date] ?: 0, streamCount, today, trackingStart))
-                            date = date.plusDays(1)
+                            date = date.plus(1, DateTimeUnit.DAY)
                         }
                     }
                 }

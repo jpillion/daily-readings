@@ -33,7 +33,8 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.ui.day.ReadingFormatter
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toJavaLocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -393,7 +394,10 @@ private fun Header(
     scale: WidgetScale,
 ) {
     Text(
-        text = date.format(if (layout == WidgetLayout.SMALL) ShortDateFormat else HeaderDateFormat),
+        text =
+            date.toJavaLocalDate().format(
+                if (layout == WidgetLayout.SMALL) ShortDateFormat else HeaderDateFormat,
+            ),
         style =
             TextStyle(
                 color = GlanceTheme.colors.onSurface,

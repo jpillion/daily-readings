@@ -1,17 +1,22 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.domain.model.PlanDescriptor
 import com.jpillion.dailyreadingplanner.domain.model.StreamDescriptor
+import com.jpillion.dailyreadingplanner.platform.DateProvider
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.junit.Test
-import java.time.Clock
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneOffset
+import kotlin.time.Instant
 
 /**
  * SC-T10 (Alt Sprint C) — N-correctness through the ONE classifier seam (D-ALT-6, R-STREAK-5).
@@ -25,7 +30,8 @@ import java.time.ZoneOffset
  * pins; "iterate a fixed three" reddens the per-descriptor iteration pins.
  */
 class NStreamCorrectnessTest {
-    private val clock: Clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
+    private val dateProvider: DateProvider =
+        FakeDateProvider(LocalDate(2026, 6, 10), now = Instant.parse("2026-06-10T12:00:00Z"))
     private val progress = FakeProgressRepository()
     private val settings = FakeSettingsRepository()
 
@@ -59,7 +65,7 @@ class NStreamCorrectnessTest {
             progress,
             settings,
             FakeActivePlanRepository(descriptor = descriptor, planId = descriptor.planId),
-            clock,
+            dateProvider,
         )
 
     private fun yearStrips(descriptor: PlanDescriptor) =
@@ -68,10 +74,10 @@ class NStreamCorrectnessTest {
             progress,
             settings,
             FakeActivePlanRepository(descriptor = descriptor, planId = descriptor.planId),
-            clock,
+            dateProvider,
         )
 
-    private fun june(day: Int) = LocalDate.of(2026, 6, day)
+    private fun june(day: Int) = LocalDate(2026, 6, day)
 
     // --- N=4 (M'Cheyne): COMPLETE requires FOUR marks, through the classifier ---
 
@@ -106,16 +112,16 @@ class NStreamCorrectnessTest {
             val s = stats(mcheyneN4())().first()
             assertThat(s.yearTotalReadings).isEqualTo(1_460) // 365 * 4, NOT 1095
             assertThat(s.streamTotalDays).isEqualTo(365)
-            assertThat(s.streams.map { it.number }).containsExactly(1, 2, 3, 4).inOrder()
-            assertThat(s.streamReadCounts.keys).containsExactly(1, 2, 3, 4)
+            assertThat(s.streams.map { it.number }).containsExactly(1, 2, 3, 4)
+            assertThat(s.streamReadCounts.keys).containsExactlyInAnyOrder(1, 2, 3, 4)
         }
 
     @Test
     fun `N4 - the year strips render one strip per declared stream - keyed by number`() =
         runTest {
             val strips = yearStrips(mcheyneN4())().first()
-            assertThat(strips.dayStates.keys).containsExactly(1, 2, 3, 4)
-            assertThat(strips.streams.map { it.number }).containsExactly(1, 2, 3, 4).inOrder()
+            assertThat(strips.dayStates.keys).containsExactlyInAnyOrder(1, 2, 3, 4)
+            assertThat(strips.streams.map { it.number }).containsExactlyInAnyOrder(1, 2, 3, 4)
         }
 
     // --- N=1 (synthetic chronological): COMPLETE requires ONE mark ---
@@ -138,14 +144,14 @@ class NStreamCorrectnessTest {
             assertThat(s.yearTotalReadings).isEqualTo(365) // 365 * 1
             assertThat(s.streamTotalDays).isEqualTo(365)
             assertThat(s.streams).hasSize(1)
-            assertThat(s.streamReadCounts.keys).containsExactly(1)
+            assertThat(s.streamReadCounts.keys).containsExactlyInAnyOrder(1)
         }
 
     @Test
     fun `N1 - the year strips render exactly one strip`() =
         runTest {
             val strips = yearStrips(chronologicalN1())().first()
-            assertThat(strips.dayStates.keys).containsExactly(1)
+            assertThat(strips.dayStates.keys).containsExactlyInAnyOrder(1)
         }
 
     @Test
@@ -187,12 +193,12 @@ class NStreamCorrectnessTest {
                 )
             val day = useCase(june(10)).first() as com.jpillion.dailyreadingplanner.domain.model.DayReadings.Scheduled
             assertThat(day.readings.map { it.streamTitle })
-                .containsExactly(
+                .containsExactlyInAnyOrder(
                     "Family — Old Testament",
                     "Family — Gospels",
                     "Personal — Psalms & Prophets",
                     "Personal — Epistles",
-                ).inOrder()
+                )
         }
 
     @Test

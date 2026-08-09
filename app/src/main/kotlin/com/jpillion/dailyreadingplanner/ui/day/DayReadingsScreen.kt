@@ -47,8 +47,10 @@ import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
 import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.YearMonth
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.YearMonth
+import kotlinx.datetime.plus
 
 /**
  * Pager geometry (D-S5-4): a bounded window of [PAGE_COUNT] real calendar days with "today"
@@ -62,12 +64,12 @@ internal const val PAGE_COUNT = 2 * DAY_WINDOW + 1
 internal fun dateForPage(
     today: LocalDate,
     page: Int,
-): LocalDate = today.plusDays((page - TODAY_PAGE).toLong())
+): LocalDate = today.plus(page - TODAY_PAGE, DateTimeUnit.DAY)
 
 internal fun pageForDate(
     today: LocalDate,
     date: LocalDate,
-): Int = (TODAY_PAGE + (date.toEpochDay() - today.toEpochDay())).toInt().coerceIn(0, PAGE_COUNT - 1)
+): Int = (TODAY_PAGE + (date.toEpochDays() - today.toEpochDays())).toInt().coerceIn(0, PAGE_COUNT - 1)
 
 /** Stateful entry point: collects the ViewModel and owns the Custom-Tab side-effect (D-S4-2). */
 @Composable

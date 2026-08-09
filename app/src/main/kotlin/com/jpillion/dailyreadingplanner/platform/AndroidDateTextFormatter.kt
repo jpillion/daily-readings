@@ -6,10 +6,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.toJavaDayOfWeek
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toJavaLocalTime
+import kotlinx.datetime.toKotlinDayOfWeek
 import java.text.NumberFormat
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
@@ -30,6 +34,13 @@ import javax.inject.Inject
  * `Context`; the other nine members are pure. Composables take a [DateTextFormatter] as a
  * defaulted parameter and get their instance from [rememberDateTextFormatter]; Hilt binds this as
  * the `@Singleton` [DateTextFormatter] in `AppModule` for non-composable consumers.
+ *
+ * p1-02: the interface now speaks kotlinx-datetime, so each body converts at its own boundary via
+ * `toJavaLocalDate()` / `toJavaLocalTime()` / `toJavaDayOfWeek()` and formats exactly as before.
+ * **This is the correct home for that conversion** — it is the platform implementation, and after
+ * `p2-03` lifts the interface to `shared/platform` the iOS actual will convert to `NSDate` at the
+ * same seam. The conversions are total and lossless (both sides are proleptic-Gregorian
+ * wall-clock values with no zone), so no rendered string changes.
  */
 class AndroidDateTextFormatter
     @Inject
@@ -37,26 +48,29 @@ class AndroidDateTextFormatter
         @ApplicationContext private val context: Context,
     ) : DateTextFormatter {
         override fun fullDate(date: LocalDate): String =
-            date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+            date.toJavaLocalDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
 
         override fun mediumDate(date: LocalDate): String =
-            date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+            date.toJavaLocalDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
 
-        override fun monthDay(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("MMMM d"))
+        override fun monthDay(date: LocalDate): String =
+            date.toJavaLocalDate().format(DateTimeFormatter.ofPattern("MMMM d"))
 
-        override fun weekdayMonthDay(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
+        override fun weekdayMonthDay(date: LocalDate): String =
+            date.toJavaLocalDate().format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
 
         // `YearMonth.format(MonthTitleFormat)` at the old call site. The pattern reads only
         // MONTH_OF_YEAR and YEAR, which a LocalDate supplies identically, so the text is unchanged;
         // the picker's existing "June 2026" / "December 2026" pins are the check.
-        override fun monthYear(date: LocalDate): String = date.format(MONTH_TITLE_FORMAT)
+        override fun monthYear(date: LocalDate): String = date.toJavaLocalDate().format(MONTH_TITLE_FORMAT)
 
-        override fun weekdayInitial(day: DayOfWeek): String = day.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+        override fun weekdayInitial(day: DayOfWeek): String =
+            day.toJavaDayOfWeek().getDisplayName(TextStyle.NARROW, Locale.getDefault())
 
         override fun timeOfDay(time: LocalTime): String =
-            time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+            time.toJavaLocalTime().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
 
-        override fun firstDayOfWeek(): DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek
+        override fun firstDayOfWeek(): DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek.toKotlinDayOfWeek()
 
         override fun integer(value: Int): String = NumberFormat.getIntegerInstance().format(value)
 

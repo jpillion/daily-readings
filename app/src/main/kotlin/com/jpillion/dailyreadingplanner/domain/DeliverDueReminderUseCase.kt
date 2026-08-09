@@ -2,11 +2,10 @@ package com.jpillion.dailyreadingplanner.domain
 
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import com.jpillion.dailyreadingplanner.reminders.ReminderNotifier
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.first
-import java.time.Clock
-import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -29,11 +28,11 @@ class DeliverDueReminderUseCase
         private val getDayReadings: GetDayReadingsUseCase,
         private val notifier: ReminderNotifier,
         private val scheduler: ReminderScheduler,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) {
         suspend operator fun invoke() {
             if (!settingsRepository.reminderEnabled.first()) return
-            val today = LocalDate.now(clock)
+            val today = dateProvider.today()
             val day = getDayReadings(today).first()
             if (day is DayReadings.Scheduled && !day.dayComplete) {
                 notifier.showTodayReminder(day.readings.map { it.portion })

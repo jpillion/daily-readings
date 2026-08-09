@@ -1,10 +1,14 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.junit.Test
-import java.time.LocalDate
 
 /**
  * S19, D-S19-1 (supersedes the auto-write half of D-S14-1): the first-run tracking-start
@@ -32,7 +36,7 @@ class TrackingStartPromptUseCasesTest {
     @Test
     fun `upgrader with existing marks is never prompted - history is not retroactively neutralized`() =
         runTest {
-            progress.setRead(LocalDate.of(2026, 1, 5), 3, isRead = true)
+            progress.setRead(LocalDate(2026, 1, 5), 3, isRead = true)
             assertThat(resolve()).isFalse()
             assertThat(settings.storedTrackingStartDate.value).isNull()
             assertThat(settings.storedTrackingStartInitialized.value).isTrue() // runs only once
@@ -42,17 +46,17 @@ class TrackingStartPromptUseCasesTest {
     fun `already-initialized device is never prompted and keeps its stored value`() =
         runTest {
             settings.markTrackingStartInitialized()
-            settings.setTrackingStartDate(LocalDate.of(2026, 4, 17))
+            settings.setTrackingStartDate(LocalDate(2026, 4, 17))
             assertThat(resolve()).isFalse()
-            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 4, 17))
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate(2026, 4, 17))
         }
 
     @Test
     fun `completing the prompt persists the choice and the marker - never asked again`() =
         runTest {
             assertThat(resolve()).isTrue()
-            complete(LocalDate.of(2026, 6, 11))
-            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 6, 11))
+            complete(LocalDate(2026, 6, 11))
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate(2026, 6, 11))
             assertThat(settings.storedTrackingStartInitialized.value).isTrue()
             assertThat(resolve()).isFalse()
         }
@@ -60,7 +64,7 @@ class TrackingStartPromptUseCasesTest {
     @Test
     fun `a user who clears the date after answering is not re-prompted or re-defaulted`() =
         runTest {
-            complete(LocalDate.of(2026, 1, 1))
+            complete(LocalDate(2026, 1, 1))
             settings.setTrackingStartDate(null) // deliberate clear in Settings
             assertThat(resolve()).isFalse()
             assertThat(settings.storedTrackingStartDate.value).isNull()

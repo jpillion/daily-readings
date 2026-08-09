@@ -5,14 +5,17 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
+import kotlinx.datetime.LocalDate
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDate
 
 /**
  * S19, D-S19-1: the one-time first-run tracking-start prompt — exactly three choices, plain
@@ -25,7 +28,7 @@ class TrackingStartPromptDialogTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val today = LocalDate.of(2026, 6, 10)
+    private val today = LocalDate(2026, 6, 10)
     private val chosen = mutableListOf<LocalDate>()
     private var dismissCalls = 0
 
@@ -61,7 +64,7 @@ class TrackingStartPromptDialogTest {
     fun `January 1 choice returns Jan 1 of the current year`() {
         setDialog()
         composeRule.onNodeWithTag("tracking-prompt-jan1").performClick()
-        assertThat(chosen).containsExactly(LocalDate.of(2026, 1, 1))
+        assertThat(chosen).containsExactlyInAnyOrder(LocalDate(2026, 1, 1))
         assertThat(dismissCalls).isEqualTo(0)
     }
 
@@ -69,7 +72,7 @@ class TrackingStartPromptDialogTest {
     fun `today choice returns today`() {
         setDialog()
         composeRule.onNodeWithTag("tracking-prompt-today").performClick()
-        assertThat(chosen).containsExactly(today)
+        assertThat(chosen).containsExactlyInAnyOrder(today)
     }
 
     @Test
@@ -80,7 +83,7 @@ class TrackingStartPromptDialogTest {
         composeRule.onNodeWithTag("tracking-start-prompt").assertDoesNotExist()
         // The picker is pre-selected on today; confirming chooses it.
         composeRule.onNodeWithTag("tracking-start-confirm").performClick()
-        assertThat(chosen).containsExactly(today)
+        assertThat(chosen).containsExactlyInAnyOrder(today)
     }
 
     @Test

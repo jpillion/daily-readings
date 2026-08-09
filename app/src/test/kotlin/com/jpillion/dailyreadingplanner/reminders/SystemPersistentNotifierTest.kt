@@ -6,16 +6,20 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotEqualTo
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import kotlinx.datetime.LocalDate
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import java.time.LocalDate
 
 /**
  * S21 (D-S21-1/2/4): the ongoing notification — silent low-importance channel, non-dismissible,
@@ -32,11 +36,11 @@ class SystemPersistentNotifierTest {
 
     private val scheduledDay =
         DayReadings.Scheduled(
-            date = LocalDate.of(2026, 1, 1),
+            date = LocalDate(2026, 1, 1),
             readings = threePortions.map { ReadingStatus(it, isRead = false) },
             dayComplete = false,
         )
-    private val febTwentyNine = DayReadings.NoScheduledReadings(LocalDate.of(2028, 2, 29))
+    private val febTwentyNine = DayReadings.NoScheduledReadings(LocalDate(2028, 2, 29))
 
     private fun grant() {
         shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)

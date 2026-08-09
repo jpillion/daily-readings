@@ -15,20 +15,25 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.FakeDateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Settings screen behavior (FR-9 + S8; S14 reworked the theme + provider selectors into
@@ -82,9 +87,10 @@ class SettingsScreenTest {
         fontScale: Float = 1f,
         trackingStartDate: LocalDate? = null,
         reminderEnabled: Boolean = false,
-        reminderTime: LocalTime = LocalTime.of(8, 0),
+        reminderTime: LocalTime = LocalTime(8, 0),
         persistentNotificationEnabled: Boolean = false,
         showReminderPermissionRationale: Boolean = false,
+        formatter: DateTextFormatter? = null,
     ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -120,6 +126,7 @@ class SettingsScreenTest {
                     onOpenNotificationSettings = { openNotificationSettingsCalls++ },
                     onResetProgressConfirmed = { resetConfirms++ },
                     onBack = { backCalls++ },
+                    formatter = formatter ?: rememberDateTextFormatter(),
                 )
             }
         }
@@ -155,7 +162,7 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("theme-option-dark").assertDoesNotExist() // menu closed
         composeRule.onNodeWithTag("theme-dropdown").performClick() // reopen for a second pick
         composeRule.onNodeWithTag("theme-option-light").performClick()
-        assertThat(selections).containsExactly(ThemeMode.DARK, ThemeMode.LIGHT).inOrder()
+        assertThat(selections).containsExactly(ThemeMode.DARK, ThemeMode.LIGHT)
     }
 
     @Test
@@ -211,7 +218,7 @@ class SettingsScreenTest {
 
     @Test
     fun trackingStartRow_showsTheFormattedDate_whenSet() {
-        setScreen(ThemeMode.SYSTEM, trackingStartDate = LocalDate.of(2026, 6, 3))
+        setScreen(ThemeMode.SYSTEM, trackingStartDate = LocalDate(2026, 6, 3))
         composeRule
             .onNodeWithTag("tracking-start-value", useUnmergedTree = true)
             .performScrollTo()
@@ -220,13 +227,13 @@ class SettingsScreenTest {
 
     @Test
     fun trackingStartRow_opensThePicker_andConfirmReportsTheSelectedDate() {
-        setScreen(ThemeMode.SYSTEM, trackingStartDate = LocalDate.of(2026, 6, 3))
+        setScreen(ThemeMode.SYSTEM, trackingStartDate = LocalDate(2026, 6, 3))
         composeRule.onNodeWithTag("tracking-start-row").performScrollTo().performClick()
         composeRule.onNodeWithTag("tracking-start-dialog").assertIsDisplayed()
         // Confirm without changing the selection: reports the initially-selected date.
         composeRule.onNodeWithTag("tracking-start-confirm").performClick()
         composeRule.onNodeWithTag("tracking-start-dialog").assertDoesNotExist()
-        assertThat(trackingStartChanges).containsExactly(LocalDate.of(2026, 6, 3))
+        assertThat(trackingStartChanges).containsExactlyInAnyOrder(LocalDate(2026, 6, 3))
     }
 
     @Test
@@ -240,9 +247,9 @@ class SettingsScreenTest {
 
     @Test
     fun trackingStartClear_reportsNull_withoutOpeningTheDialog() {
-        setScreen(ThemeMode.SYSTEM, trackingStartDate = LocalDate.of(2026, 6, 3))
+        setScreen(ThemeMode.SYSTEM, trackingStartDate = LocalDate(2026, 6, 3))
         composeRule.onNodeWithTag("tracking-start-clear").performScrollTo().performClick()
-        assertThat(trackingStartChanges).containsExactly(null as LocalDate?)
+        assertThat(trackingStartChanges).containsExactlyInAnyOrder(null as LocalDate?)
         composeRule.onNodeWithTag("tracking-start-dialog").assertDoesNotExist()
     }
 
@@ -263,29 +270,59 @@ class SettingsScreenTest {
     fun reminderToggle_reportsTheNewValue() {
         setScreen(ThemeMode.SYSTEM)
         composeRule.onNodeWithTag("reminder-toggle").performScrollTo().performClick()
-        assertThat(reminderToggles).containsExactly(true)
+        assertThat(reminderToggles).containsExactlyInAnyOrder(true)
     }
 
+    /**
+     * p1-02 — this assertion was **tautological** before the sweep and could not fail. It computed
+     * its expected value with the *same* expression production used
+     * (`LocalTime.of(21, 30).format(ofLocalizedTime(SHORT))`), so any change to how the row
+     * formats a time changed both sides together. It was the only pre-existing coverage of
+     * `timeOfDay`.
+     *
+     * It now drives the row through [FakeDateTextFormatter] and pins a **literal**, so the test
+     * fails if the row stops routing through the seam, formats inline, or renders a constant. The
+     * second `setScreen` is what rules out the constant: two different times must render two
+     * different strings.
+     */
     @Test
     fun enabledReminder_showsTheTimeRow_withTheFormattedTime() {
-        setScreen(ThemeMode.SYSTEM, reminderEnabled = true, reminderTime = LocalTime.of(21, 30))
+        setScreen(
+            ThemeMode.SYSTEM,
+            reminderEnabled = true,
+            reminderTime = LocalTime(21, 30),
+            formatter = FakeDateTextFormatter(),
+        )
         composeRule.onNodeWithTag("reminder-toggle").performScrollTo().assertIsOn()
-        val expected = LocalTime.of(21, 30).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
         composeRule
             .onNodeWithTag("reminder-time-value", useUnmergedTree = true)
             .performScrollTo()
-            .assertTextEquals(expected)
+            .assertTextEquals("TIME(21:30)")
+    }
+
+    @Test
+    fun theReminderTimeRow_rendersTheTimeItWasGiven_notAConstant() {
+        setScreen(
+            ThemeMode.SYSTEM,
+            reminderEnabled = true,
+            reminderTime = LocalTime(6, 5),
+            formatter = FakeDateTextFormatter(),
+        )
+        composeRule
+            .onNodeWithTag("reminder-time-value", useUnmergedTree = true)
+            .performScrollTo()
+            .assertTextEquals("TIME(06:05)")
     }
 
     @Test
     fun timeRow_opensThePicker_andConfirmReportsTheChosenTime() {
-        setScreen(ThemeMode.SYSTEM, reminderEnabled = true, reminderTime = LocalTime.of(8, 0))
+        setScreen(ThemeMode.SYSTEM, reminderEnabled = true, reminderTime = LocalTime(8, 0))
         composeRule.onNodeWithTag("reminder-time-row").performScrollTo().performClick()
         composeRule.onNodeWithTag("reminder-time-dialog").assertIsDisplayed()
         // Confirm without changing the dial: reports the initial time.
         composeRule.onNodeWithTag("reminder-time-confirm").performClick()
         composeRule.onNodeWithTag("reminder-time-dialog").assertDoesNotExist()
-        assertThat(reminderTimeChanges).containsExactly(LocalTime.of(8, 0))
+        assertThat(reminderTimeChanges).containsExactlyInAnyOrder(LocalTime(8, 0))
     }
 
     @Test
@@ -335,14 +372,14 @@ class SettingsScreenTest {
     fun tappingTheInAppSegment_reportsTheInAppMode() {
         setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL)
         composeRule.onNodeWithTag("destination-mode-inapp").performScrollTo().performClick()
-        assertThat(modeSelections).containsExactly(ReadingDestinationMode.IN_APP)
+        assertThat(modeSelections).containsExactlyInAnyOrder(ReadingDestinationMode.IN_APP)
     }
 
     @Test
     fun tappingTheExternalSegment_reportsTheExternalMode() {
         setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.IN_APP)
         composeRule.onNodeWithTag("destination-mode-external").performScrollTo().performClick()
-        assertThat(modeSelections).containsExactly(ReadingDestinationMode.EXTERNAL)
+        assertThat(modeSelections).containsExactlyInAnyOrder(ReadingDestinationMode.EXTERNAL)
     }
 
     @Test
@@ -436,8 +473,7 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("provider-dropdown").performClick()
         composeRule.onNodeWithTag("provider-option-youversion").performClick()
         assertThat(externalAppSelections)
-            .containsExactly(ExternalBibleApp.BIBLE_GATEWAY, ExternalBibleApp.YOUVERSION)
-            .inOrder()
+            .containsExactlyInAnyOrder(ExternalBibleApp.BIBLE_GATEWAY, ExternalBibleApp.YOUVERSION)
     }
 
     // --- S15: MySword install-detected app option (D-S15-2) ---
@@ -461,7 +497,7 @@ class SettingsScreenTest {
         setScreen(ThemeMode.SYSTEM, destinationMode = ReadingDestinationMode.EXTERNAL, mySwordInstalled = true)
         composeRule.onNodeWithTag("provider-dropdown").performScrollTo().performClick()
         composeRule.onNodeWithTag("provider-option-mysword").assertIsDisplayed().performClick()
-        assertThat(externalAppSelections).containsExactly(ExternalBibleApp.MYSWORD)
+        assertThat(externalAppSelections).containsExactlyInAnyOrder(ExternalBibleApp.MYSWORD)
     }
 
     @Test
@@ -491,7 +527,7 @@ class SettingsScreenTest {
             .assertIsDisplayed()
             .assertIsOn()
         composeRule.onNodeWithTag("show-streaks-toggle").performClick()
-        assertThat(showStreaksToggles).containsExactly(false)
+        assertThat(showStreaksToggles).containsExactlyInAnyOrder(false)
     }
 
     @Test
@@ -513,7 +549,7 @@ class SettingsScreenTest {
         setScreen(ThemeMode.SYSTEM, showStreaks = false)
         composeRule.onNodeWithTag("show-streaks-toggle").performScrollTo().assertIsOff()
         composeRule.onNodeWithTag("show-streaks-toggle").performClick()
-        assertThat(showStreaksToggles).containsExactly(true)
+        assertThat(showStreaksToggles).containsExactlyInAnyOrder(true)
     }
 
     @Test
@@ -528,7 +564,7 @@ class SettingsScreenTest {
         setScreen(ThemeMode.SYSTEM)
         composeRule.onNodeWithTag("persistent-notification-toggle").performScrollTo().assertIsOff()
         composeRule.onNodeWithTag("persistent-notification-toggle").performScrollTo().performClick()
-        assertThat(persistentToggles).containsExactly(true)
+        assertThat(persistentToggles).containsExactlyInAnyOrder(true)
     }
 
     @Test
@@ -565,7 +601,7 @@ class SettingsScreenTest {
         setScreen(ThemeMode.SYSTEM)
         composeRule.onNodeWithTag("plan-dropdown").performScrollTo().performClick()
         composeRule.onNodeWithTag("plan-option-mcheyne").performClick()
-        assertThat(planSelections).containsExactly("mcheyne")
+        assertThat(planSelections).containsExactlyInAnyOrder("mcheyne")
     }
 
     @Test

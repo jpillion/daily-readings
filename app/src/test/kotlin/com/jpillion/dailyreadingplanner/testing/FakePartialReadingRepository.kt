@@ -4,7 +4,7 @@ import com.jpillion.dailyreadingplanner.data.prefs.PartialReadingRepository
 import com.jpillion.dailyreadingplanner.data.prefs.PartialSegmentToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * In-memory [PartialReadingRepository] for use-case tests (sprint-00P, D-SEG-4).
@@ -47,7 +47,7 @@ class FakePartialReadingRepository(
     ) {
         writes += Write(planId, date, streamNumber, segmentIndexes)
         writeLog += TOKENS_WRITE
-        val epochDay = date.toEpochDay()
+        val epochDay = date.toEpochDays()
         val others =
             stored.value.filterNot { token ->
                 val parsed = PartialSegmentToken.parse(token)
@@ -78,7 +78,7 @@ class FakePartialReadingRepository(
     ): Set<Int> =
         stored.value
             .mapNotNull { PartialSegmentToken.parse(it) }
-            .filter { it.planId == planId && it.epochDay == date.toEpochDay() && it.streamNumber == streamNumber }
+            .filter { it.planId == planId && it.epochDay == date.toEpochDays() && it.streamNumber == streamNumber }
             .map { it.segmentIndex }
             .toSet()
 

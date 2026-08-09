@@ -10,7 +10,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.data.reference.ProviderUrlBuilder
 import com.jpillion.dailyreadingplanner.domain.CompleteReadingDestinationPromptUseCase
@@ -36,6 +39,7 @@ import com.jpillion.dailyreadingplanner.domain.ToggleReadingUseCase
 import com.jpillion.dailyreadingplanner.domain.ToggleSegmentCheckUseCase
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakePartialReadingRepository
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
@@ -47,14 +51,15 @@ import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
+import kotlinx.datetime.plus
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.Clock
-import java.time.LocalDate
-import java.time.ZoneOffset
 
 /**
  * Pager-level behavior (Sprint 5): swiping between real calendar days, the Feb 29 and
@@ -73,7 +78,7 @@ class DayReadingsPagerScreenTest {
     private fun stateFor(date: LocalDate): StateFlow<DayUiState> =
         dayStates.getOrPut(date) {
             MutableStateFlow(
-                if (date.monthValue == 2 && date.dayOfMonth == 29) {
+                if (date.month.number == 2 && date.day == 29) {
                     DayUiState.NoScheduledReadings(date)
                 } else {
                     DayUiState.Scheduled(
@@ -98,7 +103,7 @@ class DayReadingsPagerScreenTest {
     /** S17: neutral strips are enough for panel-level tests; StatsContentTest pins states. */
     private fun sampleStrips(today: LocalDate) =
         bcYearStrips(year = today.year, todayIndex = today.dayOfYear - 1) {
-            List(today.lengthOfYear()) { StripDayState.NEUTRAL }
+            List(LocalDate(today.year, 12, 31).dayOfYear) { StripDayState.NEUTRAL }
         }
 
     private fun setScreen(
@@ -137,7 +142,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun launch_showsSingleLineTodayTitle_withoutJumpAffordance() {
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         setScreen(today)
         // D-S16-1: one line — "Today \u2013 June 10"; no separate heading, no year.
         composeRule.onNodeWithText("Today \u2013 June 10").assertIsDisplayed()
@@ -147,7 +152,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun swipeLeft_showsTomorrow_andJumpToTodayReturns() {
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         setScreen(today)
         swipeToNextDay()
         // D-S16-1: no "Readings" heading — just the date, year omitted (same year as today).
@@ -161,7 +166,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun swipeRight_showsYesterday() {
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         setScreen(today)
         swipeToPreviousDay()
         composeRule.onNodeWithText("Tuesday, June 9").assertIsDisplayed()
@@ -169,16 +174,16 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun toggleCallbacks_carryTheDisplayedDate_notToday() {
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         setScreen(today)
         swipeToNextDay()
         composeRule.onNodeWithTag("toggle-2-0").performClick()
-        assertThat(toggleCalls).containsExactly(today.plusDays(1) to 2)
+        assertThat(toggleCalls).containsExactlyInAnyOrder(today.plus(1, DateTimeUnit.DAY) to 2)
     }
 
     @Test
     fun leapYear_swipingFromFeb28_hitsFeb29NoReadings_thenMar1() {
-        val today = LocalDate.of(2028, 2, 28)
+        val today = LocalDate(2028, 2, 28)
         setScreen(today)
         swipeToNextDay()
         composeRule.onNodeWithText("No scheduled readings for Feb 29th").assertIsDisplayed()
@@ -190,7 +195,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun yearBoundary_swipingFromDec31_landsOnJan1OfNextYear() {
-        val today = LocalDate.of(2026, 12, 31)
+        val today = LocalDate(2026, 12, 31)
         setScreen(today)
         swipeToNextDay()
         // D-S16-1: a different year than today's IS shown in the title.
@@ -199,7 +204,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun settingsAction_invokesOnOpenSettings() {
-        setScreen(LocalDate.of(2026, 6, 10))
+        setScreen(LocalDate(2026, 6, 10))
         composeRule.onNodeWithTag("open-settings").assertIsDisplayed().performClick()
         assertThat(openSettingsCalls).isEqualTo(1)
     }
@@ -208,7 +213,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun statsPanel_rendersBelowTheReadings_onceNotPerPage() {
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         setScreen(today, statsPanel = StatsPanelUiState(sampleStats, showStreaks = true, strips = sampleStrips(today)))
         composeRule.onNodeWithTag("stats-panel").assertExists()
         composeRule.onNodeWithText("Current streak").assertExists()
@@ -223,7 +228,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun statsPanel_absentUntilStatsExist_andNoStatsTopBarAction() {
-        setScreen(LocalDate.of(2026, 6, 10), statsPanel = null)
+        setScreen(LocalDate(2026, 6, 10), statsPanel = null)
         composeRule.onNodeWithTag("stats-panel").assertDoesNotExist()
         // S15: the stats route/icon is gone — the panel IS the stats surface.
         composeRule.onNodeWithTag("open-stats").assertDoesNotExist()
@@ -233,12 +238,12 @@ class DayReadingsPagerScreenTest {
     fun statsPanel_hidesStreakRows_whenShowStreaksIsOff() {
         // D-S15-5: streaks off hides ONLY the two streak rows; year + stream remain.
         setScreen(
-            LocalDate.of(2026, 6, 10),
+            LocalDate(2026, 6, 10),
             statsPanel =
                 StatsPanelUiState(
                     sampleStats,
                     showStreaks = false,
-                    strips = sampleStrips(LocalDate.of(2026, 6, 10)),
+                    strips = sampleStrips(LocalDate(2026, 6, 10)),
                 ),
         )
         composeRule.onNodeWithText("Current streak").assertDoesNotExist()
@@ -251,7 +256,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun datePicker_opensAndCancelDismisses() {
-        setScreen(LocalDate.of(2026, 6, 10))
+        setScreen(LocalDate(2026, 6, 10))
         composeRule.onNodeWithTag("open-date-picker").performClick()
         composeRule.onNodeWithTag("picker-month-pager").assertIsDisplayed()
         composeRule.onNodeWithTag("date-picker-cancel").performClick()
@@ -261,7 +266,7 @@ class DayReadingsPagerScreenTest {
     @Test
     fun datePicker_oneTap_selectsDayAndNavigatesPager() {
         // BACKLOG #7: one tap on a day cell closes the dialog and jumps the pager to that date.
-        setScreen(LocalDate.of(2026, 6, 10))
+        setScreen(LocalDate(2026, 6, 10))
         composeRule.onNodeWithTag("open-date-picker").performClick()
         composeRule.onNodeWithTag("picker-day-20").performClick()
         composeRule.waitForIdle()
@@ -275,7 +280,7 @@ class DayReadingsPagerScreenTest {
     fun datePicker_opensOnDisplayedDate_acrossYearBoundary() {
         // BACKLOG #6: the picker is no longer year-anchored — from a next-year page it opens on
         // that month/year, and a one-tap pick navigates within that year.
-        val today = LocalDate.of(2026, 12, 31)
+        val today = LocalDate(2026, 12, 31)
         setScreen(today)
         swipeToNextDay()
         composeRule.onNodeWithText("Friday, January 1, 2027").assertIsDisplayed()
@@ -290,7 +295,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun `tracking-start prompt renders over the pager only when flagged`() {
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         var dismissCalls = 0
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
@@ -317,7 +322,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun `tracking-start prompt is absent by default`() {
-        setScreen(today = LocalDate.of(2026, 6, 10))
+        setScreen(today = LocalDate(2026, 6, 10))
         composeRule.onNodeWithTag("tracking-start-prompt").assertDoesNotExist()
     }
 
@@ -328,7 +333,7 @@ class DayReadingsPagerScreenTest {
         // Pins the `{ segment -> onSegmentTapped(date, segment) }` wrapper: a tap on the
         // displayed (today) page must invoke the callback with TODAY's date and that card's
         // portion. A dropped/swapped date in the wrapper fails this.
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         val taps = mutableListOf<Pair<LocalDate, Int>>()
         setScreen(today, onSegmentTapped = { date, segment -> taps += date to segment.streamNumber })
         composeRule.onNodeWithTag("reading-3-0").performClick()
@@ -341,8 +346,8 @@ class DayReadingsPagerScreenTest {
         // T3 mutation guard with teeth: after swiping forward a day, a card tap must carry the
         // NEXT day's date — not `today`. Replacing `date` with `today` in the pager wrapper
         // (or in DayReadingsScreen's lambda) reddens this.
-        val today = LocalDate.of(2026, 6, 10)
-        val tomorrow = today.plusDays(1)
+        val today = LocalDate(2026, 6, 10)
+        val tomorrow = today.plus(1, DateTimeUnit.DAY)
         val taps = mutableListOf<Pair<LocalDate, Int>>()
         setScreen(today, onSegmentTapped = { date, segment -> taps += date to segment.streamNumber })
         swipeToNextDay()
@@ -357,7 +362,7 @@ class DayReadingsPagerScreenTest {
 
     @Test
     fun readingCardTap_throughRealViewModel_marksReadAndChecksTheBox() {
-        val today = LocalDate.of(2026, 6, 10)
+        val today = LocalDate(2026, 6, 10)
         val progress = FakeProgressRepository()
         val vm = realViewModel(today, progress)
         composeRule.setContent {
@@ -379,7 +384,7 @@ class DayReadingsPagerScreenTest {
         composeRule.onNodeWithTag("reading-2-0").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("toggle-2-0").assertIsOn()
-        assertThat(progress.marksFor(today)).containsExactly(2)
+        assertThat(progress.marksFor(today)).containsExactlyInAnyOrder(2)
     }
 
     /** A real DayReadingsViewModel over the fakes — mirrors DayReadingsViewModelTest's harness. */
@@ -388,7 +393,7 @@ class DayReadingsPagerScreenTest {
         progress: FakeProgressRepository,
     ): DayReadingsViewModel {
         val resolver = ScheduleDateResolver()
-        val clock = Clock.fixed(today.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
+        val dateProvider = FakeDateProvider(today)
         val classifier = DayCompletionClassifier(resolver)
         val activePlan = FakeActivePlanRepository()
         // EXTERNAL/BLB so a tap resolves a Web destination (no in-app handoff needed here); the
@@ -397,7 +402,7 @@ class DayReadingsPagerScreenTest {
         val partials = FakePartialReadingRepository()
         return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, FakeReadingPlanRepository(), progress, activePlan),
-            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, clock),
+            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, dateProvider),
             getPartialSegments = GetPartialSegmentsUseCase(partials, activePlan),
             toggleSegmentCheck =
                 ToggleSegmentCheckUseCase(ToggleReadingUseCase(progress, activePlan), partials, activePlan),
@@ -413,10 +418,10 @@ class DayReadingsPagerScreenTest {
             resolveReadingDestinationPrompt = ResolveReadingDestinationPromptUseCase(settings, progress),
             completeUpgradeNote = CompleteUpgradeNoteUseCase(settings),
             resolveUpgradeNote = ResolveUpgradeNoteUseCase(settings, progress),
-            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, activePlan, clock),
-            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, activePlan, clock),
+            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, activePlan, dateProvider),
+            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, activePlan, dateProvider),
             settingsRepository = settings,
-            clock = clock,
+            dateProvider = dateProvider,
         )
     }
 }

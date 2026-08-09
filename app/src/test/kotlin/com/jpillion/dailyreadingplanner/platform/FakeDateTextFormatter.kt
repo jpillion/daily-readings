@@ -1,8 +1,10 @@
 package com.jpillion.dailyreadingplanner.platform
 
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalTime
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.number
 
 /**
  * A [DateTextFormatter] whose output is stable, English, and **obviously not real** — every
@@ -28,9 +30,9 @@ class FakeDateTextFormatter(
 
     override fun weekdayMonthDay(date: LocalDate): String = "WEEKDAYMONTHDAY($date)"
 
-    override fun monthYear(date: LocalDate): String = "MONTHYEAR(${date.year}-${date.monthValue})"
+    override fun monthYear(date: LocalDate): String = "MONTHYEAR(${date.year}-${date.month.number})"
 
-    override fun weekdayInitial(day: DayOfWeek): String = "WD(${day.value})"
+    override fun weekdayInitial(day: DayOfWeek): String = "WD(${day.isoDayNumber})"
 
     override fun timeOfDay(time: LocalTime): String = "TIME($time)"
 

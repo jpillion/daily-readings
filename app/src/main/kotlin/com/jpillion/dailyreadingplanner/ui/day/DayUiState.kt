@@ -2,7 +2,7 @@ package com.jpillion.dailyreadingplanner.ui.day
 
 import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingCheckState
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * One reading CARD — a single D-SEG-1 segment of a day's reading (sprint-00P).

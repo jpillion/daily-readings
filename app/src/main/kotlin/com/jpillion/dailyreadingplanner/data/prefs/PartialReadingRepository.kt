@@ -1,7 +1,7 @@
 package com.jpillion.dailyreadingplanner.data.prefs
 
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * The cosmetic partial-check cache (D-SEG-4): which segments of a multi-passage reading the user

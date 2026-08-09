@@ -1,28 +1,31 @@
 package com.jpillion.dailyreadingplanner.domain
 
 import app.cash.turbine.test
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsOnly
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
+import com.jpillion.dailyreadingplanner.platform.DateProvider
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.junit.Test
-import java.time.Clock
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneOffset
+import kotlin.time.Instant
 
 /**
  * S11: the streak walk + year/stream totals (PRD §13.1, R-STREAK-1…6). Default fixed
  * "today" = 2026-06-10; leap-year and year-boundary cases pin their own clocks.
  */
 class GetReadingStatsUseCaseTest {
-    private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
+    private val dateProvider =
+        FakeDateProvider(LocalDate(2026, 6, 10), now = Instant.parse("2026-06-10T12:00:00Z"))
     private val progress = FakeProgressRepository()
     private val settings = FakeSettingsRepository()
     private val activePlan = FakeActivePlanRepository()
 
-    private fun useCase(at: Clock = clock) =
+    private fun useCase(at: DateProvider = dateProvider) =
         GetReadingStatsUseCase(
             DayCompletionClassifier(ScheduleDateResolver()),
             progress,
@@ -31,7 +34,7 @@ class GetReadingStatsUseCaseTest {
             at,
         )
 
-    private fun june(day: Int): LocalDate = LocalDate.of(2026, 6, day)
+    private fun june(day: Int): LocalDate = LocalDate(2026, 6, day)
 
     private suspend fun markDays(vararg dates: LocalDate) {
         dates.forEach { progress.setWholeDay(it, listOf(1, 2, 3), isRead = true) }
@@ -47,14 +50,7 @@ class GetReadingStatsUseCaseTest {
             assertThat(stats.longestStreakDays).isEqualTo(0)
             assertThat(stats.yearReadCount).isEqualTo(0)
             assertThat(stats.streamReadCounts)
-                .containsExactly(
-                    1,
-                    0,
-                    2,
-                    0,
-                    3,
-                    0,
-                )
+                .containsOnly(1 to 0, 2 to 0, 3 to 0)
         }
 
     @Test
@@ -113,9 +109,10 @@ class GetReadingStatsUseCaseTest {
     @Test
     fun `streak walks across Feb 29 - complete Feb 28 and Mar 1 are consecutive`() =
         runTest {
-            val leapClock = Clock.fixed(Instant.parse("2028-03-01T12:00:00Z"), ZoneOffset.UTC)
-            markDays(LocalDate.of(2028, 2, 28), LocalDate.of(2028, 3, 1))
-            val stats = useCase(at = leapClock)().first()
+            val leapDateProvider =
+                FakeDateProvider(LocalDate(2028, 3, 1), now = Instant.parse("2028-03-01T12:00:00Z"))
+            markDays(LocalDate(2028, 2, 28), LocalDate(2028, 3, 1))
+            val stats = useCase(at = leapDateProvider)().first()
             assertThat(stats.currentStreakDays).isEqualTo(2)
             assertThat(stats.longestStreakDays).isEqualTo(2)
         }
@@ -125,14 +122,15 @@ class GetReadingStatsUseCaseTest {
     @Test
     fun `streak crosses the year boundary - Dec 30-31 plus Jan 1-2 is one run of four`() =
         runTest {
-            val janClock = Clock.fixed(Instant.parse("2026-01-02T12:00:00Z"), ZoneOffset.UTC)
+            val janDateProvider =
+                FakeDateProvider(LocalDate(2026, 1, 2), now = Instant.parse("2026-01-02T12:00:00Z"))
             markDays(
-                LocalDate.of(2025, 12, 30),
-                LocalDate.of(2025, 12, 31),
-                LocalDate.of(2026, 1, 1),
-                LocalDate.of(2026, 1, 2),
+                LocalDate(2025, 12, 30),
+                LocalDate(2025, 12, 31),
+                LocalDate(2026, 1, 1),
+                LocalDate(2026, 1, 2),
             )
-            val stats = useCase(at = janClock)().first()
+            val stats = useCase(at = janDateProvider)().first()
             assertThat(stats.currentStreakDays).isEqualTo(4)
             assertThat(stats.longestStreakDays).isEqualTo(4)
         }
@@ -141,7 +139,7 @@ class GetReadingStatsUseCaseTest {
     fun `longest streak is all-time even when the current streak is in a later year`() =
         runTest {
             // Seven complete days in 2025; long gap; two ending at today in 2026.
-            (1..7).forEach { markDays(LocalDate.of(2025, 3, it)) }
+            (1..7).forEach { markDays(LocalDate(2025, 3, it)) }
             markDays(june(9), june(10))
             val stats = useCase()().first()
             assertThat(stats.currentStreakDays).isEqualTo(2)
@@ -155,7 +153,7 @@ class GetReadingStatsUseCaseTest {
         runTest {
             // A complete day BEFORE the start keeps its earned credit (COMPLETE wins),
             // the unmarked pre-start gap is skipped, and the post-start run continues it.
-            markDays(LocalDate.of(2026, 5, 1))
+            markDays(LocalDate(2026, 5, 1))
             settings.setTrackingStartDate(june(1))
             (1..10).forEach { markDays(june(it)) }
             val stats = useCase()().first()
@@ -201,7 +199,7 @@ class GetReadingStatsUseCaseTest {
     @Test
     fun `year totals count only the current calendar year - per stream`() =
         runTest {
-            progress.setWholeDay(LocalDate.of(2025, 12, 31), listOf(1, 2, 3), isRead = true) // other year: excluded
+            progress.setWholeDay(LocalDate(2025, 12, 31), listOf(1, 2, 3), isRead = true) // other year: excluded
             progress.setRead(june(1), 1, isRead = true)
             progress.setRead(june(2), 1, isRead = true)
             progress.setRead(june(3), 1, isRead = true)
@@ -209,14 +207,7 @@ class GetReadingStatsUseCaseTest {
             val stats = useCase()().first()
             assertThat(stats.yearReadCount).isEqualTo(4)
             assertThat(stats.streamReadCounts)
-                .containsExactly(
-                    1,
-                    3,
-                    2,
-                    0,
-                    3,
-                    1,
-                )
+                .containsOnly(1 to 3, 2 to 0, 3 to 1)
             assertThat(stats.yearReadCount).isEqualTo(stats.streamReadCounts.values.sum())
         }
 

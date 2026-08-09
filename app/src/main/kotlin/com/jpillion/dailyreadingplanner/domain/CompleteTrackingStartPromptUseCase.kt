@@ -1,7 +1,7 @@
 package com.jpillion.dailyreadingplanner.domain
 
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 /**

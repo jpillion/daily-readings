@@ -2,7 +2,7 @@ package com.jpillion.dailyreadingplanner.data.progress
 
 import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * Mutable "marked read" store, keyed by the full calendar date (ESpec §5.3).

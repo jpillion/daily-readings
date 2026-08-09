@@ -1,16 +1,19 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakePersistentNotifier
 import com.jpillion.dailyreadingplanner.testing.FakeReminderScheduler
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Test
-import java.time.Clock
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneOffset
 
 /** S12: boot/app-launch re-arming (R-REM-8) — alarms always mirror persisted state. */
 class RescheduleAlarmsUseCaseTest {
@@ -30,11 +33,7 @@ class RescheduleAlarmsUseCaseTest {
                 ),
             notifier = persistentNotifier,
             scheduler = scheduler,
-            clock =
-                Clock.fixed(
-                    LocalDate.of(2026, 6, 10).atStartOfDay().toInstant(ZoneOffset.UTC),
-                    ZoneOffset.UTC,
-                ),
+            dateProvider = FakeDateProvider(LocalDate(2026, 6, 10)),
         )
     private val useCase = RescheduleAlarmsUseCase(settings, scheduler, refreshPersistent)
 
@@ -50,9 +49,9 @@ class RescheduleAlarmsUseCaseTest {
     fun `reminder enabled re-arms the reminder at the persisted time`() =
         runTest {
             settings.storedReminderEnabled.value = true
-            settings.storedReminderTime.value = LocalTime.of(20, 15)
+            settings.storedReminderTime.value = LocalTime(20, 15)
             useCase()
-            assertThat(scheduler.scheduledTimes).containsExactly(LocalTime.of(20, 15))
+            assertThat(scheduler.scheduledTimes).containsExactlyInAnyOrder(LocalTime(20, 15))
             assertThat(scheduler.cancelCount).isEqualTo(0)
         }
 

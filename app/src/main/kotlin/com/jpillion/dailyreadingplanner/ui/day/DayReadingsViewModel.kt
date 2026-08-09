@@ -27,6 +27,7 @@ import com.jpillion.dailyreadingplanner.domain.model.ReadingCheckState
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import com.jpillion.dailyreadingplanner.ui.stats.StatsPanelUiState
 import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
@@ -43,16 +44,15 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Clock
-import java.time.LocalDate
-import java.time.YearMonth
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.YearMonth
 import javax.inject.Inject
 
 /**
  * Drives the day-readings pager over the Sprint 3 use cases, generalizing Sprint 4's
  * TodayViewModel from a single pinned date to *any* calendar date (D-S5-1): each pager page
  * collects [uiStateFor] its own date, and every mark action is parameterized by the date it
- * applies to. [today] stays pinned at creation from the injected Clock — it anchors the pager
+ * applies to. [today] stays pinned at creation from the injected DateProvider — it anchors the pager
  * and the "jump to today" affordance.
  *
  * Year semantics (D-S5-3, ESpec §6.1): callers always pass a *full* LocalDate; progress is
@@ -88,9 +88,9 @@ class DayReadingsViewModel
         getReadingStats: GetReadingStatsUseCase,
         getYearStrips: GetYearStripsUseCase,
         settingsRepository: SettingsRepository,
-        clock: Clock,
+        dateProvider: DateProvider,
     ) : ViewModel() {
-        val today: LocalDate = LocalDate.now(clock)
+        val today: LocalDate = dateProvider.today()
 
         private val showTrackingStartPromptState = MutableStateFlow(false)
 
@@ -185,7 +185,7 @@ class DayReadingsViewModel
          * default, so a dismissive user gets exactly the old behavior).
          */
         fun onTrackingStartPromptDismissed() {
-            onTrackingStartChosen(LocalDate.of(today.year, 1, 1))
+            onTrackingStartChosen(LocalDate(today.year, 1, 1))
         }
 
         private val loadAttempt = MutableStateFlow(0)

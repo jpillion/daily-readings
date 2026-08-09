@@ -3,7 +3,7 @@ package com.jpillion.dailyreadingplanner.domain
 import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import kotlinx.coroutines.flow.first
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 /**

@@ -3,7 +3,7 @@ package com.jpillion.dailyreadingplanner.domain
 import com.jpillion.dailyreadingplanner.core.date.ResolvedDate
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 /**
@@ -42,8 +42,8 @@ class DayCompletionClassifier
                 // Start-date gate (S10): strictly-before-start days are neutral, never MISSED.
                 // Sits AFTER the COMPLETE branch (earned green is kept) and immediately BEFORE
                 // the MISSED branch (it only ever suppresses red, never adds it).
-                trackingStart != null && date.isBefore(trackingStart) -> DayCompletion.NONE
-                date.isBefore(today) -> DayCompletion.MISSED
+                trackingStart != null && date < trackingStart -> DayCompletion.NONE
+                date < today -> DayCompletion.MISSED
                 else -> DayCompletion.NONE
             }
     }

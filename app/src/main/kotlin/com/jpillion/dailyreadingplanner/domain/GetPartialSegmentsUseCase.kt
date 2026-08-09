@@ -6,7 +6,7 @@ import com.jpillion.dailyreadingplanner.data.prefs.PartialSegmentToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 /**
@@ -35,7 +35,7 @@ class GetPartialSegmentsUseCase
          * self-healing by construction (see [PartialSegmentToken.parse]).
          */
         operator fun invoke(date: LocalDate): Flow<Map<Int, Set<Int>>> {
-            val epochDay = date.toEpochDay()
+            val epochDay = date.toEpochDays()
             return combine(
                 activePlanRepository.activePlanId,
                 partialReadingRepository.partialSegments,
@@ -69,4 +69,4 @@ internal suspend fun PartialReadingRepository.currentPartials(
     planId: String,
     date: LocalDate,
     streamNumber: Int,
-): Set<Int> = partialSegmentsByStream(partialSegments.first(), planId, date.toEpochDay())[streamNumber] ?: emptySet()
+): Set<Int> = partialSegmentsByStream(partialSegments.first(), planId, date.toEpochDays())[streamNumber] ?: emptySet()

@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 fun portion(
     streamNumber: Int,
@@ -112,7 +112,7 @@ class FakeProgressRepository : ProgressRepository {
         marks
             .map { all ->
                 all
-                    .filterKeys { !it.isBefore(start) && !it.isAfter(end) }
+                    .filterKeys { it >= start && it <= end }
                     .filterValues { it.isNotEmpty() }
                     .mapValues { (_, streams) -> streams.size }
             }.distinctUntilChanged()
@@ -131,7 +131,7 @@ class FakeProgressRepository : ProgressRepository {
         marks
             .map { all ->
                 all
-                    .filterKeys { !it.isBefore(start) && !it.isAfter(end) }
+                    .filterKeys { it >= start && it <= end }
                     .values
                     .flatten()
                     .groupingBy { it }
@@ -145,7 +145,7 @@ class FakeProgressRepository : ProgressRepository {
     ): Flow<Map<Int, Set<LocalDate>>> =
         marks
             .map { all ->
-                val inRange = all.filterKeys { !it.isBefore(start) && !it.isAfter(end) }
+                val inRange = all.filterKeys { it >= start && it <= end }
                 val streams = inRange.values.flatten().toSet()
                 streams
                     .associateWith { stream ->

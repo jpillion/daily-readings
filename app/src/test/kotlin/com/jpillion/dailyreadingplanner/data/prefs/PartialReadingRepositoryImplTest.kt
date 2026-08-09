@@ -5,7 +5,14 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import com.jpillion.dailyreadingplanner.platform.DateProvider
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -13,13 +20,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
-import java.time.Clock
-import java.time.LocalDate
-import java.time.ZoneOffset
 
 /**
  * SEG-2: the D-SEG-4 cosmetic partial-check cache over the shared DataStore.
@@ -33,9 +41,9 @@ class PartialReadingRepositoryImplTest {
     val tmp = TemporaryFolder()
 
     /** T — "today" for every test; a fixed Clock so the retention boundary is exact. */
-    private val today = LocalDate.of(2026, 7, 25)
-    private val clock: Clock =
-        Clock.fixed(today.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
+    private val today = LocalDate(2026, 7, 25)
+    private val dateProvider: DateProvider =
+        FakeDateProvider(today)
 
     private val key = stringSetPreferencesKey("partial_reading_segments")
 
@@ -49,7 +57,7 @@ class PartialReadingRepositoryImplTest {
             val scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
             val dataStore = createDataStore(scope)
             try {
-                block(PartialReadingRepositoryImpl(dataStore, clock), dataStore)
+                block(PartialReadingRepositoryImpl(dataStore, dateProvider), dataStore)
             } finally {
                 scope.cancel()
             }
@@ -60,7 +68,7 @@ class PartialReadingRepositoryImplTest {
         date: LocalDate = today,
         stream: Int = 1,
         segment: Int,
-    ) = PartialSegmentToken.encode(planId, date.toEpochDay(), stream, segment)
+    ) = PartialSegmentToken.encode(planId, date.toEpochDays(), stream, segment)
 
     @Test
     fun `an untouched store reads back the empty set`() =
@@ -73,7 +81,7 @@ class PartialReadingRepositoryImplTest {
         cacheTest { repository, _ ->
             repository.setPartialSegments("bible_companion", today, streamNumber = 1, setOf(0, 2))
             assertThat(repository.partialSegments.first())
-                .containsExactly(token(segment = 0), token(segment = 2))
+                .containsExactlyInAnyOrder(token(segment = 0), token(segment = 2))
         }
 
     @Test
@@ -83,7 +91,7 @@ class PartialReadingRepositoryImplTest {
             // unchecked segment would stay checked forever.
             repository.setPartialSegments("bible_companion", today, streamNumber = 1, setOf(0, 2))
             repository.setPartialSegments("bible_companion", today, streamNumber = 1, setOf(1))
-            assertThat(repository.partialSegments.first()).containsExactly(token(segment = 1))
+            assertThat(repository.partialSegments.first()).containsExactlyInAnyOrder(token(segment = 1))
         }
 
     @Test
@@ -93,7 +101,7 @@ class PartialReadingRepositoryImplTest {
             repository.setPartialSegments("bible_companion", today, streamNumber = 2, setOf(3))
             repository.setPartialSegments("bible_companion", today, streamNumber = 1, emptySet())
             assertThat(repository.partialSegments.first())
-                .containsExactly(token(stream = 2, segment = 3))
+                .containsExactlyInAnyOrder(token(stream = 2, segment = 3))
         }
 
     @Test
@@ -109,17 +117,22 @@ class PartialReadingRepositoryImplTest {
     fun `MUTATION a write touches only its own plan - date and stream`() =
         cacheTest { repository, _ ->
             val otherPlan = token(planId = "mcheyne", segment = 0)
-            val otherDate = token(date = today.minusDays(1), segment = 0)
+            val otherDate = token(date = today.minus(1, DateTimeUnit.DAY), segment = 0)
             val otherStream = token(stream = 3, segment = 0)
             repository.setPartialSegments("mcheyne", today, streamNumber = 1, setOf(0))
-            repository.setPartialSegments("bible_companion", today.minusDays(1), streamNumber = 1, setOf(0))
+            repository.setPartialSegments(
+                "bible_companion",
+                today.minus(1, DateTimeUnit.DAY),
+                streamNumber = 1,
+                setOf(0),
+            )
             repository.setPartialSegments("bible_companion", today, streamNumber = 3, setOf(0))
 
             // Overwrite (bible_companion, today, stream 1) — the three neighbours must survive.
             repository.setPartialSegments("bible_companion", today, streamNumber = 1, setOf(5))
 
             assertThat(repository.partialSegments.first())
-                .containsExactly(otherPlan, otherDate, otherStream, token(segment = 5))
+                .containsExactlyInAnyOrder(otherPlan, otherDate, otherStream, token(segment = 5))
         }
 
     // --- D-SEG-5: retention. The cache is bounded; the boundary itself is the mutation target. ---
@@ -128,37 +141,42 @@ class PartialReadingRepositoryImplTest {
     fun `MUTATION a token dated exactly the retention bound survives a later write`() =
         cacheTest { repository, dataStore ->
             // Keep iff epochDay >= today - RETENTION_DAYS. T-400 is the last day kept.
-            val edge = token(date = today.minusDays(PartialReadingRepositoryImpl.RETENTION_DAYS), segment = 0)
+            val edge =
+                token(date = today.minus(PartialReadingRepositoryImpl.RETENTION_DAYS, DateTimeUnit.DAY), segment = 0)
             dataStore.edit { it[key] = setOf(edge) }
 
             repository.setPartialSegments("bible_companion", today, streamNumber = 2, setOf(1))
 
             assertThat(repository.partialSegments.first())
-                .containsExactly(edge, token(stream = 2, segment = 1))
+                .containsExactlyInAnyOrder(edge, token(stream = 2, segment = 1))
         }
 
     @Test
     fun `MUTATION a token one day past the retention bound is pruned on the next write`() =
         cacheTest { repository, dataStore ->
-            val stale = token(date = today.minusDays(PartialReadingRepositoryImpl.RETENTION_DAYS + 1), segment = 0)
+            val stale =
+                token(
+                    date = today.minus(PartialReadingRepositoryImpl.RETENTION_DAYS + 1, DateTimeUnit.DAY),
+                    segment = 0,
+                )
             dataStore.edit { it[key] = setOf(stale) }
 
             repository.setPartialSegments("bible_companion", today, streamNumber = 2, setOf(1))
 
             assertThat(repository.partialSegments.first())
-                .containsExactly(token(stream = 2, segment = 1))
+                .containsExactlyInAnyOrder(token(stream = 2, segment = 1))
         }
 
     @Test
     fun `a future-dated token survives - the user can swipe ahead and check early`() =
         cacheTest { repository, dataStore ->
-            val ahead = token(date = today.plusDays(10), segment = 0)
+            val ahead = token(date = today.plus(10, DateTimeUnit.DAY), segment = 0)
             dataStore.edit { it[key] = setOf(ahead) }
 
             repository.setPartialSegments("bible_companion", today, streamNumber = 2, setOf(1))
 
             assertThat(repository.partialSegments.first())
-                .containsExactly(ahead, token(stream = 2, segment = 1))
+                .containsExactlyInAnyOrder(ahead, token(stream = 2, segment = 1))
         }
 
     @Test
@@ -179,6 +197,6 @@ class PartialReadingRepositoryImplTest {
             repository.setPartialSegments("bible_companion", today, streamNumber = 2, setOf(1))
 
             assertThat(repository.partialSegments.first())
-                .containsExactly(token(segment = 0), token(stream = 2, segment = 1))
+                .containsExactlyInAnyOrder(token(segment = 0), token(stream = 2, segment = 1))
         }
 }

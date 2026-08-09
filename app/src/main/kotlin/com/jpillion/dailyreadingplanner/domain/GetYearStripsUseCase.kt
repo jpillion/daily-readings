@@ -6,12 +6,14 @@ import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.YearStrips
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import java.time.Clock
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import javax.inject.Inject
 
 /**
@@ -40,21 +42,21 @@ class GetYearStripsUseCase
         private val progressRepository: ProgressRepository,
         private val settingsRepository: SettingsRepository,
         private val activePlanRepository: ActivePlanRepository,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) {
         @OptIn(ExperimentalCoroutinesApi::class)
         operator fun invoke(): Flow<YearStrips> {
-            val year = LocalDate.now(clock).year
-            val jan1 = LocalDate.of(year, 1, 1)
-            val dec31 = LocalDate.of(year, 12, 31)
+            val year = dateProvider.today().year
+            val jan1 = LocalDate(year, 1, 1)
+            val dec31 = LocalDate(year, 12, 31)
             return activePlanRepository.activePlanId.flatMapLatest { planId ->
                 combine(
                     activePlanRepository.activeDescriptor,
                     progressRepository.streamMarks(start = jan1, end = dec31, planId = planId),
                     settingsRepository.trackingStartDate,
                 ) { descriptor, marks, trackingStart ->
-                    val today = LocalDate.now(clock)
-                    val dayCount = jan1.lengthOfYear()
+                    val today = dateProvider.today()
+                    val dayCount = dec31.dayOfYear
                     val streamCount = descriptor.streamCount
                     YearStrips(
                         year = year,
@@ -64,7 +66,7 @@ class GetYearStripsUseCase
                                 val marked = marks[stream.number].orEmpty()
                                 stream.number to
                                     List(dayCount) { index ->
-                                        val date = jan1.plusDays(index.toLong())
+                                        val date = jan1.plus(index, DateTimeUnit.DAY)
                                         val syntheticCount = if (date in marked) streamCount else 0
                                         when (
                                             classifier.classify(

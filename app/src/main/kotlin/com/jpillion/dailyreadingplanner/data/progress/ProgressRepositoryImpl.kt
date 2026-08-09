@@ -1,10 +1,10 @@
 package com.jpillion.dailyreadingplanner.data.progress
 
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import java.time.Clock
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 /**
@@ -19,14 +19,14 @@ class ProgressRepositoryImpl
     @Inject
     constructor(
         private val dao: ReadingProgressDao,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) : ProgressRepository {
         override fun streamsRead(
             date: LocalDate,
             planId: String,
         ): Flow<Set<Int>> =
             dao
-                .streamsRead(planId, date.toEpochDay())
+                .streamsRead(planId, date.toEpochDays())
                 .map { streams -> streams.toSet() }
                 .distinctUntilChanged()
 
@@ -36,14 +36,14 @@ class ProgressRepositoryImpl
             planId: String,
         ): Flow<Map<LocalDate, Int>> =
             dao
-                .readCountsInRange(planId, start.toEpochDay(), end.toEpochDay())
-                .map { rows -> rows.associate { LocalDate.ofEpochDay(it.dateEpochDay) to it.readCount } }
+                .readCountsInRange(planId, start.toEpochDays(), end.toEpochDays())
+                .map { rows -> rows.associate { LocalDate.fromEpochDays(it.dateEpochDay) to it.readCount } }
                 .distinctUntilChanged()
 
         override fun allReadCounts(planId: String): Flow<Map<LocalDate, Int>> =
             dao
                 .allReadCounts(planId)
-                .map { rows -> rows.associate { LocalDate.ofEpochDay(it.dateEpochDay) to it.readCount } }
+                .map { rows -> rows.associate { LocalDate.fromEpochDays(it.dateEpochDay) to it.readCount } }
                 .distinctUntilChanged()
 
         override fun streamCounts(
@@ -52,7 +52,7 @@ class ProgressRepositoryImpl
             planId: String,
         ): Flow<Map<Int, Int>> =
             dao
-                .streamCountsInRange(planId, start.toEpochDay(), end.toEpochDay())
+                .streamCountsInRange(planId, start.toEpochDays(), end.toEpochDays())
                 .map { rows -> rows.associate { it.stream to it.readCount } }
                 .distinctUntilChanged()
 
@@ -62,10 +62,10 @@ class ProgressRepositoryImpl
             planId: String,
         ): Flow<Map<Int, Set<LocalDate>>> =
             dao
-                .marksInRange(planId, start.toEpochDay(), end.toEpochDay())
+                .marksInRange(planId, start.toEpochDays(), end.toEpochDays())
                 .map { rows ->
                     rows
-                        .groupBy({ it.stream }, { LocalDate.ofEpochDay(it.dateEpochDay) })
+                        .groupBy({ it.stream }, { LocalDate.fromEpochDays(it.dateEpochDay) })
                         .mapValues { (_, dates) -> dates.toSet() }
                 }.distinctUntilChanged()
 
@@ -81,7 +81,7 @@ class ProgressRepositoryImpl
             if (isRead) {
                 dao.upsert(listOf(entity(planId, date, streamNumber)))
             } else {
-                dao.delete(planId, date.toEpochDay(), streamNumber)
+                dao.delete(planId, date.toEpochDays(), streamNumber)
             }
         }
 
@@ -94,7 +94,7 @@ class ProgressRepositoryImpl
             if (isRead) {
                 dao.upsert(streamNumbers.map { entity(planId, date, it) })
             } else {
-                dao.deleteDay(planId, date.toEpochDay())
+                dao.deleteDay(planId, date.toEpochDays())
             }
         }
 
@@ -104,8 +104,8 @@ class ProgressRepositoryImpl
         ) {
             dao.deleteRange(
                 planId = planId,
-                startEpochDay = LocalDate.of(year, 1, 1).toEpochDay(),
-                endEpochDay = LocalDate.of(year, 12, 31).toEpochDay(),
+                startEpochDay = LocalDate(year, 1, 1).toEpochDays(),
+                endEpochDay = LocalDate(year, 12, 31).toEpochDays(),
             )
         }
 
@@ -115,8 +115,8 @@ class ProgressRepositoryImpl
             streamNumber: Int,
         ) = ReadingProgressEntity(
             planId = planId,
-            dateEpochDay = date.toEpochDay(),
+            dateEpochDay = date.toEpochDays(),
             stream = streamNumber,
-            readAtEpochMillis = clock.millis(),
+            readAtEpochMillis = dateProvider.now().toEpochMilliseconds(),
         )
     }

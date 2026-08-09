@@ -1,16 +1,22 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isInstanceOf
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakePersistentNotifier
 import com.jpillion.dailyreadingplanner.testing.FakeReminderScheduler
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atTime
+import kotlinx.datetime.toInstant
 import org.junit.Test
-import java.time.Clock
-import java.time.LocalDate
-import java.time.ZoneOffset
 
 /**
  * S21: the persistent-notification refresh rules (D-S21-3/4) — post today's readings and
@@ -36,11 +42,11 @@ class RefreshPersistentNotificationUseCaseTest {
                 ),
             notifier = notifier,
             scheduler = scheduler,
-            clock = Clock.fixed(today.atTime(1, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC),
+            dateProvider = FakeDateProvider(today, now = today.atTime(1, 0).toInstant(TimeZone.UTC)),
         )
 
-    private val ordinaryDay = LocalDate.of(2026, 6, 10)
-    private val leapDay = LocalDate.of(2028, 2, 29)
+    private val ordinaryDay = LocalDate(2026, 6, 10)
+    private val leapDay = LocalDate(2028, 2, 29)
 
     @Test
     fun `enabled - posts today's readings and re-arms the 01-00 alarm`() =
@@ -48,7 +54,7 @@ class RefreshPersistentNotificationUseCaseTest {
             settings.storedPersistentEnabled.value = true
             useCase(ordinaryDay)()
             assertThat(notifier.shown).hasSize(1)
-            assertThat(notifier.shown.single()).isInstanceOf(DayReadings.Scheduled::class.java)
+            assertThat(notifier.shown.single()).isInstanceOf(DayReadings.Scheduled::class)
             assertThat(scheduler.persistentRefreshCount).isEqualTo(1)
             assertThat(notifier.cancelCount).isEqualTo(0)
         }
@@ -70,7 +76,7 @@ class RefreshPersistentNotificationUseCaseTest {
             settings.storedPersistentEnabled.value = true
             useCase(leapDay)()
             assertThat(notifier.shown).hasSize(1)
-            assertThat(notifier.shown.single()).isInstanceOf(DayReadings.NoScheduledReadings::class.java)
+            assertThat(notifier.shown.single()).isInstanceOf(DayReadings.NoScheduledReadings::class)
             assertThat(scheduler.persistentRefreshCount).isEqualTo(1)
         }
 

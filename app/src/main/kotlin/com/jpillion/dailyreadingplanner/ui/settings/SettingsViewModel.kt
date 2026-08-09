@@ -12,6 +12,7 @@ import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
 import com.jpillion.dailyreadingplanner.widget.WidgetRefresher
@@ -27,9 +28,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Clock
-import java.time.LocalDate
-import java.time.LocalTime
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
 /**
@@ -54,10 +54,10 @@ class SettingsViewModel
         private val activePlanRepository: ActivePlanRepository,
         private val planRegistry: PlanRegistry,
         private val readingPlanRepository: ReadingPlanRepository,
-        clock: Clock,
+        dateProvider: DateProvider,
     ) : ViewModel() {
         /** The year a reset would clear — shown in the confirmation dialog. */
-        val currentYear: Int = LocalDate.now(clock).year
+        val currentYear: Int = dateProvider.today().year
 
         // --- Alt Sprint D (D-ALT-18/19): the reading-plan selector. ---
 

@@ -1,6 +1,6 @@
 package com.jpillion.dailyreadingplanner.domain.model
 
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * One scheduled reading plus whether the user has marked it read on this exact date.

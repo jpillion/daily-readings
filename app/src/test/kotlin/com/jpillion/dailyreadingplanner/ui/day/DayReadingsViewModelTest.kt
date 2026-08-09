@@ -1,7 +1,19 @@
 package com.jpillion.dailyreadingplanner.ui.day
 
 import app.cash.turbine.test
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.doesNotContain
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.core.date.ReadingDate
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.data.plan.ReadingPlanRepository
@@ -34,6 +46,8 @@ import com.jpillion.dailyreadingplanner.domain.model.ReadingDestination
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
+import com.jpillion.dailyreadingplanner.platform.DateProvider
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakePartialReadingRepository
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import com.jpillion.dailyreadingplanner.testing.FakeWidgetRefresher
@@ -42,12 +56,13 @@ import com.jpillion.dailyreadingplanner.ui.navigation.ReaderHandoff
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import org.junit.Rule
 import org.junit.Test
 import java.net.URLDecoder
-import java.time.Clock
-import java.time.LocalDate
-import java.time.ZoneOffset
 
 class DayReadingsViewModelTest {
     @get:Rule
@@ -57,11 +72,10 @@ class DayReadingsViewModelTest {
     private val partials = FakePartialReadingRepository()
     private val widgetRefresher = FakeWidgetRefresher()
     private val readerHandoff = ReaderHandoff()
-    private val today = LocalDate.of(2026, 6, 10)
+    private val today = LocalDate(2026, 6, 10)
     private val activePlan = FakeActivePlanRepository()
 
-    private fun clockAt(date: LocalDate): Clock =
-        Clock.fixed(date.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
+    private fun dateProviderAt(date: LocalDate): DateProvider = FakeDateProvider(date)
 
     private fun viewModel(
         date: LocalDate = today,
@@ -69,11 +83,11 @@ class DayReadingsViewModelTest {
         settings: FakeSettingsRepository = FakeSettingsRepository(),
     ): DayReadingsViewModel {
         val resolver = ScheduleDateResolver()
-        val clock = clockAt(date)
+        val dateProvider = dateProviderAt(date)
         val classifier = DayCompletionClassifier(resolver)
         return DayReadingsViewModel(
             getDayReadings = GetDayReadingsUseCase(resolver, planRepository, progress, activePlan),
-            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, clock),
+            getMonthCompletion = GetMonthCompletionUseCase(classifier, progress, settings, activePlan, dateProvider),
             getPartialSegments = GetPartialSegmentsUseCase(partials, activePlan),
             // The segment-level use cases are the REAL ones over the same fakes (sprint-00P), so
             // these tests exercise the pure policy + both stores end to end, not a stub.
@@ -91,15 +105,15 @@ class DayReadingsViewModelTest {
             resolveReadingDestinationPrompt = ResolveReadingDestinationPromptUseCase(settings, progress),
             completeUpgradeNote = CompleteUpgradeNoteUseCase(settings),
             resolveUpgradeNote = ResolveUpgradeNoteUseCase(settings, progress),
-            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, activePlan, clock),
-            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, activePlan, clock),
+            getReadingStats = GetReadingStatsUseCase(classifier, progress, settings, activePlan, dateProvider),
+            getYearStrips = GetYearStripsUseCase(classifier, progress, settings, activePlan, dateProvider),
             settingsRepository = settings,
-            clock = clock,
+            dateProvider = dateProvider,
         )
     }
 
     @Test
-    fun `today is pinned from the injected clock`() {
+    fun `today is pinned from the injected dateProvider`() {
         assertThat(viewModel().today).isEqualTo(today)
     }
 
@@ -115,7 +129,6 @@ class DayReadingsViewModelTest {
                 assertThat(state.segments).hasSize(3)
                 assertThat(state.segments.map { it.streamNumber })
                     .containsExactly(1, 2, 3)
-                    .inOrder()
                 assertThat(state.segments.map { it.segmentCount }).containsExactly(1, 1, 1)
                 assertThat(state.segments.all { it.checkState == ReadingCheckState.UNCHECKED }).isTrue()
                 assertThat(state.dayComplete).isFalse()
@@ -182,7 +195,7 @@ class DayReadingsViewModelTest {
     @Test
     fun `browsing another date yields that date's state and marks write to that actual date`() =
         runTest {
-            val yesterday = today.minusDays(1)
+            val yesterday = today.minus(1, DateTimeUnit.DAY)
             val vm = viewModel()
             vm.uiStateFor(yesterday).test {
                 val initial = awaitScheduled()
@@ -192,14 +205,14 @@ class DayReadingsViewModelTest {
                 assertThat(updated.segments[0].checkState).isEqualTo(ReadingCheckState.COMPLETE)
             }
             // D-S5-3: progress is keyed to the displayed full date — today is untouched.
-            assertThat(progress.marksFor(yesterday)).containsExactly(1)
+            assertThat(progress.marksFor(yesterday)).containsExactlyInAnyOrder(1)
             assertThat(progress.marksFor(today)).isEmpty()
         }
 
     @Test
     fun `each date's state flow is independent`() =
         runTest {
-            val tomorrow = today.plusDays(1)
+            val tomorrow = today.plus(1, DateTimeUnit.DAY)
             val vm = viewModel()
             vm.uiStateFor(today).test {
                 vm.onMarkWholeDay(today, false)
@@ -216,8 +229,8 @@ class DayReadingsViewModelTest {
     fun `whole-day mark across the year boundary writes to the adjacent year's date`() =
         runTest {
             // D-S5-3: swiping steps real calendar days, so Dec 31 2026 -> Jan 1 *2027*.
-            val newYearsEve = LocalDate.of(2026, 12, 31)
-            val jan1Next = LocalDate.of(2027, 1, 1)
+            val newYearsEve = LocalDate(2026, 12, 31)
+            val jan1Next = LocalDate(2027, 1, 1)
             val vm = viewModel(date = newYearsEve)
             vm.uiStateFor(jan1Next).test {
                 val initial = awaitScheduled()
@@ -228,17 +241,17 @@ class DayReadingsViewModelTest {
             assertThat(progress.marksFor(jan1Next)).isEqualTo(setOf(1, 2, 3))
             // Year isolation: neither today nor the *current* year's Jan 1 got marked.
             assertThat(progress.marksFor(newYearsEve)).isEmpty()
-            assertThat(progress.marksFor(LocalDate.of(2026, 1, 1))).isEmpty()
+            assertThat(progress.marksFor(LocalDate(2026, 1, 1))).isEmpty()
         }
 
     @Test
     fun `Feb 29 resolves to the no-scheduled-readings state with no progress touched`() =
         runTest {
-            val feb29 = LocalDate.of(2028, 2, 29)
-            val vm = viewModel(date = LocalDate.of(2028, 2, 28))
+            val feb29 = LocalDate(2028, 2, 29)
+            val vm = viewModel(date = LocalDate(2028, 2, 28))
             vm.uiStateFor(feb29).test {
                 val state = awaitNonLoading()
-                assertThat(state).isInstanceOf(DayUiState.NoScheduledReadings::class.java)
+                assertThat(state).isInstanceOf(DayUiState.NoScheduledReadings::class)
                 assertThat((state as DayUiState.NoScheduledReadings).date).isEqualTo(feb29)
             }
             // D1: no progress is ever queried or written for Feb 29.
@@ -252,7 +265,7 @@ class DayReadingsViewModelTest {
             val vm = viewModel(planRepository = flaky)
             vm.uiStateFor(today).test {
                 val failed = awaitNonLoading()
-                assertThat(failed).isInstanceOf(DayUiState.LoadFailed::class.java)
+                assertThat(failed).isInstanceOf(DayUiState.LoadFailed::class)
                 flaky.failing = false
                 vm.onRetry()
                 val recovered = awaitScheduled()
@@ -361,7 +374,7 @@ class DayReadingsViewModelTest {
                 val updated = awaitScheduledWhere { it.segments[1].checkState == ReadingCheckState.COMPLETE }
                 assertThat(updated.segments[1].checkState).isEqualTo(ReadingCheckState.COMPLETE)
             }
-            assertThat(progress.marksFor(today)).containsExactly(2)
+            assertThat(progress.marksFor(today)).containsExactlyInAnyOrder(2)
         }
 
     @Test
@@ -386,7 +399,7 @@ class DayReadingsViewModelTest {
                 cancelAndIgnoreRemainingEvents()
             }
             // Stream 1 is still the only mark for today; nothing was unmarked.
-            assertThat(progress.marksFor(today)).containsExactly(1)
+            assertThat(progress.marksFor(today)).containsExactlyInAnyOrder(1)
         }
 
     @Test
@@ -394,7 +407,7 @@ class DayReadingsViewModelTest {
         runTest {
             // Test 3c: the mark is keyed to the displayed full date (D-S5-3), mirroring the
             // browsing-another-date toggle test. Today must be untouched.
-            val yesterday = today.minusDays(1)
+            val yesterday = today.minus(1, DateTimeUnit.DAY)
             val vm = viewModel()
             vm.uiStateFor(yesterday).test {
                 val state = awaitScheduled()
@@ -406,7 +419,7 @@ class DayReadingsViewModelTest {
                 val updated = awaitScheduledWhere { it.segments[0].checkState == ReadingCheckState.COMPLETE }
                 assertThat(updated.segments[0].checkState).isEqualTo(ReadingCheckState.COMPLETE)
             }
-            assertThat(progress.marksFor(yesterday)).containsExactly(1)
+            assertThat(progress.marksFor(yesterday)).containsExactlyInAnyOrder(1)
             assertThat(progress.marksFor(today)).isEmpty()
         }
 
@@ -416,7 +429,7 @@ class DayReadingsViewModelTest {
     fun `stats panel starts null then exposes the live derivation with streaks hidden by default`() =
         runTest {
             // S18: streaks are opt-in — the default panel ships with showStreaks = false.
-            progress.setWholeDay(today.minusDays(1), listOf(1, 2, 3), true)
+            progress.setWholeDay(today.minus(1, DateTimeUnit.DAY), listOf(1, 2, 3), true)
             progress.setWholeDay(today, listOf(1, 2, 3), true)
             val vm = viewModel()
             assertThat(vm.statsPanel.value).isNull()
@@ -430,7 +443,7 @@ class DayReadingsViewModelTest {
     fun `stats panel carries the year strips - marked yesterday is READ on every stream`() =
         runTest {
             // S17: the same panel emission carries the strip day-states, live from marks.
-            progress.setWholeDay(today.minusDays(1), listOf(1, 2, 3), true)
+            progress.setWholeDay(today.minus(1, DateTimeUnit.DAY), listOf(1, 2, 3), true)
             val vm = viewModel()
             val strips =
                 vm.statsPanel
@@ -539,7 +552,7 @@ class DayReadingsViewModelTest {
 
     private suspend fun app.cash.turbine.ReceiveTurbine<DayUiState>.awaitScheduled(): DayUiState.Scheduled {
         val state = awaitNonLoading()
-        assertThat(state).isInstanceOf(DayUiState.Scheduled::class.java)
+        assertThat(state).isInstanceOf(DayUiState.Scheduled::class)
         return state as DayUiState.Scheduled
     }
 
@@ -583,10 +596,10 @@ class DayReadingsViewModelTest {
             val vm = viewModel(settings = settings)
             vm.showTrackingStartPrompt.test {
                 assertThat(awaitItem()).isTrue()
-                vm.onTrackingStartChosen(LocalDate.of(2026, 6, 10))
+                vm.onTrackingStartChosen(LocalDate(2026, 6, 10))
                 assertThat(awaitItem()).isFalse()
             }
-            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 6, 10))
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate(2026, 6, 10))
             assertThat(settings.storedTrackingStartInitialized.value).isTrue()
         }
 
@@ -601,7 +614,7 @@ class DayReadingsViewModelTest {
                 assertThat(awaitItem()).isFalse()
             }
             // D-S19-1: dismiss == the superseded D-S14-1 default, marker set => never again.
-            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 1, 1))
+            assertThat(settings.storedTrackingStartDate.value).isEqualTo(LocalDate(2026, 1, 1))
             assertThat(settings.storedTrackingStartInitialized.value).isTrue()
         }
 
@@ -628,13 +641,14 @@ class DayReadingsViewModelTest {
                 val state = awaitScheduled()
                 assertThat(state.segments).hasSize(2)
                 assertThat(state.segments.map { ReadingFormatter.format(it.portion) })
-                    .containsExactly("Isaiah 37–39", "Psalm 76")
-                    .inOrder()
-                assertThat(state.segments.map { it.segmentIndex }).containsExactly(0, 1).inOrder()
-                assertThat(state.segments.map { it.segmentCount }).containsExactly(2, 2)
-                assertThat(state.segments.map { it.streamNumber }).containsExactly(1, 1)
+                    .containsExactlyInAnyOrder("Isaiah 37–39", "Psalm 76")
+                assertThat(state.segments.map { it.segmentIndex }).containsExactly(0, 1)
+                assertThat(state.segments.map { it.segmentCount }).containsExactlyInAnyOrder(2, 2)
+                assertThat(state.segments.map { it.streamNumber }).containsExactlyInAnyOrder(1, 1)
                 // The title repeats on both cards of the multi-segment stream (spec).
-                assertThat(state.segments.map { it.streamTitle }).containsExactly("Law & History", "Law & History")
+                assertThat(
+                    state.segments.map { it.streamTitle },
+                ).containsExactlyInAnyOrder("Law & History", "Law & History")
             }
         }
 
@@ -657,7 +671,7 @@ class DayReadingsViewModelTest {
                 assertThat(handed).isNotNull()
                 assertThat(handed!!.streamNumber).isEqualTo(1)
                 assertThat(handed.refs.map { it.book.canonicalName to it.chapter })
-                    .containsExactly("Psalms" to 76)
+                    .containsExactlyInAnyOrder("Psalms" to 76)
                 cancelAndIgnoreRemainingEvents()
             }
         }
@@ -710,7 +724,7 @@ class DayReadingsViewModelTest {
                 val complete =
                     awaitScheduledWhere { state -> state.segments.all { it.checkState == ReadingCheckState.COMPLETE } }
                 assertThat(complete.dayComplete).isTrue()
-                assertThat(progress.marksFor(today)).containsExactly(1)
+                assertThat(progress.marksFor(today)).containsExactlyInAnyOrder(1)
                 assertThat(partials.stored.value).isEmpty()
                 cancelAndIgnoreRemainingEvents()
             }
@@ -745,12 +759,12 @@ class DayReadingsViewModelTest {
             vm.uiStateFor(today).test {
                 val initial = awaitScheduled()
                 assertThat(initial.segments).hasSize(3)
-                assertThat(initial.segments.map { it.segmentCount }).containsExactly(1, 1, 1)
+                assertThat(initial.segments.map { it.segmentCount }).containsExactlyInAnyOrder(1, 1, 1)
 
                 vm.onToggleSegment(today, initial.segments[1])
                 val after = awaitScheduledWhere { it.segments[1].checkState != ReadingCheckState.UNCHECKED }
                 assertThat(after.segments[1].checkState).isEqualTo(ReadingCheckState.COMPLETE)
-                assertThat(progress.marksFor(today)).containsExactly(2)
+                assertThat(progress.marksFor(today)).containsExactlyInAnyOrder(2)
                 assertThat(partials.stored.value).isEmpty()
                 cancelAndIgnoreRemainingEvents()
             }

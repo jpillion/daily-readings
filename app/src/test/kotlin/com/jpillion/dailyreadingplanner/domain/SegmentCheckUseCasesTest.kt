@@ -1,7 +1,13 @@
 package com.jpillion.dailyreadingplanner.domain
 
 import app.cash.turbine.test
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.doesNotContain
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
 import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
@@ -11,8 +17,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import org.junit.Test
-import java.time.LocalDate
 
 /**
  * SEG-3 — the three use cases that join the pure [SegmentCheckPolicy] to storage (sprint-00P).
@@ -35,8 +43,8 @@ import java.time.LocalDate
 class SegmentCheckUseCasesTest {
     private val planId = PlanRegistry.DEFAULT_PLAN_ID
     private val otherPlanId = "mcheyne"
-    private val date = LocalDate.of(2026, 7, 25)
-    private val otherDate = date.plusDays(1)
+    private val date = LocalDate(2026, 7, 25)
+    private val otherDate = date.plus(1, DateTimeUnit.DAY)
 
     /** Shared ordered timeline of writes across BOTH stores — the write-order pin's instrument. */
     private val writeLog = mutableListOf<String>()
@@ -70,7 +78,7 @@ class SegmentCheckUseCasesTest {
             partials.setPartialSegments(planId, date, streamNumber = 3, segmentIndexes = setOf(1))
 
             assertThat(getPartials(date).first())
-                .containsExactlyEntriesIn(mapOf(1 to setOf(0, 2), 3 to setOf(1)))
+                .isEqualTo(mapOf(1 to setOf(0, 2), 3 to setOf(1)))
         }
 
     @Test
@@ -79,7 +87,7 @@ class SegmentCheckUseCasesTest {
             partials.setPartialSegments(planId, otherDate, streamNumber = 1, segmentIndexes = setOf(0))
             partials.setPartialSegments(planId, date, streamNumber = 1, segmentIndexes = setOf(1))
 
-            assertThat(getPartials(date).first()).containsExactlyEntriesIn(mapOf(1 to setOf(1)))
+            assertThat(getPartials(date).first()).isEqualTo(mapOf(1 to setOf(1)))
         }
 
     @Test
@@ -88,7 +96,7 @@ class SegmentCheckUseCasesTest {
             partials.setPartialSegments(otherPlanId, date, streamNumber = 1, segmentIndexes = setOf(0))
             partials.setPartialSegments(planId, date, streamNumber = 2, segmentIndexes = setOf(1))
 
-            assertThat(getPartials(date).first()).containsExactlyEntriesIn(mapOf(2 to setOf(1)))
+            assertThat(getPartials(date).first()).isEqualTo(mapOf(2 to setOf(1)))
         }
 
     @Test
@@ -96,10 +104,10 @@ class SegmentCheckUseCasesTest {
         runTest {
             // Self-healing cache: junk written by a future/older build must never crash or corrupt
             // the day screen — it is simply dropped.
-            partials.seedRaw("nonsense", "$planId|not-a-number|1|0", "$planId|${date.toEpochDay()}|1")
+            partials.seedRaw("nonsense", "$planId|not-a-number|1|0", "$planId|${date.toEpochDays()}|1")
             partials.setPartialSegments(planId, date, streamNumber = 1, segmentIndexes = setOf(0))
 
-            assertThat(getPartials(date).first()).containsExactlyEntriesIn(mapOf(1 to setOf(0)))
+            assertThat(getPartials(date).first()).isEqualTo(mapOf(1 to setOf(0)))
         }
 
     @Test
@@ -108,7 +116,7 @@ class SegmentCheckUseCasesTest {
             partials.setPartialSegments(planId, date, streamNumber = 1, segmentIndexes = setOf(0))
 
             val result = getPartials(date).first()
-            assertThat(result.keys).containsExactly(1)
+            assertThat(result.keys).containsExactlyInAnyOrder(1)
             assertThat(result[2]).isNull() // callers use `?: emptySet()`
         }
 
@@ -121,9 +129,9 @@ class SegmentCheckUseCasesTest {
             partials.setPartialSegments(otherPlanId, date, streamNumber = 1, segmentIndexes = setOf(1, 2))
 
             useCase(date).test {
-                assertThat(awaitItem()).containsExactlyEntriesIn(mapOf(1 to setOf(0)))
+                assertThat(awaitItem()).isEqualTo(mapOf(1 to setOf(0)))
                 switchable.planId.value = otherPlanId
-                assertThat(awaitItem()).containsExactlyEntriesIn(mapOf(1 to setOf(1, 2)))
+                assertThat(awaitItem()).isEqualTo(mapOf(1 to setOf(1, 2)))
             }
         }
 
@@ -135,7 +143,7 @@ class SegmentCheckUseCasesTest {
             toggleSegment(date, streamNumber = 1, segmentIndex = 0, segmentCount = 3, streamMarked = false)
 
             assertThat(progress.marksFor(date)).isEmpty()
-            assertThat(tokensFor(1)).containsExactly(0)
+            assertThat(tokensFor(1)).containsExactlyInAnyOrder(0)
         }
 
     @Test
@@ -145,7 +153,7 @@ class SegmentCheckUseCasesTest {
 
             toggleSegment(date, streamNumber = 1, segmentIndex = 1, segmentCount = 3, streamMarked = false)
 
-            assertThat(progress.marksFor(date)).containsExactly(1)
+            assertThat(progress.marksFor(date)).containsExactlyInAnyOrder(1)
             assertThat(tokensFor(1)).isEmpty()
         }
 
@@ -157,7 +165,7 @@ class SegmentCheckUseCasesTest {
             toggleSegment(date, streamNumber = 1, segmentIndex = 0, segmentCount = 3, streamMarked = false)
 
             assertThat(progress.marksFor(date)).isEmpty()
-            assertThat(tokensFor(1)).containsExactly(2)
+            assertThat(tokensFor(1)).containsExactlyInAnyOrder(2)
         }
 
     @Test
@@ -168,7 +176,7 @@ class SegmentCheckUseCasesTest {
             toggleSegment(date, streamNumber = 1, segmentIndex = 1, segmentCount = 3, streamMarked = true)
 
             assertThat(progress.marksFor(date)).isEmpty()
-            assertThat(tokensFor(1)).containsExactly(0, 2)
+            assertThat(tokensFor(1)).containsExactlyInAnyOrder(0, 2)
         }
 
     @Test
@@ -176,7 +184,7 @@ class SegmentCheckUseCasesTest {
         runTest {
             toggleSegment(date, streamNumber = 2, segmentIndex = 0, segmentCount = 1, streamMarked = false)
 
-            assertThat(progress.marksFor(date)).containsExactly(2)
+            assertThat(progress.marksFor(date)).containsExactlyInAnyOrder(2)
             assertThat(tokensFor(2)).isEmpty()
             assertThat(partials.stored.value).isEmpty()
         }
@@ -201,7 +209,7 @@ class SegmentCheckUseCasesTest {
             markSegmentOnOpen(date, streamNumber = 1, segmentIndex = 2, segmentCount = 3, streamMarked = false)
 
             assertThat(progress.marksFor(date)).isEmpty()
-            assertThat(tokensFor(1)).containsExactly(2)
+            assertThat(tokensFor(1)).containsExactlyInAnyOrder(2)
         }
 
     @Test
@@ -211,7 +219,7 @@ class SegmentCheckUseCasesTest {
 
             markSegmentOnOpen(date, streamNumber = 1, segmentIndex = 2, segmentCount = 3, streamMarked = false)
 
-            assertThat(progress.marksFor(date)).containsExactly(1)
+            assertThat(progress.marksFor(date)).containsExactlyInAnyOrder(1)
             assertThat(tokensFor(1)).isEmpty()
         }
 
@@ -223,7 +231,7 @@ class SegmentCheckUseCasesTest {
             markSegmentOnOpen(date, streamNumber = 1, segmentIndex = 0, segmentCount = 3, streamMarked = false)
 
             assertThat(progress.marksFor(date)).isEmpty()
-            assertThat(tokensFor(1)).containsExactly(0, 2)
+            assertThat(tokensFor(1)).containsExactlyInAnyOrder(0, 2)
         }
 
     @Test
@@ -235,7 +243,7 @@ class SegmentCheckUseCasesTest {
 
             markSegmentOnOpen(date, streamNumber = 1, segmentIndex = 1, segmentCount = 3, streamMarked = true)
 
-            assertThat(progress.marksFor(date)).containsExactly(1)
+            assertThat(progress.marksFor(date)).containsExactlyInAnyOrder(1)
             assertThat(tokensFor(1)).isEmpty()
             assertThat(writeLog).doesNotContain(RecordingProgressRepository.UNMARK_WRITE)
         }
@@ -254,10 +262,10 @@ class SegmentCheckUseCasesTest {
             toggleSegment(date, streamNumber = 1, segmentIndex = 1, segmentCount = 3, streamMarked = false)
 
             assertThat(writeLog)
-                .containsExactly(
+                .containsExactlyInAnyOrder(
                     RecordingProgressRepository.MARK_WRITE,
                     FakePartialReadingRepository.TOKENS_WRITE,
-                ).inOrder()
+                )
         }
 
     @Test
@@ -274,7 +282,7 @@ class SegmentCheckUseCasesTest {
                 .containsExactly(
                     FakePartialReadingRepository.TOKENS_WRITE,
                     RecordingProgressRepository.UNMARK_WRITE,
-                ).inOrder()
+                )
         }
 }
 

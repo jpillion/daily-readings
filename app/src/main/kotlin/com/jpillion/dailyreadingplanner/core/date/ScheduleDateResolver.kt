@@ -1,6 +1,7 @@
 package com.jpillion.dailyreadingplanner.core.date
 
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import javax.inject.Inject
 
 /** Result of resolving a real calendar date against the 365-day plan (ESpec §5.4). */
@@ -23,9 +24,9 @@ class ScheduleDateResolver
     @Inject
     constructor() {
         fun resolve(date: LocalDate): ResolvedDate =
-            if (date.monthValue == 2 && date.dayOfMonth == 29) {
+            if (date.month.number == 2 && date.day == 29) {
                 ResolvedDate.NoScheduledReadings
             } else {
-                ResolvedDate.Scheduled(ReadingDate(date.monthValue, date.dayOfMonth))
+                ResolvedDate.Scheduled(ReadingDate(date.month.number, date.day))
             }
     }

@@ -5,7 +5,7 @@ import com.jpillion.dailyreadingplanner.domain.model.Portion
 import com.jpillion.dailyreadingplanner.reminders.NotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.reminders.ReminderNotifier
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
-import java.time.LocalTime
+import kotlinx.datetime.LocalTime
 
 /** Records scheduling calls in order (S12) — order matters for reschedule-rule tests. */
 class FakeReminderScheduler : ReminderScheduler {

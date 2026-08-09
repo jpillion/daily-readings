@@ -49,9 +49,14 @@ import com.jpillion.dailyreadingplanner.ui.theme.IndicatorRedDark
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorRedLight
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.YearMonth
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.YearMonth
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.onDay
+import kotlinx.datetime.plus
+import kotlinx.datetime.yearMonth
 
 /**
  * Month/day date picker (FR-5) as a dialog over the day pager (D-S5-2), rebuilt in Sprint 8
@@ -83,7 +88,7 @@ fun DayDatePickerDialog(
     // caller (and the tests that pin real English output) is unchanged.
     formatter: DateTextFormatter = rememberDateTextFormatter(),
 ) {
-    val initialMonth = YearMonth.from(initialDate)
+    val initialMonth = initialDate.yearMonth
     val pagerState = rememberPagerState(initialPage = MONTH_CENTER_PAGE) { MONTH_PAGE_COUNT }
     val scope = rememberCoroutineScope()
     val displayedMonth = monthForPage(initialMonth, pagerState.currentPage)
@@ -152,7 +157,7 @@ private fun MonthHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = formatter.monthYear(month.atDay(1)),
+            text = formatter.monthYear(month.onDay(1)),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(start = 8.dp).weight(1f).testTag("picker-month-title"),
         )
@@ -209,7 +214,7 @@ private fun MonthGrid(
     formatter: DateTextFormatter,
 ) {
     val leading = leadingEmptyCells(month, firstDayOfWeek)
-    val totalCells = leading + month.lengthOfMonth()
+    val totalCells = leading + month.numberOfDays
     val rows = (totalCells + 6) / 7
     Column(modifier = Modifier.fillMaxWidth()) {
         repeat(rows) { row ->
@@ -217,11 +222,11 @@ private fun MonthGrid(
                 repeat(7) { column ->
                     val cell = row * 7 + column
                     val day = cell - leading + 1
-                    if (day in 1..month.lengthOfMonth()) {
+                    if (day in 1..month.numberOfDays) {
                         DayCell(
-                            date = month.atDay(day),
-                            isToday = month.atDay(day) == today,
-                            completion = completion[month.atDay(day)] ?: DayCompletion.NONE,
+                            date = month.onDay(day),
+                            isToday = month.onDay(day) == today,
+                            completion = completion[month.onDay(day)] ?: DayCompletion.NONE,
                             onSelect = onSelect,
                             formatter = formatter,
                             modifier = Modifier.weight(1f),
@@ -276,13 +281,13 @@ private fun DayCell(
                     selected = false,
                     role = Role.Button,
                     onClick = { onSelect(date) },
-                ).testTag("picker-day-${date.dayOfMonth}")
+                ).testTag("picker-day-${date.day}")
                 .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = date.dayOfMonth.toString(),
+                text = date.day.toString(),
                 style = MaterialTheme.typography.bodyLarge,
                 color =
                     if (isToday) {
@@ -317,13 +322,14 @@ internal const val MONTH_PAGE_COUNT = 2 * MONTH_WINDOW + 1
 internal fun monthForPage(
     initialMonth: YearMonth,
     page: Int,
-): YearMonth = initialMonth.plusMonths((page - MONTH_CENTER_PAGE).toLong())
+): YearMonth = initialMonth.plus(page - MONTH_CENTER_PAGE, DateTimeUnit.MONTH)
 
 /** Number of blank cells before day 1 when the week starts on [firstDayOfWeek]. */
 internal fun leadingEmptyCells(
     month: YearMonth,
     firstDayOfWeek: DayOfWeek,
-): Int = ((month.atDay(1).dayOfWeek.value - firstDayOfWeek.value) + 7) % 7
+): Int = ((month.onDay(1).dayOfWeek.isoDayNumber - firstDayOfWeek.isoDayNumber) + 7) % 7
 
 /** The seven weekdays in display order starting from [firstDayOfWeek]. */
-internal fun weekdayOrder(firstDayOfWeek: DayOfWeek): List<DayOfWeek> = (0L until 7L).map(firstDayOfWeek::plus)
+internal fun weekdayOrder(firstDayOfWeek: DayOfWeek): List<DayOfWeek> =
+    (0 until 7).map { DayOfWeek.entries[(firstDayOfWeek.ordinal + it) % 7] }

@@ -24,7 +24,7 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.settings.TrackingStartDatePickerDialog
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * The one-time first-run tracking-start prompt (S19, D-S19-1): exactly three choices —
@@ -66,7 +66,7 @@ internal fun TrackingStartPromptDialog(
                 PromptOptionRow(
                     text = stringResource(R.string.tracking_prompt_jan1, today.year),
                     tag = "tracking-prompt-jan1",
-                    onClick = { onChoose(LocalDate.of(today.year, 1, 1)) },
+                    onClick = { onChoose(LocalDate(today.year, 1, 1)) },
                 )
                 PromptOptionRow(
                     text =

@@ -5,12 +5,14 @@ import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import java.time.Clock
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import javax.inject.Inject
 
 /**
@@ -41,23 +43,23 @@ class GetReadingStatsUseCase
         private val progressRepository: ProgressRepository,
         private val settingsRepository: SettingsRepository,
         private val activePlanRepository: ActivePlanRepository,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) {
         @OptIn(ExperimentalCoroutinesApi::class)
         operator fun invoke(): Flow<ReadingStats> {
-            val year = LocalDate.now(clock).year
+            val year = dateProvider.today().year
             return activePlanRepository.activePlanId.flatMapLatest { planId ->
                 combine(
                     activePlanRepository.activeDescriptor,
                     progressRepository.allReadCounts(planId),
                     progressRepository.streamCounts(
-                        start = LocalDate.of(year, 1, 1),
-                        end = LocalDate.of(year, 12, 31),
+                        start = LocalDate(year, 1, 1),
+                        end = LocalDate(year, 12, 31),
                         planId = planId,
                     ),
                     settingsRepository.trackingStartDate,
                 ) { descriptor, counts, streamCounts, trackingStart ->
-                    val today = LocalDate.now(clock)
+                    val today = dateProvider.today()
                     val (current, longest) = walkStreaks(counts, descriptor.streamCount, today, trackingStart)
                     ReadingStats(
                         currentStreakDays = current,
@@ -81,11 +83,11 @@ class GetReadingStatsUseCase
             trackingStart: LocalDate?,
         ): Pair<Int, Int> {
             val earliestMark = counts.keys.minOrNull() ?: return 0 to 0
-            if (earliestMark.isAfter(today)) return 0 to 0
+            if (earliestMark > today) return 0 to 0
             var run = 0
             var longest = 0
             var date: LocalDate = earliestMark
-            while (!date.isAfter(today)) {
+            while (date <= today) {
                 when (classifier.classify(date, counts[date] ?: 0, streamCount, today, trackingStart)) {
                     DayCompletion.COMPLETE -> {
                         run++
@@ -95,7 +97,7 @@ class GetReadingStatsUseCase
                     // Neutral (Feb 29, pre-start, in-grace today): neither extends nor breaks.
                     DayCompletion.NONE -> Unit
                 }
-                date = date.plusDays(1)
+                date = date.plus(1, DateTimeUnit.DAY)
             }
             return run to longest
         }

@@ -67,8 +67,8 @@ import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
-import java.time.LocalDate
-import java.time.LocalTime
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlin.math.roundToInt
 
 /** Stateful entry point for the pushed `settings` route (ESpec §7). */
@@ -620,7 +620,7 @@ private fun ReminderTimePickerDialog(
         text = { TimePicker(state = state) },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) },
+                onClick = { onConfirm(LocalTime(state.hour, state.minute)) },
                 modifier = Modifier.testTag("reminder-time-confirm"),
             ) { Text(text = stringResource(R.string.reminder_time_dialog_confirm)) }
         },

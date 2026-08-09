@@ -1,12 +1,16 @@
 package com.jpillion.dailyreadingplanner.ui.day
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import org.junit.Test
-import java.time.LocalDate
 
 /** Pure pager geometry (D-S5-4): page <-> date mapping and window clamping. */
 class DayPagerMathTest {
-    private val today = LocalDate.of(2026, 6, 10)
+    private val today = LocalDate(2026, 6, 10)
 
     @Test
     fun `the center page is today`() {
@@ -16,14 +20,14 @@ class DayPagerMathTest {
 
     @Test
     fun `adjacent pages are adjacent real calendar days`() {
-        assertThat(dateForPage(today, TODAY_PAGE + 1)).isEqualTo(LocalDate.of(2026, 6, 11))
-        assertThat(dateForPage(today, TODAY_PAGE - 1)).isEqualTo(LocalDate.of(2026, 6, 9))
+        assertThat(dateForPage(today, TODAY_PAGE + 1)).isEqualTo(LocalDate(2026, 6, 11))
+        assertThat(dateForPage(today, TODAY_PAGE - 1)).isEqualTo(LocalDate(2026, 6, 9))
     }
 
     @Test
     fun `page mapping crosses the year boundary to the adjacent year`() {
-        val nye = LocalDate.of(2026, 12, 31)
-        assertThat(dateForPage(nye, TODAY_PAGE + 1)).isEqualTo(LocalDate.of(2027, 1, 1))
+        val nye = LocalDate(2026, 12, 31)
+        assertThat(dateForPage(nye, TODAY_PAGE + 1)).isEqualTo(LocalDate(2027, 1, 1))
     }
 
     @Test
@@ -36,7 +40,7 @@ class DayPagerMathTest {
 
     @Test
     fun `dates outside the window clamp to the edges`() {
-        assertThat(pageForDate(today, today.plusDays(DAY_WINDOW + 500L))).isEqualTo(PAGE_COUNT - 1)
-        assertThat(pageForDate(today, today.minusDays(DAY_WINDOW + 500L))).isEqualTo(0)
+        assertThat(pageForDate(today, today.plus(DAY_WINDOW + 500L, DateTimeUnit.DAY))).isEqualTo(PAGE_COUNT - 1)
+        assertThat(pageForDate(today, today.minus(DAY_WINDOW + 500L, DateTimeUnit.DAY))).isEqualTo(0)
     }
 }

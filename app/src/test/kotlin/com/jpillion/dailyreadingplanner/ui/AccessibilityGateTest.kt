@@ -23,7 +23,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.isGreaterThanOrEqualTo
 import com.jpillion.dailyreadingplanner.bible.domain.model.BibleTranslation
 import com.jpillion.dailyreadingplanner.bible.domain.model.ChapterContent
 import com.jpillion.dailyreadingplanner.bible.domain.model.VerseId
@@ -57,13 +59,13 @@ import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import com.jpillion.dailyreadingplanner.update.UpdatePhase
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDate
-import java.time.LocalTime
 
 /**
  * S9-T7: the JVM-provable slice of release gate G-A11Y, pinned so regressions fail CI:
@@ -79,7 +81,7 @@ class AccessibilityGateTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val today = LocalDate.of(2026, 6, 10)
+    private val today = LocalDate(2026, 6, 10)
 
     private fun hasAnyContentDescription() = SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentDescription)
 
@@ -100,8 +102,8 @@ class AccessibilityGateTest {
         val node = fetchSemanticsNode("failed to check touch target")
         val bounds = node.touchBoundsInRoot
         with(node.layoutInfo.density) {
-            assertThat(bounds.width.toDp().value).isAtLeast(min.value - 0.5f)
-            assertThat(bounds.height.toDp().value).isAtLeast(min.value - 0.5f)
+            assertThat(bounds.width.toDp().value).isGreaterThanOrEqualTo(min.value - 0.5f)
+            assertThat(bounds.height.toDp().value).isGreaterThanOrEqualTo(min.value - 0.5f)
         }
         return this
     }
@@ -154,7 +156,7 @@ class AccessibilityGateTest {
                     currentYear = 2026,
                     trackingStartDate = today,
                     reminderEnabled = true,
-                    reminderTime = LocalTime.of(8, 0),
+                    reminderTime = LocalTime(8, 0),
                     persistentNotificationEnabled = true,
                     showReminderPermissionRationale = false,
                     onThemeModeSelected = {},

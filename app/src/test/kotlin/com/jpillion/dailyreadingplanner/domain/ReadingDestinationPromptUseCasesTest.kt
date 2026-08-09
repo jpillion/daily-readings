@@ -1,13 +1,17 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.junit.Test
-import java.time.LocalDate
 
 /**
  * VD-T7/T10 — the first-run reading-destination question and the one-time upgrade note. The
@@ -27,7 +31,7 @@ class ReadingDestinationPromptUseCasesTest {
     private val resolveNote = ResolveUpgradeNoteUseCase(settings, progress)
     private val completeNote = CompleteUpgradeNoteUseCase(settings)
 
-    private suspend fun seedAMark() = progress.setRead(LocalDate.of(2026, 6, 14), 1, isRead = true)
+    private suspend fun seedAMark() = progress.setRead(LocalDate(2026, 6, 14), 1, isRead = true)
 
     // --- the first-run question (fresh install) ---
 

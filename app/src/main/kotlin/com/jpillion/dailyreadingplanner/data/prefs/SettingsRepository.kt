@@ -5,8 +5,8 @@ import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDate
-import java.time.LocalTime
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 
 /**
  * User-settings persistence (ESpec §5.5 + S8 + S10): theme mode, text-size scale, and the
@@ -162,6 +162,6 @@ interface SettingsRepository {
         const val DEFAULT_FONT_SCALE = 1.0f
 
         /** D-S12-5: the pre-filled reminder time on first enable — one tap away from editing. */
-        val DEFAULT_REMINDER_TIME: LocalTime = LocalTime.of(8, 0)
+        val DEFAULT_REMINDER_TIME: LocalTime = LocalTime(8, 0)
     }
 }

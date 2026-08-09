@@ -1,11 +1,10 @@
 package com.jpillion.dailyreadingplanner.domain
 
 import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import com.jpillion.dailyreadingplanner.reminders.PersistentNotifier
 import com.jpillion.dailyreadingplanner.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.first
-import java.time.Clock
-import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -28,7 +27,7 @@ class RefreshPersistentNotificationUseCase
         private val getDayReadings: GetDayReadingsUseCase,
         private val notifier: PersistentNotifier,
         private val scheduler: ReminderScheduler,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) {
         suspend operator fun invoke() {
             if (!settingsRepository.persistentNotificationEnabled.first()) {
@@ -36,7 +35,7 @@ class RefreshPersistentNotificationUseCase
                 scheduler.cancelPersistentRefresh()
                 return
             }
-            val today = LocalDate.now(clock)
+            val today = dateProvider.today()
             val day = getDayReadings(today).first()
             notifier.showPersistent(day)
             scheduler.schedulePersistentRefresh()

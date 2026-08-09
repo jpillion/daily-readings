@@ -1,8 +1,8 @@
 package com.jpillion.dailyreadingplanner.platform
 
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalTime
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 
 /**
  * User-facing date, time and number text, rendered in the device's own locale and calendar

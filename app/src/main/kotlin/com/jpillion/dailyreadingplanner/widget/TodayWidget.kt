@@ -9,6 +9,7 @@ import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.material3.ColorProviders
 import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import com.jpillion.dailyreadingplanner.ui.theme.DarkColorScheme
 import com.jpillion.dailyreadingplanner.ui.theme.LightColorScheme
 import dagger.hilt.EntryPoint
@@ -16,8 +17,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
-import java.time.Clock
-import java.time.LocalDate
 
 /**
  * Glance receivers aren't constructor-injectable, so the widget reaches the Sprint 3
@@ -29,13 +28,13 @@ import java.time.LocalDate
 interface TodayWidgetEntryPoint {
     fun getDayReadings(): GetDayReadingsUseCase
 
-    fun clock(): Clock
+    fun dateProvider(): DateProvider
 }
 
 /**
  * Home-screen widget: today's three readings + completion at a glance (PRD FR-8, ESpec §7).
  *
- * Renders a *snapshot* (D-S7-1): each update resolves "today" from the injected [Clock]
+ * Renders a *snapshot* (D-S7-1): each update resolves "today" from the injected [DateProvider]
  * (Feb 29 → the no-readings state, decision D1) and takes `first()` of the readings flow.
  * Freshness is owned by the explicit refresh contract — [WidgetRefresher] on app resume and
  * progress change, plus the 30-min system periodic backstop (D9); no midnight alarm in V1
@@ -54,7 +53,7 @@ class TodayWidget : GlanceAppWidget() {
     ) {
         val entryPoint =
             EntryPointAccessors.fromApplication(context, TodayWidgetEntryPoint::class.java)
-        val today = LocalDate.now(entryPoint.clock())
+        val today = entryPoint.dateProvider().today()
         val state =
             runCatching<TodayWidgetState> {
                 TodayWidgetState.Loaded(entryPoint.getDayReadings()(today).first())

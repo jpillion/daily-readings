@@ -12,7 +12,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingCheckState
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
@@ -21,12 +24,12 @@ import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
 import com.jpillion.dailyreadingplanner.testing.singleSegmentStates
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
+import kotlinx.datetime.LocalDate
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDate
 
 /**
  * Compose UI tests for the stateless single-day content, run under Robolectric so they
@@ -39,7 +42,7 @@ class DayContentTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val date = LocalDate.of(2026, 6, 10)
+    private val date = LocalDate(2026, 6, 10)
 
     private fun scheduled(read: Set<Int> = emptySet()): DayUiState.Scheduled =
         DayUiState.Scheduled(
@@ -135,7 +138,7 @@ class DayContentTest {
 
     @Test
     fun feb29_showsNoScheduledReadingsMessage() {
-        setContent(DayUiState.NoScheduledReadings(LocalDate.of(2028, 2, 29)))
+        setContent(DayUiState.NoScheduledReadings(LocalDate(2028, 2, 29)))
         composeRule.onNodeWithText("No scheduled readings for Feb 29th").assertIsDisplayed()
         composeRule.onNodeWithTag("whole-day-button").assertDoesNotExist()
         composeRule.onNodeWithTag("toggle-1-0").assertDoesNotExist()
@@ -351,7 +354,7 @@ class DayContentTest {
                 .single()
                 .portion.refs
                 .map { it.book.canonicalName to it.chapter },
-        ).containsExactly("Psalms" to 76)
+        ).containsExactlyInAnyOrder("Psalms" to 76)
         assertThat(tapped.single().segmentIndex).isEqualTo(1)
         assertThat(tapped.single().streamNumber).isEqualTo(1)
     }

@@ -36,14 +36,14 @@ import com.jpillion.dailyreadingplanner.ui.settings.SettingsScreen
 import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalTime
 
 /**
  * p1-01: proves that the UI actually *routes through* [DateTextFormatter] rather than
@@ -66,7 +66,7 @@ class DateTextFormatterSeamTest {
     val composeRule = createComposeRule()
 
     private val fake = FakeDateTextFormatter()
-    private val june10 = LocalDate.of(2026, 6, 10)
+    private val june10 = LocalDate(2026, 6, 10)
 
     // ---- The date picker: monthYear, weekdayInitial, firstDayOfWeek, fullDate ----
 
@@ -201,7 +201,7 @@ class DateTextFormatterSeamTest {
                     currentYear = 2026,
                     trackingStartDate = trackingStartDate,
                     reminderEnabled = true,
-                    reminderTime = LocalTime.of(21, 30),
+                    reminderTime = LocalTime(21, 30),
                     persistentNotificationEnabled = false,
                     showReminderPermissionRationale = false,
                     onThemeModeSelected = {},
@@ -238,7 +238,7 @@ class DateTextFormatterSeamTest {
 
     @Test
     fun settingsTrackingStartDateComesFromTheSeam() {
-        setSettings(trackingStartDate = LocalDate.of(2026, 6, 3))
+        setSettings(trackingStartDate = LocalDate(2026, 6, 3))
         composeRule
             .onNodeWithTag("tracking-start-value", useUnmergedTree = true)
             .performScrollTo()

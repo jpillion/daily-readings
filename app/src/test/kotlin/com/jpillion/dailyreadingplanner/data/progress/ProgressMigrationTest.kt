@@ -4,8 +4,10 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.platform.app.InstrumentationRegistry
-import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEqualTo
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,10 +21,31 @@ import org.robolectric.annotation.Config
  * "everyone's progress," so this runs the REAL exported schemas via Room's [MigrationTestHelper]
  * (not a hand-typed DDL) and asserts row-count + every tuple + Room's own schema validation.
  *
- * The exported 1.json/2.json are made available to the Robolectric AssetManager by the
- * `copyRoomSchemasForUnitTest` build wiring (they are excluded from the packaged APK via
- * androidResources.ignoreAssetsPattern, so they never ship). Mutation-verified: dropping the row
- * copy, stamping a wrong plan id, or mangling a column makes this red.
+ * Mutation-verified: dropping the row copy, stamping a wrong plan id, or mangling a column makes
+ * this red.
+ *
+ * **How the exported 1.json/2.json reach Robolectric — and the hazard in that mechanism.**
+ * `app/build.gradle.kts` declares `app/schemas` as an asset directory on the **`debug`** source set
+ * (`android { sourceSets { getByName("debug").assets.srcDir(...) } }`), so the two files land in the
+ * debug unit-test resource APK where [MigrationTestHelper] can find them. There is **no exclusion
+ * rule of any kind** keeping them out of the release build — no ignore pattern, no packaging
+ * filter, no copy task. The scope IS the protection: the "~3 KB of schema JSON never ships to
+ * users" property rests entirely on the word `debug` in that one line.
+ *
+ * That is strictly weaker than an explicit exclusion, and the difference matters when assets move.
+ * An exclusion survives a source-set change; a debug-scoped `srcDir` does not. Adding a second
+ * `srcDir` for schemas on `main`, or restructuring the asset roots (as multiplatform work will),
+ * silently starts shipping them, and the release bundle-size gate has ~4 MB of headroom so it will
+ * never notice 3 KB. CI therefore guards this directly: it pins the SHA-256 of 1.json and 2.json
+ * **both before and after** the Gradle build — KSP writes into `app/schemas` (`room.schemaLocation`),
+ * so changing [ReadingProgressEntity] without bumping [ProgressDatabase]'s `version` silently
+ * rewrites the committed migration baseline in the working tree, and only the *after* check sees
+ * it — and it asserts the release AAB contains no schema JSON.
+ *
+ * If a digest check fails, the correct response is to STOP and escalate, never to regenerate the
+ * baseline: 2.json is the schema this migration is validated against and the one shipped devices
+ * actually carry. Re-blessing it would leave this gate validating the broken schema instead of the
+ * shipped one.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -75,14 +98,16 @@ class ProgressMigrationTest {
         val v2 = helper.runMigrationsAndValidate(TEST_DB, 2, true, ProgressMigrations.MIGRATION_1_2)
 
         // 3a. Row count is identical — nothing dropped, nothing added.
-        assertWithMessage("every v1 row must survive the migration")
-            .that(queryCount(v2, "SELECT COUNT(*) FROM reading_progress"))
-            .isEqualTo(seed.size)
+        assertThat(
+            queryCount(v2, "SELECT COUNT(*) FROM reading_progress"),
+            name = "every v1 row must survive the migration",
+        ).isEqualTo(seed.size)
 
         // 3b. Every row is stamped bible_companion — no other plan id, no NULL.
-        assertWithMessage("every migrated row must carry plan_id = 'bible_companion'")
-            .that(queryCount(v2, "SELECT COUNT(*) FROM reading_progress WHERE plan_id != 'bible_companion'"))
-            .isEqualTo(0)
+        assertThat(
+            queryCount(v2, "SELECT COUNT(*) FROM reading_progress WHERE plan_id != 'bible_companion'"),
+            name = "every migrated row must carry plan_id = 'bible_companion'",
+        ).isEqualTo(0)
 
         // 3c. Every original (dateEpochDay, stream, readAtEpochMillis) tuple is preserved verbatim.
         v2
@@ -97,8 +122,8 @@ class ProgressMigrationTest {
                         Mark(cursor.getLong(1), cursor.getInt(2), cursor.getLong(3))
                 }
                 val expected = seed.sortedWith(compareBy({ it.dateEpochDay }, { it.stream }))
-                assertThat(migrated.map { it.second }).containsExactlyElementsIn(expected).inOrder()
-                assertThat(migrated.map { it.first }.toSet()).containsExactly("bible_companion")
+                assertThat(migrated.map { it.second }).containsExactly(*(expected).toTypedArray())
+                assertThat(migrated.map { it.first }.toSet()).containsExactlyInAnyOrder("bible_companion")
             }
         v2.close()
     }

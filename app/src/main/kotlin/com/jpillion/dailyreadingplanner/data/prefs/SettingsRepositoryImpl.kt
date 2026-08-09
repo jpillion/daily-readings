@@ -15,8 +15,8 @@ import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.time.LocalDate
-import java.time.LocalTime
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
 class SettingsRepositoryImpl
@@ -40,7 +40,7 @@ class SettingsRepositoryImpl
         /** Stored as epoch day (timezone-free, matches the progress PK); absent key => null. */
         override val trackingStartDate: Flow<LocalDate?> =
             dataStore.data.map { preferences ->
-                preferences[TRACKING_START_EPOCH_DAY_KEY]?.let(LocalDate::ofEpochDay)
+                preferences[TRACKING_START_EPOCH_DAY_KEY]?.let { LocalDate.fromEpochDays(it) }
             }
 
         override val trackingStartInitialized: Flow<Boolean> =
@@ -64,7 +64,7 @@ class SettingsRepositoryImpl
                 if (date == null) {
                     preferences.remove(TRACKING_START_EPOCH_DAY_KEY)
                 } else {
-                    preferences[TRACKING_START_EPOCH_DAY_KEY] = date.toEpochDay()
+                    preferences[TRACKING_START_EPOCH_DAY_KEY] = date.toEpochDays()
                 }
             }
         }
@@ -83,7 +83,7 @@ class SettingsRepositoryImpl
             dataStore.data.map { preferences ->
                 preferences[REMINDER_MINUTE_OF_DAY_KEY]
                     ?.takeIf { it in 0 until MINUTES_PER_DAY }
-                    ?.let { LocalTime.ofSecondOfDay(it * 60L) }
+                    ?.let { LocalTime.fromSecondOfDay(it * 60) }
                     ?: SettingsRepository.DEFAULT_REMINDER_TIME
             }
 

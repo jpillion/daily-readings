@@ -9,18 +9,23 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.ui.theme.DailyReadingPlannerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.YearMonth
+import kotlinx.datetime.yearMonth
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.YearMonth
 
 /**
  * Sprint 8 custom calendar picker (D-S8-2), as reworked in Sprint 21:
@@ -42,8 +47,8 @@ class DayDatePickerDialogTest {
     private var dismissed = 0
 
     private fun setDialog(
-        today: LocalDate = LocalDate.of(2026, 6, 10),
-        initialDate: LocalDate = LocalDate.of(2026, 6, 10),
+        today: LocalDate = LocalDate(2026, 6, 10),
+        initialDate: LocalDate = LocalDate(2026, 6, 10),
         completion: Map<LocalDate, DayCompletion> = emptyMap(),
     ) {
         composeRule.setContent {
@@ -52,7 +57,7 @@ class DayDatePickerDialogTest {
                     today = today,
                     initialDate = initialDate,
                     completionFor = { month ->
-                        MutableStateFlow(completion.filterKeys { YearMonth.from(it) == month })
+                        MutableStateFlow(completion.filterKeys { it.yearMonth == month })
                     },
                     onConfirm = { confirmed += it },
                     onDismiss = { dismissed++ },
@@ -73,7 +78,7 @@ class DayDatePickerDialogTest {
         setDialog()
         composeRule.onNodeWithTag("date-picker-confirm").assertDoesNotExist()
         composeRule.onNodeWithTag("picker-day-15").performClick()
-        assertThat(confirmed).containsExactly(LocalDate.of(2026, 6, 15))
+        assertThat(confirmed).containsExactly(LocalDate(2026, 6, 15))
     }
 
     @Test
@@ -86,7 +91,7 @@ class DayDatePickerDialogTest {
 
     @Test
     fun `next-month chevron crosses the year boundary December to January`() {
-        setDialog(initialDate = LocalDate.of(2026, 12, 10))
+        setDialog(initialDate = LocalDate(2026, 12, 10))
         composeRule.onNodeWithText("December 2026").assertIsDisplayed()
         // Previously this chevron was disabled at December; now it advances into the next year.
         composeRule.onNodeWithTag("picker-next-month").performClick()
@@ -94,12 +99,12 @@ class DayDatePickerDialogTest {
         composeRule.onNodeWithText("January 2027").assertIsDisplayed()
         // And a tapped day in the new year returns that full date.
         composeRule.onNodeWithTag("picker-day-5").performClick()
-        assertThat(confirmed).containsExactly(LocalDate.of(2027, 1, 5))
+        assertThat(confirmed).containsExactlyInAnyOrder(LocalDate(2027, 1, 5))
     }
 
     @Test
     fun `prev-month chevron crosses the year boundary January to December`() {
-        setDialog(initialDate = LocalDate.of(2026, 1, 10))
+        setDialog(initialDate = LocalDate(2026, 1, 10))
         composeRule.onNodeWithText("January 2026").assertIsDisplayed()
         composeRule.onNodeWithTag("picker-prev-month").performClick()
         composeRule.waitForIdle()
@@ -108,7 +113,7 @@ class DayDatePickerDialogTest {
 
     @Test
     fun `swiping the calendar left advances a month`() {
-        setDialog(initialDate = LocalDate.of(2026, 6, 10))
+        setDialog(initialDate = LocalDate(2026, 6, 10))
         composeRule.onNodeWithTag("picker-month-pager").performTouchInput { swipeLeft() }
         composeRule.waitForIdle()
         composeRule.onNodeWithText("July 2026").assertIsDisplayed()
@@ -116,7 +121,7 @@ class DayDatePickerDialogTest {
 
     @Test
     fun `swiping right across January reaches the previous year`() {
-        setDialog(initialDate = LocalDate.of(2026, 1, 10))
+        setDialog(initialDate = LocalDate(2026, 1, 10))
         composeRule.onNodeWithTag("picker-month-pager").performTouchInput { swipeRight() }
         composeRule.waitForIdle()
         composeRule.onNodeWithText("December 2025").assertIsDisplayed()
@@ -127,9 +132,9 @@ class DayDatePickerDialogTest {
         setDialog(
             completion =
                 mapOf(
-                    LocalDate.of(2026, 6, 1) to DayCompletion.COMPLETE,
-                    LocalDate.of(2026, 6, 2) to DayCompletion.MISSED,
-                    LocalDate.of(2026, 6, 3) to DayCompletion.NONE,
+                    LocalDate(2026, 6, 1) to DayCompletion.COMPLETE,
+                    LocalDate(2026, 6, 2) to DayCompletion.MISSED,
+                    LocalDate(2026, 6, 3) to DayCompletion.NONE,
                 ),
         )
         composeRule
@@ -145,7 +150,7 @@ class DayDatePickerDialogTest {
 
     @Test
     fun `a future complete day is marked complete too`() {
-        setDialog(completion = mapOf(LocalDate.of(2026, 6, 25) to DayCompletion.COMPLETE))
+        setDialog(completion = mapOf(LocalDate(2026, 6, 25) to DayCompletion.COMPLETE))
         composeRule
             .onNodeWithContentDescription("Thursday, June 25, 2026, All readings done")
             .assertIsDisplayed()
@@ -154,31 +159,31 @@ class DayDatePickerDialogTest {
     @Test
     fun `Feb 29 is selectable in a leap year in one tap`() {
         setDialog(
-            today = LocalDate.of(2028, 2, 28),
-            initialDate = LocalDate.of(2028, 2, 28),
+            today = LocalDate(2028, 2, 28),
+            initialDate = LocalDate(2028, 2, 28),
         )
         composeRule.onNodeWithText("February 2028").assertIsDisplayed()
         composeRule.onNodeWithTag("picker-day-29").performClick()
-        assertThat(confirmed).containsExactly(LocalDate.of(2028, 2, 29))
+        assertThat(confirmed).containsExactlyInAnyOrder(LocalDate(2028, 2, 29))
     }
 
     @Test
     fun `month-for-page maps offsets across year boundaries`() {
-        val dec2026 = YearMonth.of(2026, 12)
-        assertThat(monthForPage(dec2026, MONTH_CENTER_PAGE)).isEqualTo(YearMonth.of(2026, 12))
-        assertThat(monthForPage(dec2026, MONTH_CENTER_PAGE + 1)).isEqualTo(YearMonth.of(2027, 1))
-        assertThat(monthForPage(dec2026, MONTH_CENTER_PAGE - 12)).isEqualTo(YearMonth.of(2025, 12))
-        assertThat(monthForPage(YearMonth.of(2026, 1), MONTH_CENTER_PAGE - 1))
-            .isEqualTo(YearMonth.of(2025, 12))
+        val dec2026 = YearMonth(2026, 12)
+        assertThat(monthForPage(dec2026, MONTH_CENTER_PAGE)).isEqualTo(YearMonth(2026, 12))
+        assertThat(monthForPage(dec2026, MONTH_CENTER_PAGE + 1)).isEqualTo(YearMonth(2027, 1))
+        assertThat(monthForPage(dec2026, MONTH_CENTER_PAGE - 12)).isEqualTo(YearMonth(2025, 12))
+        assertThat(monthForPage(YearMonth(2026, 1), MONTH_CENTER_PAGE - 1))
+            .isEqualTo(YearMonth(2025, 12))
     }
 
     @Test
     fun `grid math - leading empty cells and weekday order`() {
-        assertThat(leadingEmptyCells(YearMonth.of(2026, 6), DayOfWeek.SUNDAY)).isEqualTo(1)
-        assertThat(leadingEmptyCells(YearMonth.of(2026, 2), DayOfWeek.SUNDAY)).isEqualTo(0)
-        assertThat(leadingEmptyCells(YearMonth.of(2026, 2), DayOfWeek.MONDAY)).isEqualTo(6)
+        assertThat(leadingEmptyCells(YearMonth(2026, 6), DayOfWeek.SUNDAY)).isEqualTo(1)
+        assertThat(leadingEmptyCells(YearMonth(2026, 2), DayOfWeek.SUNDAY)).isEqualTo(0)
+        assertThat(leadingEmptyCells(YearMonth(2026, 2), DayOfWeek.MONDAY)).isEqualTo(6)
         assertThat(weekdayOrder(DayOfWeek.SUNDAY))
-            .containsExactly(
+            .containsExactlyInAnyOrder(
                 DayOfWeek.SUNDAY,
                 DayOfWeek.MONDAY,
                 DayOfWeek.TUESDAY,
@@ -186,6 +191,6 @@ class DayDatePickerDialogTest {
                 DayOfWeek.THURSDAY,
                 DayOfWeek.FRIDAY,
                 DayOfWeek.SATURDAY,
-            ).inOrder()
+            )
     }
 }

@@ -4,10 +4,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.jpillion.dailyreadingplanner.platform.DateProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.time.Clock
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 /**
@@ -21,7 +21,7 @@ class PartialReadingRepositoryImpl
     @Inject
     constructor(
         private val dataStore: DataStore<Preferences>,
-        private val clock: Clock,
+        private val dateProvider: DateProvider,
     ) : PartialReadingRepository {
         override val partialSegments: Flow<Set<String>> =
             dataStore.data.map { preferences -> preferences[PARTIAL_SEGMENTS_KEY] ?: emptySet() }
@@ -32,7 +32,7 @@ class PartialReadingRepositoryImpl
             streamNumber: Int,
             segmentIndexes: Set<Int>,
         ) {
-            val epochDay = date.toEpochDay()
+            val epochDay = date.toEpochDays()
             dataStore.edit { preferences ->
                 val current = preferences[PARTIAL_SEGMENTS_KEY] ?: emptySet()
                 // Replace (never merge) this triple's tokens; other plans/dates/streams untouched.
@@ -65,7 +65,7 @@ class PartialReadingRepositoryImpl
          * forward and check ahead. Unparseable tokens are dropped (self-healing).
          */
         private fun prune(tokens: Collection<String>): Set<String> {
-            val cutoffEpochDay = LocalDate.now(clock).toEpochDay() - RETENTION_DAYS
+            val cutoffEpochDay = dateProvider.today().toEpochDays() - RETENTION_DAYS
             return tokens
                 .filter { token ->
                     val parsed = PartialSegmentToken.parse(token)

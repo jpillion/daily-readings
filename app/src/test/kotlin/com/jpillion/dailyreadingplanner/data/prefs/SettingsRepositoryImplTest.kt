@@ -8,7 +8,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.bible.domain.model.BibleVersion
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
@@ -20,12 +24,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
-import java.time.LocalDate
-import java.time.LocalTime
 
 /** S3-T6: theme preference persists via DataStore; default and bad values degrade to SYSTEM. */
 class SettingsRepositoryImplTest {
@@ -106,16 +110,16 @@ class SettingsRepositoryImplTest {
     @Test
     fun `tracking start round-trips - including a leap day - no epoch-day off-by-one`() =
         themeTest { repository, _ ->
-            repository.setTrackingStartDate(LocalDate.of(2026, 6, 10))
-            assertThat(repository.trackingStartDate.first()).isEqualTo(LocalDate.of(2026, 6, 10))
-            repository.setTrackingStartDate(LocalDate.of(2028, 2, 29))
-            assertThat(repository.trackingStartDate.first()).isEqualTo(LocalDate.of(2028, 2, 29))
+            repository.setTrackingStartDate(LocalDate(2026, 6, 10))
+            assertThat(repository.trackingStartDate.first()).isEqualTo(LocalDate(2026, 6, 10))
+            repository.setTrackingStartDate(LocalDate(2028, 2, 29))
+            assertThat(repository.trackingStartDate.first()).isEqualTo(LocalDate(2028, 2, 29))
         }
 
     @Test
     fun `clearing the tracking start removes the key and reads back null`() =
         themeTest { repository, _ ->
-            repository.setTrackingStartDate(LocalDate.of(2026, 6, 10))
+            repository.setTrackingStartDate(LocalDate(2026, 6, 10))
             repository.setTrackingStartDate(null)
             assertThat(repository.trackingStartDate.first()).isNull()
         }
@@ -134,7 +138,7 @@ class SettingsRepositoryImplTest {
     fun `reminder defaults to off with the 8am default time when nothing is stored`() =
         themeTest { repository, _ ->
             assertThat(repository.reminderEnabled.first()).isFalse()
-            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime(8, 0))
         }
 
     @Test
@@ -149,21 +153,21 @@ class SettingsRepositoryImplTest {
     @Test
     fun `reminder time round-trips - including midnight and 23-59 boundaries`() =
         themeTest { repository, _ ->
-            repository.setReminderTime(LocalTime.of(21, 15))
-            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(21, 15))
-            repository.setReminderTime(LocalTime.MIDNIGHT)
-            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.MIDNIGHT)
-            repository.setReminderTime(LocalTime.of(23, 59))
-            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(23, 59))
+            repository.setReminderTime(LocalTime(21, 15))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime(21, 15))
+            repository.setReminderTime(LocalTime(0, 0))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime(0, 0))
+            repository.setReminderTime(LocalTime(23, 59))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime(23, 59))
         }
 
     @Test
     fun `a corrupt stored reminder minute degrades to the default instead of crashing`() =
         themeTest { repository, dataStore ->
             dataStore.edit { it[intPreferencesKey("reminder_minute_of_day")] = 4_000 }
-            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime(8, 0))
             dataStore.edit { it[intPreferencesKey("reminder_minute_of_day")] = -1 }
-            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime.of(8, 0))
+            assertThat(repository.reminderTime.first()).isEqualTo(LocalTime(8, 0))
         }
 
     // --- Sprint K (D-23-1): reading-destination mode + external app + legacy migration. ---

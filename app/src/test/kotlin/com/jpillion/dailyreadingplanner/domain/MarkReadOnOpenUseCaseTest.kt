@@ -1,9 +1,10 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.junit.Test
-import java.time.LocalDate
 
 /**
  * Sprint 00O (D-O-1): mark-on-open is one-way (never unmarks), idempotent, and writes to the
@@ -14,13 +15,13 @@ class MarkReadOnOpenUseCaseTest {
     private val progress = FakeProgressRepository()
     private val activePlan = FakeActivePlanRepository()
     private val useCase = MarkReadOnOpenUseCase(progress, activePlan)
-    private val date = LocalDate.of(2026, 6, 10)
+    private val date = LocalDate(2026, 6, 10)
 
     @Test
     fun `marks the given stream read for the given date`() =
         runTest {
             useCase(date, streamNumber = 2)
-            assertThat(progress.marksFor(date)).containsExactly(2)
+            assertThat(progress.marksFor(date)).containsExactlyInAnyOrder(2)
         }
 
     @Test
@@ -30,7 +31,7 @@ class MarkReadOnOpenUseCaseTest {
             useCase(date, streamNumber = 2)
             useCase(date, streamNumber = 2)
             // Still read, never toggled off by the open side effect.
-            assertThat(progress.marksFor(date)).containsExactly(2)
+            assertThat(progress.marksFor(date)).containsExactlyInAnyOrder(2)
         }
 
     @Test
@@ -38,6 +39,6 @@ class MarkReadOnOpenUseCaseTest {
         runTest {
             progress.setRead(date, 1, true)
             useCase(date, streamNumber = 3)
-            assertThat(progress.marksFor(date)).containsExactly(1, 3)
+            assertThat(progress.marksFor(date)).containsExactlyInAnyOrder(1, 3)
         }
 }

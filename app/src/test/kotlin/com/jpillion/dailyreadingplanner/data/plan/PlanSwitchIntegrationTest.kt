@@ -1,7 +1,15 @@
 package com.jpillion.dailyreadingplanner.data.plan
 
 import app.cash.turbine.test
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
 import com.jpillion.dailyreadingplanner.data.progress.ProgressRepository
 import com.jpillion.dailyreadingplanner.domain.DayCompletionClassifier
@@ -9,6 +17,7 @@ import com.jpillion.dailyreadingplanner.domain.GetDayReadingsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetReadingStatsUseCase
 import com.jpillion.dailyreadingplanner.domain.GetYearStripsUseCase
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -17,10 +26,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.junit.Test
-import java.time.Clock
-import java.time.LocalDate
-import java.time.ZoneOffset
 
 /**
  * Alt Sprint D (SD-T5, D-ALT-17/19) — THE end-to-end live-switch gate.
@@ -57,8 +64,8 @@ class PlanSwitchIntegrationTest {
             activePlanRepository = activePlan,
         )
 
-    // CHR-5: a fixed clock pinned in 2026 so the year-keyed stats denominators are stable.
-    private val clock = Clock.fixed(LocalDate.of(2026, 6, 16).atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
+    // CHR-5: a fixed dateProvider pinned in 2026 so the year-keyed stats denominators are stable.
+    private val dateProvider = FakeDateProvider(LocalDate(2026, 6, 16))
 
     private val statsUseCase =
         GetReadingStatsUseCase(
@@ -66,7 +73,7 @@ class PlanSwitchIntegrationTest {
             progressRepository = progress,
             settingsRepository = settings,
             activePlanRepository = activePlan,
-            clock = clock,
+            dateProvider = dateProvider,
         )
 
     private val stripsUseCase =
@@ -75,13 +82,13 @@ class PlanSwitchIntegrationTest {
             progressRepository = progress,
             settingsRepository = settings,
             activePlanRepository = activePlan,
-            clock = clock,
+            dateProvider = dateProvider,
         )
 
     @Test
     fun `selecting M'Cheyne makes the day live-emit the 4-stream plan then switching back restores Bible Companion`() =
         runTest {
-            val date = LocalDate.of(2026, 1, 1)
+            val date = LocalDate(2026, 1, 1)
             // A Bible-Companion mark that must survive the round-trip.
             progress.setWholeDay(date, listOf(1, 2, 3), isRead = true, planId = "bible_companion")
 
@@ -97,7 +104,7 @@ class PlanSwitchIntegrationTest {
                 var mc = awaitItem() as DayReadings.Scheduled
                 while (mc.readings.size != 4) mc = awaitItem() as DayReadings.Scheduled
                 assertThat(mc.readings).hasSize(4)
-                assertThat(mc.readings.map { it.isRead }).containsExactly(false, false, false, false)
+                assertThat(mc.readings.map { it.isRead }).containsExactlyInAnyOrder(false, false, false, false)
                 assertThat(mc.dayComplete).isFalse()
 
                 // 3. Switch back — the Bible Companion view AND its marks are intact.
@@ -105,7 +112,7 @@ class PlanSwitchIntegrationTest {
                 var back = awaitItem() as DayReadings.Scheduled
                 while (back.readings.size != 3) back = awaitItem() as DayReadings.Scheduled
                 assertThat(back.readings).hasSize(3)
-                assertThat(back.readings.map { it.isRead }).containsExactly(true, true, true)
+                assertThat(back.readings.map { it.isRead }).containsExactlyInAnyOrder(true, true, true)
                 assertThat(back.dayComplete).isTrue()
 
                 cancelAndIgnoreRemainingEvents()
@@ -115,7 +122,7 @@ class PlanSwitchIntegrationTest {
     @Test
     fun `M'Cheyne marks are isolated from Bible Companion marks - non-destructive switch`() =
         runTest {
-            val date = LocalDate.of(2026, 1, 1)
+            val date = LocalDate(2026, 1, 1)
             // Mark M'Cheyne stream 1 only.
             settings.storedSelectedPlanId.value = "mcheyne"
             progress.setRead(date, 1, isRead = true, planId = "mcheyne")
@@ -125,13 +132,13 @@ class PlanSwitchIntegrationTest {
                 while (mc.readings.size != 4) mc = awaitItem() as DayReadings.Scheduled
                 assertThat(mc.readings.single { it.portion.streamNumber == 1 }.isRead).isTrue()
                 assertThat(mc.readings.filter { it.portion.streamNumber != 1 }.map { it.isRead })
-                    .containsExactly(false, false, false)
+                    .containsExactlyInAnyOrder(false, false, false)
 
                 // Bible Companion sees NONE of the M'Cheyne marks.
                 settings.storedSelectedPlanId.value = "bible_companion"
                 var bc = awaitItem() as DayReadings.Scheduled
                 while (bc.readings.size != 3) bc = awaitItem() as DayReadings.Scheduled
-                assertThat(bc.readings.map { it.isRead }).containsExactly(false, false, false)
+                assertThat(bc.readings.map { it.isRead }).containsExactlyInAnyOrder(false, false, false)
                 cancelAndIgnoreRemainingEvents()
             }
         }
@@ -141,7 +148,7 @@ class PlanSwitchIntegrationTest {
     @Test
     fun `selecting Chronological makes the day live-emit a single-stream reading with NO stream-title label`() =
         runTest {
-            val date = LocalDate.of(2026, 1, 1)
+            val date = LocalDate(2026, 1, 1)
             // A Bible-Companion mark that must NOT bleed into the chronological view.
             progress.setWholeDay(date, listOf(1, 2, 3), isRead = true, planId = "bible_companion")
 
@@ -166,8 +173,7 @@ class PlanSwitchIntegrationTest {
                 assertThat(only.isRead).isFalse()
                 assertThat(chr.dayComplete).isFalse()
                 assertThat(only.portion.refs.map { it.book.canonicalName to it.chapter })
-                    .containsExactly("Genesis" to 1, "Genesis" to 2, "Genesis" to 3)
-                    .inOrder()
+                    .containsExactlyInAnyOrder("Genesis" to 1, "Genesis" to 2, "Genesis" to 3)
                 cancelAndIgnoreRemainingEvents()
             }
         }
@@ -175,7 +181,7 @@ class PlanSwitchIntegrationTest {
     @Test
     fun `Chronological marks are isolated from Bible Companion and M'Cheyne - three-plan partition`() =
         runTest {
-            val date = LocalDate.of(2026, 1, 1)
+            val date = LocalDate(2026, 1, 1)
             // Mark the single chronological stream read; mark BC and M'Cheyne nothing.
             settings.storedSelectedPlanId.value = "chronological"
             progress.setRead(date, 1, isRead = true, planId = "chronological")
@@ -191,13 +197,13 @@ class PlanSwitchIntegrationTest {
                 settings.storedSelectedPlanId.value = "bible_companion"
                 var bc = awaitItem() as DayReadings.Scheduled
                 while (bc.readings.size != 3) bc = awaitItem() as DayReadings.Scheduled
-                assertThat(bc.readings.map { it.isRead }).containsExactly(false, false, false)
+                assertThat(bc.readings.map { it.isRead }).containsExactlyInAnyOrder(false, false, false)
 
                 // M'Cheyne sees NONE of the chronological mark either.
                 settings.storedSelectedPlanId.value = "mcheyne"
                 var mc = awaitItem() as DayReadings.Scheduled
                 while (mc.readings.size != 4) mc = awaitItem() as DayReadings.Scheduled
-                assertThat(mc.readings.map { it.isRead }).containsExactly(false, false, false, false)
+                assertThat(mc.readings.map { it.isRead }).containsExactlyInAnyOrder(false, false, false, false)
                 cancelAndIgnoreRemainingEvents()
             }
         }
@@ -206,9 +212,9 @@ class PlanSwitchIntegrationTest {
     fun `stats denominators at N=1 are 365 year-total and 365 per-stream over the real chronological descriptor`() =
         runTest {
             settings.storedSelectedPlanId.value = "chronological"
-            // Two chronological days marked in 2026 (the fixed clock's year) to exercise a non-zero count.
-            progress.setRead(LocalDate.of(2026, 1, 1), 1, isRead = true, planId = "chronological")
-            progress.setRead(LocalDate.of(2026, 1, 2), 1, isRead = true, planId = "chronological")
+            // Two chronological days marked in 2026 (the fixed dateProvider's year) to exercise a non-zero count.
+            progress.setRead(LocalDate(2026, 1, 1), 1, isRead = true, planId = "chronological")
+            progress.setRead(LocalDate(2026, 1, 2), 1, isRead = true, planId = "chronological")
 
             val stats = statsUseCase().first()
             // D-ALT-7: year total = dayCount(365) * streamCount(1) = 365 — NOT 1,095, no off-by-N.
@@ -216,8 +222,8 @@ class PlanSwitchIntegrationTest {
             // D-ALT-8: each stream's denominator = dayCount = 365.
             assertThat(stats.streamTotalDays).isEqualTo(365)
             // Exactly one stream row (N=1), numbered 1, no empty-stream crash, no div-by-zero.
-            assertThat(stats.streams.map { it.number }).containsExactly(1)
-            assertThat(stats.streamReadCounts.keys).containsExactly(1)
+            assertThat(stats.streams.map { it.number }).containsExactlyInAnyOrder(1)
+            assertThat(stats.streamReadCounts.keys).containsExactlyInAnyOrder(1)
             // The two marks land on the single stream's count (current year).
             assertThat(stats.yearReadCount).isEqualTo(2)
             assertThat(stats.streamReadCounts[1]).isEqualTo(2)
@@ -227,12 +233,12 @@ class PlanSwitchIntegrationTest {
     fun `year strips at N=1 produce exactly one full-year strip over the real chronological descriptor`() =
         runTest {
             settings.storedSelectedPlanId.value = "chronological"
-            progress.setRead(LocalDate.of(2026, 1, 1), 1, isRead = true, planId = "chronological")
+            progress.setRead(LocalDate(2026, 1, 1), 1, isRead = true, planId = "chronological")
 
             val strips = stripsUseCase().first()
             // Exactly one strip (N=1), keyed by stream number 1 — no empty-stream crash.
-            assertThat(strips.streams.map { it.number }).containsExactly(1)
-            assertThat(strips.dayStates.keys).containsExactly(1)
+            assertThat(strips.streams.map { it.number }).containsExactlyInAnyOrder(1)
+            assertThat(strips.dayStates.keys).containsExactlyInAnyOrder(1)
             // 2026 is a non-leap year: 365 segments per strip.
             assertThat(strips.dayCount).isEqualTo(365)
             assertThat(strips.dayStates.getValue(1)).hasSize(365)
@@ -259,7 +265,7 @@ private class PerPlanProgressFake : ProgressRepository {
     ): Flow<Map<LocalDate, Int>> =
         marks.map { all ->
             all
-                .filterKeys { (p, d) -> p == planId && !d.isBefore(start) && !d.isAfter(end) }
+                .filterKeys { (p, d) -> p == planId && d >= start && d <= end }
                 .entries
                 .associate { (k, v) -> k.second to v.size }
                 .filterValues { it > 0 }
@@ -282,7 +288,7 @@ private class PerPlanProgressFake : ProgressRepository {
         marks.map { all ->
             val counts = mutableMapOf<Int, Int>()
             all
-                .filterKeys { (p, d) -> p == planId && !d.isBefore(start) && !d.isAfter(end) }
+                .filterKeys { (p, d) -> p == planId && d >= start && d <= end }
                 .values
                 .forEach { streams -> streams.forEach { s -> counts[s] = (counts[s] ?: 0) + 1 } }
             counts

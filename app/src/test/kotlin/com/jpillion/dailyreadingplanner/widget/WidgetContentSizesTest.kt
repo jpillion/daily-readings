@@ -8,18 +8,22 @@ import androidx.glance.testing.unit.hasStartActivityClickAction
 import androidx.glance.testing.unit.hasTestTag
 import androidx.glance.testing.unit.hasText
 import androidx.test.core.app.ApplicationProvider
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsOnly
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.MainActivity
 import com.jpillion.dailyreadingplanner.domain.model.DayReadings
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
+import kotlinx.datetime.LocalDate
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDate
 
 /**
  * S8 D-S8-1, refined S9 D-S9-2, redesigned S14 D-S14-2: the responsive tiers. The three
@@ -34,7 +38,7 @@ import java.time.LocalDate
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class WidgetContentSizesTest {
-    private val today = LocalDate.of(2026, 6, 10)
+    private val today = LocalDate(2026, 6, 10)
 
     private fun bcTitle(streamNumber: Int) = bcStreamDescriptors.first { it.number == streamNumber }.title
 
@@ -53,7 +57,7 @@ class WidgetContentSizesTest {
     private val twoBookDay =
         TodayWidgetState.Loaded(
             DayReadings.Scheduled(
-                date = LocalDate.of(2026, 6, 19),
+                date = LocalDate(2026, 6, 19),
                 readings =
                     listOf(
                         ReadingStatus(
@@ -105,19 +109,13 @@ class WidgetContentSizesTest {
         // The declared set is what the launcher picks from (D-S14-2): each entry must land
         // on the tier it was added for, or a resize renders the wrong design.
         assertThat(RESPONSIVE_SIZES.associateWith { layoutFor(it) })
-            .containsExactly(
-                TINY_SIZE,
-                WidgetLayout.TINY,
-                SMALL_SIZE,
-                WidgetLayout.SMALL,
-                MEDIUM_SHORT_SIZE,
-                WidgetLayout.MEDIUM,
-                MEDIUM_SIZE,
-                WidgetLayout.MEDIUM,
-                WIDE_SHORT_SIZE,
-                WidgetLayout.MEDIUM,
-                LARGE_SIZE,
-                WidgetLayout.LARGE,
+            .containsOnly(
+                TINY_SIZE to WidgetLayout.TINY,
+                SMALL_SIZE to WidgetLayout.SMALL,
+                MEDIUM_SHORT_SIZE to WidgetLayout.MEDIUM,
+                MEDIUM_SIZE to WidgetLayout.MEDIUM,
+                WIDE_SHORT_SIZE to WidgetLayout.MEDIUM,
+                LARGE_SIZE to WidgetLayout.LARGE,
             )
     }
 
@@ -244,7 +242,7 @@ class WidgetContentSizesTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(TINY_SIZE)
             provideComposable {
-                WidgetContent(TodayWidgetState.Loaded(DayReadings.NoScheduledReadings(LocalDate.of(2028, 2, 29))))
+                WidgetContent(TodayWidgetState.Loaded(DayReadings.NoScheduledReadings(LocalDate(2028, 2, 29))))
             }
 
             onNode(hasTestTag("widget-no-readings")).assertExists()
@@ -257,7 +255,7 @@ class WidgetContentSizesTest {
             setContext(ApplicationProvider.getApplicationContext())
             setAppWidgetSize(SMALL_SIZE)
             provideComposable {
-                WidgetContent(TodayWidgetState.Loaded(DayReadings.NoScheduledReadings(LocalDate.of(2028, 2, 29))))
+                WidgetContent(TodayWidgetState.Loaded(DayReadings.NoScheduledReadings(LocalDate(2028, 2, 29))))
             }
 
             onNode(hasTestTag("widget-date")).assert(hasText("Feb 29"))

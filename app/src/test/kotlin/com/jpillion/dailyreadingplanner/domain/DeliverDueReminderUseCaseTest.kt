@@ -1,16 +1,22 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import com.jpillion.dailyreadingplanner.core.date.ScheduleDateResolver
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakeReminderNotifier
 import com.jpillion.dailyreadingplanner.testing.FakeReminderScheduler
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atTime
+import kotlinx.datetime.toInstant
 import org.junit.Test
-import java.time.Clock
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneOffset
 
 /**
  * S12: the fire-time rules (D-S12-3) — show vs. quietly skip (R-REM-4/5), always re-arm
@@ -34,25 +40,21 @@ class DeliverDueReminderUseCaseTest {
                 ),
             notifier = notifier,
             scheduler = scheduler,
-            clock =
-                Clock.fixed(
-                    today.atTime(8, 0).toInstant(ZoneOffset.UTC),
-                    ZoneOffset.UTC,
-                ),
+            dateProvider = FakeDateProvider(today, now = today.atTime(8, 0).toInstant(TimeZone.UTC)),
         )
 
-    private val ordinaryDay = LocalDate.of(2026, 6, 10)
-    private val leapDay = LocalDate.of(2028, 2, 29)
+    private val ordinaryDay = LocalDate(2026, 6, 10)
+    private val leapDay = LocalDate(2028, 2, 29)
 
     @Test
     fun `an incomplete day shows the reminder with today's three portions and re-arms`() =
         runTest {
             settings.storedReminderEnabled.value = true
-            settings.storedReminderTime.value = LocalTime.of(8, 0)
+            settings.storedReminderTime.value = LocalTime(8, 0)
             useCase(ordinaryDay)()
             assertThat(notifier.shownPortions).hasSize(1)
             assertThat(notifier.shownPortions.single()).isEqualTo(threePortions)
-            assertThat(scheduler.scheduledTimes).containsExactly(LocalTime.of(8, 0))
+            assertThat(scheduler.scheduledTimes).containsExactlyInAnyOrder(LocalTime(8, 0))
         }
 
     @Test
@@ -73,11 +75,11 @@ class DeliverDueReminderUseCaseTest {
         runTest {
             // R-REM-4 (mutation target M-S12-1: drop the dayComplete guard and this fails).
             settings.storedReminderEnabled.value = true
-            settings.storedReminderTime.value = LocalTime.of(21, 30)
+            settings.storedReminderTime.value = LocalTime(21, 30)
             progress.setWholeDay(ordinaryDay, listOf(1, 2, 3), isRead = true)
             useCase(ordinaryDay)()
             assertThat(notifier.shownPortions).isEmpty()
-            assertThat(scheduler.scheduledTimes).containsExactly(LocalTime.of(21, 30))
+            assertThat(scheduler.scheduledTimes).containsExactlyInAnyOrder(LocalTime(21, 30))
         }
 
     @Test
@@ -104,8 +106,8 @@ class DeliverDueReminderUseCaseTest {
     fun `re-arm uses the currently persisted time - not a captured one`() =
         runTest {
             settings.storedReminderEnabled.value = true
-            settings.storedReminderTime.value = LocalTime.of(6, 45)
+            settings.storedReminderTime.value = LocalTime(6, 45)
             useCase(ordinaryDay)()
-            assertThat(scheduler.scheduledTimes).containsExactly(LocalTime.of(6, 45))
+            assertThat(scheduler.scheduledTimes).containsExactlyInAnyOrder(LocalTime(6, 45))
         }
 }

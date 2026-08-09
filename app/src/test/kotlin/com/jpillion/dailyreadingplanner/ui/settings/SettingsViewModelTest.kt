@@ -1,7 +1,18 @@
 package com.jpillion.dailyreadingplanner.ui.settings
 
 import app.cash.turbine.test
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
+import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNotEmpty
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.data.plan.ActivePlanRepository
 import com.jpillion.dailyreadingplanner.data.plan.PlanAssetSource
 import com.jpillion.dailyreadingplanner.data.plan.PlanRegistry
@@ -14,6 +25,7 @@ import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.PlanDescriptor
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import com.jpillion.dailyreadingplanner.testing.FakeNotificationPermissionChecker
 import com.jpillion.dailyreadingplanner.testing.FakeReminderScheduler
 import com.jpillion.dailyreadingplanner.testing.FakeSettingsRepository
@@ -24,14 +36,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
-import java.time.Clock
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneOffset
+import kotlin.time.Instant
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -73,7 +83,8 @@ class SettingsViewModelTest {
             override val activeDescriptor: Flow<PlanDescriptor> = flowOf(bibleCompanionDescriptor)
         }
 
-    private val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
+    private val dateProvider =
+        FakeDateProvider(LocalDate(2026, 6, 10), now = Instant.parse("2026-06-10T12:00:00Z"))
     private val refreshPersistent =
         com.jpillion.dailyreadingplanner.domain.RefreshPersistentNotificationUseCase(
             settingsRepository = repository,
@@ -92,12 +103,12 @@ class SettingsViewModelTest {
                 ),
             notifier = persistentNotifier,
             scheduler = reminderScheduler,
-            clock = clock,
+            dateProvider = dateProvider,
         )
     private val viewModel by lazy {
         SettingsViewModel(
             settingsRepository = repository,
-            resetYearProgress = ResetYearProgressUseCase(progress, clock),
+            resetYearProgress = ResetYearProgressUseCase(progress, dateProvider),
             widgetRefresher = widgetRefresher,
             reminderScheduler = reminderScheduler,
             refreshPersistentNotification = refreshPersistent,
@@ -106,7 +117,7 @@ class SettingsViewModelTest {
             activePlanRepository = activePlanRepository,
             planRegistry = planRegistry,
             readingPlanRepository = readingPlanRepository,
-            clock = clock,
+            dateProvider = dateProvider,
         )
     }
 
@@ -136,7 +147,7 @@ class SettingsViewModelTest {
                 viewModel.onThemeModeSelected(ThemeMode.LIGHT)
                 assertThat(awaitItem()).isEqualTo(ThemeMode.LIGHT)
             }
-            assertThat(repository.setCalls).containsExactly(ThemeMode.DARK, ThemeMode.LIGHT).inOrder()
+            assertThat(repository.setCalls).containsExactly(ThemeMode.DARK, ThemeMode.LIGHT)
         }
 
     @Test
@@ -151,19 +162,19 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `current year comes from the clock`() {
+    fun `current year comes from the dateProvider`() {
         assertThat(viewModel.currentYear).isEqualTo(2026)
     }
 
     @Test
     fun `confirmed reset clears the current year and refreshes the widget`() =
         runTest {
-            progress.setWholeDay(LocalDate.of(2026, 6, 1), listOf(1, 2, 3), isRead = true)
-            progress.setRead(LocalDate.of(2025, 6, 1), 3, isRead = true)
+            progress.setWholeDay(LocalDate(2026, 6, 1), listOf(1, 2, 3), isRead = true)
+            progress.setRead(LocalDate(2025, 6, 1), 3, isRead = true)
             viewModel.onResetProgressConfirmed()
-            assertThat(progress.clearYearCalls).containsExactly(2026)
-            assertThat(progress.marksFor(LocalDate.of(2026, 6, 1))).isEmpty()
-            assertThat(progress.marksFor(LocalDate.of(2025, 6, 1))).containsExactly(3)
+            assertThat(progress.clearYearCalls).containsExactlyInAnyOrder(2026)
+            assertThat(progress.marksFor(LocalDate(2026, 6, 1))).isEmpty()
+            assertThat(progress.marksFor(LocalDate(2025, 6, 1))).containsExactlyInAnyOrder(3)
             assertThat(widgetRefresher.refreshCount).isEqualTo(1)
         }
 
@@ -174,8 +185,8 @@ class SettingsViewModelTest {
         runTest {
             viewModel.trackingStartDate.test {
                 assertThat(awaitItem()).isNull()
-                repository.storedTrackingStartDate.value = LocalDate.of(2026, 6, 3)
-                assertThat(awaitItem()).isEqualTo(LocalDate.of(2026, 6, 3))
+                repository.storedTrackingStartDate.value = LocalDate(2026, 6, 3)
+                assertThat(awaitItem()).isEqualTo(LocalDate(2026, 6, 3))
             }
         }
 
@@ -184,30 +195,29 @@ class SettingsViewModelTest {
         runTest {
             viewModel.trackingStartDate.test {
                 awaitItem() // null default
-                viewModel.onTrackingStartChanged(LocalDate.of(2026, 6, 3))
-                assertThat(awaitItem()).isEqualTo(LocalDate.of(2026, 6, 3))
+                viewModel.onTrackingStartChanged(LocalDate(2026, 6, 3))
+                assertThat(awaitItem()).isEqualTo(LocalDate(2026, 6, 3))
                 viewModel.onTrackingStartChanged(null)
                 assertThat(awaitItem()).isNull()
             }
             assertThat(repository.trackingStartCalls)
-                .containsExactly(LocalDate.of(2026, 6, 3), null)
-                .inOrder()
+                .containsExactlyInAnyOrder(LocalDate(2026, 6, 3), null)
         }
 
     @Test
     fun `reset and tracking start are independent - neither touches the other`() =
         runTest {
             // Reset clears marks but never the tracking start date (spec §7).
-            repository.storedTrackingStartDate.value = LocalDate.of(2026, 6, 3)
+            repository.storedTrackingStartDate.value = LocalDate(2026, 6, 3)
             viewModel.onResetProgressConfirmed()
             assertThat(repository.trackingStartCalls).isEmpty()
-            assertThat(repository.storedTrackingStartDate.value).isEqualTo(LocalDate.of(2026, 6, 3))
+            assertThat(repository.storedTrackingStartDate.value).isEqualTo(LocalDate(2026, 6, 3))
             // Changing the start date never clears marks.
-            progress.setWholeDay(LocalDate.of(2026, 5, 1), listOf(1, 2, 3), isRead = true)
+            progress.setWholeDay(LocalDate(2026, 5, 1), listOf(1, 2, 3), isRead = true)
             val clearsBefore = progress.clearYearCalls.size
-            viewModel.onTrackingStartChanged(LocalDate.of(2026, 1, 1))
+            viewModel.onTrackingStartChanged(LocalDate(2026, 1, 1))
             assertThat(progress.clearYearCalls).hasSize(clearsBefore)
-            assertThat(progress.marksFor(LocalDate.of(2026, 5, 1))).isNotEmpty()
+            assertThat(progress.marksFor(LocalDate(2026, 5, 1))).isNotEmpty()
         }
 
     // --- S12: daily reminder (R-REM-1/2/7). ---
@@ -215,16 +225,16 @@ class SettingsViewModelTest {
     @Test
     fun `reminder defaults off with the 8am time`() {
         assertThat(viewModel.reminderEnabled.value).isFalse()
-        assertThat(viewModel.reminderTime.value).isEqualTo(LocalTime.of(8, 0))
+        assertThat(viewModel.reminderTime.value).isEqualTo(LocalTime(8, 0))
     }
 
     @Test
     fun `enabling with permission persists and arms the alarm at the stored time`() =
         runTest {
-            repository.storedReminderTime.value = LocalTime.of(7, 15)
+            repository.storedReminderTime.value = LocalTime(7, 15)
             viewModel.onReminderToggled(true)
             assertThat(repository.reminderEnabledCalls).containsExactly(true)
-            assertThat(reminderScheduler.scheduledTimes).containsExactly(LocalTime.of(7, 15))
+            assertThat(reminderScheduler.scheduledTimes).containsExactlyInAnyOrder(LocalTime(7, 15))
         }
 
     @Test
@@ -232,7 +242,7 @@ class SettingsViewModelTest {
         runTest {
             repository.storedReminderEnabled.value = true
             viewModel.onReminderToggled(false)
-            assertThat(repository.reminderEnabledCalls).containsExactly(false)
+            assertThat(repository.reminderEnabledCalls).containsExactlyInAnyOrder(false)
             assertThat(reminderScheduler.cancelCount).isEqualTo(1)
             assertThat(reminderScheduler.scheduledTimes).isEmpty()
         }
@@ -253,7 +263,7 @@ class SettingsViewModelTest {
     fun `permission granted from the prompt enables and arms`() =
         runTest {
             viewModel.onNotificationPermissionResult(granted = true)
-            assertThat(repository.reminderEnabledCalls).containsExactly(true)
+            assertThat(repository.reminderEnabledCalls).containsExactlyInAnyOrder(true)
             assertThat(reminderScheduler.scheduledTimes).hasSize(1)
             assertThat(viewModel.showPermissionRationale.value).isFalse()
         }
@@ -273,16 +283,16 @@ class SettingsViewModelTest {
     fun `changing the time while enabled persists and reschedules to the new time`() =
         runTest {
             repository.storedReminderEnabled.value = true
-            viewModel.onReminderTimeChanged(LocalTime.of(21, 0))
-            assertThat(repository.reminderTimeCalls).containsExactly(LocalTime.of(21, 0))
-            assertThat(reminderScheduler.scheduledTimes).containsExactly(LocalTime.of(21, 0))
+            viewModel.onReminderTimeChanged(LocalTime(21, 0))
+            assertThat(repository.reminderTimeCalls).containsExactlyInAnyOrder(LocalTime(21, 0))
+            assertThat(reminderScheduler.scheduledTimes).containsExactlyInAnyOrder(LocalTime(21, 0))
         }
 
     @Test
     fun `changing the time while disabled persists but never arms an alarm`() =
         runTest {
-            viewModel.onReminderTimeChanged(LocalTime.of(21, 0))
-            assertThat(repository.reminderTimeCalls).containsExactly(LocalTime.of(21, 0))
+            viewModel.onReminderTimeChanged(LocalTime(21, 0))
+            assertThat(repository.reminderTimeCalls).containsExactlyInAnyOrder(LocalTime(21, 0))
             assertThat(reminderScheduler.scheduledTimes).isEmpty()
         }
 
@@ -292,7 +302,7 @@ class SettingsViewModelTest {
     fun `selecting the destination mode persists it`() =
         runTest {
             viewModel.onDestinationModeSelected(ReadingDestinationMode.IN_APP)
-            assertThat(repository.destinationModeCalls).containsExactly(ReadingDestinationMode.IN_APP)
+            assertThat(repository.destinationModeCalls).containsExactlyInAnyOrder(ReadingDestinationMode.IN_APP)
             assertThat(repository.storedDestinationMode.value).isEqualTo(ReadingDestinationMode.IN_APP)
         }
 
@@ -300,7 +310,7 @@ class SettingsViewModelTest {
     fun `selecting an external app persists it without touching the mode`() =
         runTest {
             viewModel.onExternalBibleAppSelected(ExternalBibleApp.YOUVERSION)
-            assertThat(repository.externalBibleAppCalls).containsExactly(ExternalBibleApp.YOUVERSION)
+            assertThat(repository.externalBibleAppCalls).containsExactlyInAnyOrder(ExternalBibleApp.YOUVERSION)
             assertThat(repository.storedExternalBibleApp.value).isEqualTo(ExternalBibleApp.YOUVERSION)
             // The two axes are independent: the mode was not written.
             assertThat(repository.destinationModeCalls).isEmpty()
@@ -312,7 +322,7 @@ class SettingsViewModelTest {
     fun `mySwordInstalled reflects the install checker - queried for the mysword package`() {
         mySwordInstalled = true
         assertThat(viewModel.mySwordInstalled).isTrue()
-        assertThat(appInstallChecker.queries).containsExactly("com.riversoft.android.mysword")
+        assertThat(appInstallChecker.queries).containsExactlyInAnyOrder("com.riversoft.android.mysword")
     }
 
     @Test
@@ -332,7 +342,7 @@ class SettingsViewModelTest {
                 viewModel.onShowStreaksToggled(false)
                 assertThat(awaitItem()).isFalse()
             }
-            assertThat(repository.showStreaksCalls).containsExactly(true, false).inOrder()
+            assertThat(repository.showStreaksCalls).containsExactlyInAnyOrder(true, false)
         }
 
     // --- S21: persistent (ongoing) notification toggle. ---
@@ -381,7 +391,7 @@ class SettingsViewModelTest {
                 cancelAndIgnoreRemainingEvents()
             }
             viewModel.onNotificationPermissionResult(granted = true)
-            assertThat(repository.persistentEnabledCalls).containsExactly(true)
+            assertThat(repository.persistentEnabledCalls).containsExactlyInAnyOrder(true)
             assertThat(repository.reminderEnabledCalls).isEmpty()
         }
 
@@ -396,8 +406,7 @@ class SettingsViewModelTest {
                 var state = awaitItem()
                 while (state.options.size < 3) state = awaitItem()
                 assertThat(state.options.map { it.id })
-                    .containsExactly("bible_companion", "mcheyne", "chronological")
-                    .inOrder()
+                    .containsExactlyInAnyOrder("bible_companion", "mcheyne", "chronological")
                 assertThat(state.options.first { it.id == "bible_companion" }.name).isEqualTo("Bible Companion")
                 assertThat(state.options.first { it.id == "mcheyne" }.name).isEqualTo("M'Cheyne")
                 assertThat(state.options.first { it.id == "chronological" }.name).isEqualTo("Chronological")
@@ -465,7 +474,7 @@ class SettingsViewModelTest {
             }
             viewModel.onPlanSelected("mcheyne")
             viewModel.onPlanSwitchConfirmed()
-            assertThat(repository.selectedPlanIdCalls).containsExactly("mcheyne")
+            assertThat(repository.selectedPlanIdCalls).containsExactlyInAnyOrder("mcheyne")
             assertThat(widgetRefresher.refreshCount).isEqualTo(1)
             assertThat(viewModel.pendingPlanSwitch.value).isNull()
         }

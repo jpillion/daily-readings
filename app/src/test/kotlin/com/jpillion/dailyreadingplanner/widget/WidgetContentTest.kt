@@ -12,11 +12,11 @@ import com.jpillion.dailyreadingplanner.domain.model.ReadingStatus
 import com.jpillion.dailyreadingplanner.domain.portion
 import com.jpillion.dailyreadingplanner.domain.threePortions
 import com.jpillion.dailyreadingplanner.testing.bcStreamDescriptors
+import kotlinx.datetime.LocalDate
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDate
 
 /**
  * Pins the widget UI (ESpec §7) state-by-state on the JVM via Glance's unit-test rig:
@@ -26,7 +26,7 @@ import java.time.LocalDate
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class WidgetContentTest {
-    private val today = LocalDate.of(2026, 6, 10)
+    private val today = LocalDate(2026, 6, 10)
 
     private fun bcTitle(streamNumber: Int) = bcStreamDescriptors.first { it.number == streamNumber }.title
 
@@ -136,7 +136,7 @@ class WidgetContentTest {
             val day =
                 TodayWidgetState.Loaded(
                     DayReadings.Scheduled(
-                        date = LocalDate.of(2026, 6, 19),
+                        date = LocalDate(2026, 6, 19),
                         readings =
                             listOf(
                                 ReadingStatus(
@@ -156,7 +156,7 @@ class WidgetContentTest {
     @Test
     fun `Feb 29 shows the no-scheduled-readings state with no marks`() =
         runGlanceAppWidgetUnitTest {
-            val feb29 = TodayWidgetState.Loaded(DayReadings.NoScheduledReadings(LocalDate.of(2028, 2, 29)))
+            val feb29 = TodayWidgetState.Loaded(DayReadings.NoScheduledReadings(LocalDate(2028, 2, 29)))
             setContext(ApplicationProvider.getApplicationContext())
             provideComposable { WidgetContent(feb29) }
 

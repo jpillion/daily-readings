@@ -1,29 +1,31 @@
 package com.jpillion.dailyreadingplanner.domain
 
-import com.google.common.truth.Truth.assertThat
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import com.jpillion.dailyreadingplanner.platform.FakeDateProvider
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.junit.Test
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneOffset
+import kotlin.time.Instant
 
-/** S8: "Reset progress" clears exactly the clock's current year (owner decision). */
+/** S8: "Reset progress" clears exactly the dateProvider's current year (owner decision). */
 class ResetYearProgressUseCaseTest {
     private val progress = FakeProgressRepository()
 
     @Test
-    fun `clears the current year per the injected clock`() =
+    fun `clears the current year per the injected dateProvider`() =
         runTest {
-            val clock = Clock.fixed(Instant.parse("2026-06-10T12:00:00Z"), ZoneOffset.UTC)
-            ResetYearProgressUseCase(progress, clock).invoke()
-            assertThat(progress.clearYearCalls).containsExactly(2026)
+            val dateProvider =
+                FakeDateProvider(LocalDate(2026, 6, 10), now = Instant.parse("2026-06-10T12:00:00Z"))
+            ResetYearProgressUseCase(progress, dateProvider).invoke()
+            assertThat(progress.clearYearCalls).containsExactlyInAnyOrder(2026)
         }
 
     @Test
-    fun `the year tracks the clock - not a constant`() =
+    fun `the year tracks the dateProvider - not a constant`() =
         runTest {
-            val clock = Clock.fixed(Instant.parse("2031-01-01T00:00:00Z"), ZoneOffset.UTC)
-            ResetYearProgressUseCase(progress, clock).invoke()
-            assertThat(progress.clearYearCalls).containsExactly(2031)
+            val dateProvider = FakeDateProvider(LocalDate(2031, 1, 1))
+            ResetYearProgressUseCase(progress, dateProvider).invoke()
+            assertThat(progress.clearYearCalls).containsExactlyInAnyOrder(2031)
         }
 }

@@ -1,11 +1,17 @@
 package com.jpillion.dailyreadingplanner
 
-import com.google.common.truth.Truth.assertWithMessage
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.isEmpty
+import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isNotEmpty
+import assertk.assertions.matches
+import assertk.assertions.startsWith
 import org.junit.Test
 import java.io.File
 
 /**
- * Kotlin/Native rejects characters in backticked identifiers that the JVM accepts. Sprint p1-08
+ * Kotlin/Native rejects characters in backticked identifiers that the JVM accepts. Brief p1-09
  * found this the expensive way: `Name contains illegal characters` from the first real Apple
  * compile, against 120 test names that had been green on the JVM for months.
  *
@@ -43,14 +49,15 @@ class TestNamePortabilityGateTest {
                 }
             }
 
-        assertWithMessage(
-            "These names contain characters NOT proven to compile on Kotlin/Native.\n" +
-                "Rename them. Only if you have compiled a probe containing the character for a real\n" +
-                "Apple target may you add it to ALLOWED_CHARACTERS, with that evidence in the commit\n" +
-                "message. Never widen the allowlist just to make this green.\n\n" +
-                violations.joinToString("\n"),
-        ).that(violations)
-            .isEmpty()
+        assertThat(
+            violations,
+            name =
+                "These names contain characters NOT proven to compile on Kotlin/Native.\n" +
+                    "Rename them. Only if you have compiled a probe containing the character for a real\n" +
+                    "Apple target may you add it to ALLOWED_CHARACTERS, with that evidence in the commit\n" +
+                    "message. Never widen the allowlist just to make this green.\n\n" +
+                    violations.joinToString("\n"),
+        ).isEmpty()
     }
 
     /**
@@ -60,17 +67,18 @@ class TestNamePortabilityGateTest {
     @Test
     fun `the scan is not vacuous - it finds the real source roots and the whole suite`() {
         val roots = testSourceRoots()
-        assertWithMessage("no test source root found - the scan would pass vacuously")
-            .that(roots)
+        assertThat(roots, name = "no test source root found - the scan would pass vacuously")
             .isNotEmpty()
-        assertWithMessage("the Android unit-test source root must be among the scanned roots")
-            .that(roots.map { it.invariantSeparatorsPath })
-            .contains(File(repoRoot(), "app/src/test/kotlin").invariantSeparatorsPath)
+        assertThat(
+            roots.map {
+                it.invariantSeparatorsPath
+            },
+            name = "the Android unit-test source root must be among the scanned roots",
+        ).contains(File(repoRoot(), "app/src/test/kotlin").invariantSeparatorsPath)
 
         val names = scanNames()
-        assertWithMessage("found ${names.size} backticked names - far too few to be the real suite")
-            .that(names.size)
-            .isAtLeast(MINIMUM_EXPECTED_NAMES)
+        assertThat(names.size, name = "found ${names.size} backticked names - far too few to be the real suite")
+            .isGreaterThanOrEqualTo(MINIMUM_EXPECTED_NAMES)
     }
 
     /**
@@ -99,12 +107,13 @@ class TestNamePortabilityGateTest {
                         .any { it.isDirectory && TEST_SOURCE_SET.matches(it.name) && File(it, "kotlin").isDirectory }
                 }.map { it.name }
 
-        assertWithMessage(
-            "These modules have test sources this gate does NOT scan. Add them to MODULES - in\n" +
-                "particular `shared`, the moment shared/src/commonTest/kotlin exists.\n" +
-                unlisted.joinToString("\n"),
-        ).that(unlisted)
-            .isEmpty()
+        assertThat(
+            unlisted,
+            name =
+                "These modules have test sources this gate does NOT scan. Add them to MODULES - in\n" +
+                    "particular `shared`, the moment shared/src/commonTest/kotlin exists.\n" +
+                    unlisted.joinToString("\n"),
+        ).isEmpty()
     }
 
     private fun repoRoot(): File {
