@@ -48,4 +48,7 @@ interface DateTextFormatter {
 
     /** An integer with the locale's grouping separator. English example: "1,095". */
     fun integer(value: Int): String
+
+    /** Whether the device is set to display time in 24-hour form, for a control that must match it. */
+    val uses24HourTime: Boolean
 }

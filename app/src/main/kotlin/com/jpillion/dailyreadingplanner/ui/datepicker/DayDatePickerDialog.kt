@@ -41,8 +41,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
-import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorGreenDark
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorGreenLight
 import com.jpillion.dailyreadingplanner.ui.theme.IndicatorRedDark
@@ -81,7 +81,7 @@ fun DayDatePickerDialog(
     onDismiss: () -> Unit,
     // p1-01: localized date text comes from the platform seam. Defaulted so every existing
     // caller (and the tests that pin real English output) is unchanged.
-    formatter: DateTextFormatter = AndroidDateTextFormatter,
+    formatter: DateTextFormatter = rememberDateTextFormatter(),
 ) {
     val initialMonth = YearMonth.from(initialDate)
     val pagerState = rememberPagerState(initialPage = MONTH_CENTER_PAGE) { MONTH_PAGE_COUNT }

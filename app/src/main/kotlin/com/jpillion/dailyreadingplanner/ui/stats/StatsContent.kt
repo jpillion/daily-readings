@@ -28,8 +28,8 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.ReadingStats
 import com.jpillion.dailyreadingplanner.domain.model.StripDayState
 import com.jpillion.dailyreadingplanner.domain.model.YearStrips
-import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
 
 /**
  * What the main-screen stats panel renders (S15, D-S15-4): the live stats + the streak gate,
@@ -61,7 +61,7 @@ fun StatsContent(
     modifier: Modifier = Modifier,
     // p1-01: the locale's grouping separator ("1,095") comes from the platform seam. Defaulted
     // so every existing caller and the "438 of 1,095 readings" pins are unchanged.
-    formatter: DateTextFormatter = AndroidDateTextFormatter,
+    formatter: DateTextFormatter = rememberDateTextFormatter(),
 ) {
     // S18 (owner): deliberate density — readings + this whole panel must fit one screen on
     // a ~411x915dp device at default font. Section labels merged into value rows, gaps and

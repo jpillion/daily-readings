@@ -18,6 +18,7 @@ import java.time.LocalTime
  */
 class FakeDateTextFormatter(
     private val firstDay: DayOfWeek = DayOfWeek.SUNDAY,
+    override val uses24HourTime: Boolean = false,
 ) : DateTextFormatter {
     override fun fullDate(date: LocalDate): String = "FULL($date)"
 

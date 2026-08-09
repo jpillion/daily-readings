@@ -3,7 +3,6 @@ package com.jpillion.dailyreadingplanner.ui.settings
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
-import android.text.format.DateFormat
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -66,8 +65,8 @@ import com.jpillion.dailyreadingplanner.data.prefs.SettingsRepository
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
 import com.jpillion.dailyreadingplanner.domain.model.ThemeMode
-import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.math.roundToInt
@@ -203,7 +202,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     // p1-01: localized date/time text comes from the platform seam. Defaulted so every existing
     // caller and the "Jun 3, 2026" pin are unchanged.
-    formatter: DateTextFormatter = AndroidDateTextFormatter,
+    formatter: DateTextFormatter = rememberDateTextFormatter(),
 ) {
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
     var showTrackingStartDialog by rememberSaveable { mutableStateOf(false) }
@@ -443,6 +442,7 @@ fun SettingsScreen(
     if (showReminderTimeDialog) {
         ReminderTimePickerDialog(
             initialTime = reminderTime,
+            formatter = formatter,
             onConfirm = { picked ->
                 showReminderTimeDialog = false
                 onReminderTimeChanged(picked)
@@ -601,6 +601,7 @@ private fun ReminderTimeRow(
 @Composable
 private fun ReminderTimePickerDialog(
     initialTime: LocalTime,
+    formatter: DateTextFormatter,
     onConfirm: (LocalTime) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -608,13 +609,10 @@ private fun ReminderTimePickerDialog(
         rememberTimePickerState(
             initialHour = initialTime.hour,
             initialMinute = initialTime.minute,
-            // p1-01 ESCALATION (open, Staff): this is NOT text formatting — it is a boolean that
-            // configures the M3 picker's input mode from the *device's 12/24-hour setting*. The
-            // nine-method DateTextFormatter cannot express it, and routing it through
-            // `timeOfDay` would be a behaviour change: `timeOfDay` is
-            // `ofLocalizedTime(SHORT)`, which follows the *locale*, not this setting. Left
-            // exactly as shipped pending a Staff decision; see the p1-01 report.
-            is24Hour = DateFormat.is24HourFormat(LocalContext.current),
+            // The picker's input mode follows the *device's* 12/24-hour setting, which is a
+            // separate axis from `timeOfDay`'s locale-driven `ofLocalizedTime(SHORT)` above.
+            // The two can disagree; that is shipped behaviour and is deliberately unchanged.
+            is24Hour = formatter.uses24HourTime,
         )
     AlertDialog(
         onDismissRequest = onDismiss,

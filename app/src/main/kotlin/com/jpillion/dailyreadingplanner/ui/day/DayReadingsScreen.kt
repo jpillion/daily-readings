@@ -39,8 +39,8 @@ import com.jpillion.dailyreadingplanner.R
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
-import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.browser.launchReadingDestination
 import com.jpillion.dailyreadingplanner.ui.datepicker.DayDatePickerDialog
 import com.jpillion.dailyreadingplanner.ui.stats.StatsContent
@@ -156,7 +156,7 @@ fun DayReadingsPagerScreen(
     onUpgradeNoteDismissed: (Boolean) -> Unit = {},
     // p1-01: localized date text comes from the platform seam. The D-S16-1 title *rule* stays
     // here (below) — only the localized fragment is the platform's.
-    formatter: DateTextFormatter = AndroidDateTextFormatter,
+    formatter: DateTextFormatter = rememberDateTextFormatter(),
 ) {
     val pagerState = rememberPagerState(initialPage = TODAY_PAGE) { PAGE_COUNT }
     val scope = rememberCoroutineScope()

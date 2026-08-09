@@ -21,8 +21,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.jpillion.dailyreadingplanner.R
-import com.jpillion.dailyreadingplanner.platform.AndroidDateTextFormatter
 import com.jpillion.dailyreadingplanner.platform.DateTextFormatter
+import com.jpillion.dailyreadingplanner.platform.rememberDateTextFormatter
 import com.jpillion.dailyreadingplanner.ui.settings.TrackingStartDatePickerDialog
 import java.time.LocalDate
 
@@ -42,7 +42,7 @@ internal fun TrackingStartPromptDialog(
     onDismiss: () -> Unit,
     // p1-01: localized date text comes from the platform seam; defaulted so callers/tests are
     // unchanged.
-    formatter: DateTextFormatter = AndroidDateTextFormatter,
+    formatter: DateTextFormatter = rememberDateTextFormatter(),
 ) {
     var showCustomPicker by rememberSaveable { mutableStateOf(false) }
     if (showCustomPicker) {

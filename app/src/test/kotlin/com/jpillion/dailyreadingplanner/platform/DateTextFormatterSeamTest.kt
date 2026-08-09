@@ -1,5 +1,7 @@
 package com.jpillion.dailyreadingplanner.platform
 
+import android.content.Context
+import android.provider.Settings
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertTextEquals
@@ -8,11 +10,15 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isNotEqualTo
+import assertk.assertions.isTrue
 import com.jpillion.dailyreadingplanner.domain.model.DayCompletion
 import com.jpillion.dailyreadingplanner.domain.model.ExternalBibleApp
 import com.jpillion.dailyreadingplanner.domain.model.ReadingDestinationMode
@@ -173,7 +179,10 @@ class DateTextFormatterSeamTest {
 
     // ---- Settings: timeOfDay and mediumDate ----
 
-    private fun setSettings(trackingStartDate: LocalDate?) {
+    private fun setSettings(
+        trackingStartDate: LocalDate?,
+        formatter: DateTextFormatter = fake,
+    ) {
         composeRule.setContent {
             DailyReadingPlannerTheme(dynamicColor = false) {
                 SettingsScreen(
@@ -212,7 +221,7 @@ class DateTextFormatterSeamTest {
                     onOpenNotificationSettings = {},
                     onResetProgressConfirmed = {},
                     onBack = {},
-                    formatter = fake,
+                    formatter = formatter,
                 )
             }
         }
@@ -236,6 +245,43 @@ class DateTextFormatterSeamTest {
             .assertTextEquals("MEDIUM(2026-06-03)")
     }
 
+    // ---- uses24HourTime: the tenth member, a device setting rather than formatted text ----
+
+    private fun openReminderTimePicker() {
+        composeRule.onNodeWithTag("reminder-time-row").performScrollTo().performClick()
+        composeRule.onNodeWithTag("reminder-time-dialog").assertExists()
+    }
+
+    @Test
+    fun reminderTimePickerUses12HourInputWhenTheSeamSaysSo() {
+        setSettings(trackingStartDate = null, formatter = FakeDateTextFormatter(uses24HourTime = false))
+        openReminderTimePicker()
+        // A 12-hour M3 TimePicker carries the AM/PM selector; a 24-hour one does not.
+        composeRule.onNodeWithText("AM").assertExists()
+    }
+
+    @Test
+    fun reminderTimePickerUses24HourInputWhenTheSeamSaysSo() {
+        setSettings(trackingStartDate = null, formatter = FakeDateTextFormatter(uses24HourTime = true))
+        openReminderTimePicker()
+        composeRule.onNodeWithText("AM").assertDoesNotExist()
+    }
+
+    @Test
+    fun androidImplementationReadsTheDeviceTimeFormatSetting() {
+        // The one member that is device state, not formatting: it must track Settings.System
+        // TIME_12_24 rather than the locale. Asserting both directions rules out a frozen or
+        // inverted boolean, neither of which the UI pins above could distinguish.
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val formatter = AndroidDateTextFormatter(context)
+
+        Settings.System.putString(context.contentResolver, Settings.System.TIME_12_24, "24")
+        assertThat(formatter.uses24HourTime).isTrue()
+
+        Settings.System.putString(context.contentResolver, Settings.System.TIME_12_24, "12")
+        assertThat(formatter.uses24HourTime).isFalse()
+    }
+
     // ---- D-S16-1 stays in the composable layer (acceptance criterion 4) ----
 
     @Test
@@ -257,7 +303,7 @@ class DateTextFormatterSeamTest {
         // copy-paste slip would break: the differently-styled forms must not collapse into one
         // another. (AC5's mutation — mediumDate given fullDate's body — is caught by the
         // literal "Jun 3, 2026" / "Start from today (Jun 10, 2026)" pins.)
-        val impl = AndroidDateTextFormatter
+        val impl = AndroidDateTextFormatter(ApplicationProvider.getApplicationContext())
         assertThat(impl.mediumDate(june10)).isNotEqualTo(impl.fullDate(june10))
         assertThat(impl.monthDay(june10)).isNotEqualTo(impl.weekdayMonthDay(june10))
         assertThat(impl.monthYear(june10)).isNotEqualTo(impl.monthDay(june10))
